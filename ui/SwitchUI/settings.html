@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Mukkuru - Settings</title>
+    <!-- link rel="stylesheet" href="./assets/css/style.css" -->
+    <link rel="stylesheet" href="./assets/css/settings.css">
+    <script src="mukkuru.js"></script>
+    <script>
+
+//at this point we do not have access to userConfiguration, so we are using localStorage
+if (localStorage.getItem("darkMode") == "true") {
+    applyDarkMode();
+}
+
+function setDarkModeState(state){
+            //We need to set this instance to fix FOUC
+        if (state == true){
+        localStorage.setItem("darkMode", true);
+        document.getElementsByClassName("homeMenu")[0].style.setProperty("--bg-color", darkColor);
+        document.getElementsByClassName("controllerState-type")[0].getElementsByTagName("svg")[0].getElementsByTagName("path")[0].style.fill = lightColor;
+        document.querySelectorAll(".keyGuide-icon").forEach((element) => element.getElementsByTagName("path")[0].style.fill = lightColor);
+        document.getElementById("about-text").style.setProperty("color", "#A7C4D9");
+        document.querySelectorAll(".option-description").forEach((element) => element.style.setProperty("color", "#A7C4D9"));
+        } else {
+        localStorage.setItem("darkMode", false);
+        document.getElementsByClassName("homeMenu")[0].style.setProperty("--bg-color", lightColor);
+        document.getElementsByClassName("controllerState-type")[0].getElementsByTagName("svg")[0].getElementsByTagName("path")[0].style.fill = darkColor;
+        document.querySelectorAll(".keyGuide-icon").forEach((element) => element.getElementsByTagName("path")[0].style.fill = darkColor);
+        document.getElementById("about-text").style.setProperty("color", "rgba(39, 51, 67, 0.747)");
+        document.querySelectorAll(".option-description").forEach((element) => element.style.setProperty("color", "rgba(39, 51, 67, 0.747)"));
+        
+        document.documentElement.style.setProperty("--bg-color", lightColor);
+        document.documentElement.style.setProperty("--main-color", darkColor);
+        }
+}
+
+/*
+To-do: The vertical line must become cyan during dark mode
+
+"
+*/
+document.addEventListener('DOMContentLoaded', () => {
+const homeMenu = document.getElementsByClassName("homeMenu")[0];
+
+const menuItems = document.querySelectorAll('.menu-tab');
+const menuOptions = document.querySelectorAll('.menu-option');
+
+menuItems[0].className = "menu-tab selected";
+
+fetch(backendURL+"/config/get").then(function(response) {
+        return response.json();
+    }).then(function(data) {
+        userConfiguration = data;
+        menuOptions.forEach(option => {
+        if (option.innerHTML.includes("[BTOGGLE]")) {
+            option.innerHTML = option.textContent.replace("[BTOGGLE]", `<span class="toggle-chars">${booleanTgl(userConfiguration[option.id])}</span>`  );
+        } else if (option.innerHTML.includes("[BNUMBER]")) {
+            option.innerHTML = option.textContent.replace("[BNUMBER]", `<span class="toggle-chars">${userConfiguration[option.id]}</span>`  );
+        }
+        document.getElementById("options-0").style.display = "";
+});
+
+
+        if (userConfiguration["darkMode"] == true) {
+            setDarkModeState(true);
+        } else {
+            localStorage.setItem("darkMode", false);
+        }
+
+unblockElements();
+unvanish(homeMenu, 30);
+});    
+
+
+fetch(backendURL+"/hardware").then(function(response) {
+        return response.json();
+    }).then(function(data) {
+        hardwareInformation = data
+        try {
+        document.getElementById("total_ram").innerText = "RAM: " + hardwareInformation["total_ram"] + "GiB";
+
+        document.getElementById("storage").innerText = "Storage: " + hardwareInformation["disk_total"] + "Gb";
+        document.getElementById("arch").innerText = "Arch: " + hardwareInformation["arch"];
+        document.getElementById("computer_name").innerText = "Name: " + hardwareInformation["computer_name"];
+        cpu = hardwareInformation["cpu"];
+        gpu = hardwareInformation["gpu"]
+        cpu = cpu.replace(" Processor", "");
+
+        document.getElementById("cpu_name").innerText = "CPU: " + cpu;
+        document.getElementById("gpu_name").innerText = "GPU: " + gpu;
+        document.getElementById("distro").innerText = "OS: " + hardwareInformation["distro"];
+
+        } catch (err) {
+            console.log(err);
+
+        }
+    });
+
+
+selectedOption = 0;
+selectedTab = 0;
+
+let isTab = true;
+
+// Options optimization
+let tabOptions = {};
+
+document.querySelectorAll(".options").forEach((item, index) => {
+    options = item.querySelectorAll(".menu-option");
+    console.log("reading...");
+    tabOptions[index] = options;
+});
+//
+
+document.addEventListener('keydown', (e) => {
+    if (homeMenu.style.opacity < 1) {
+            return;
+    }
+
+        switch(e.key) {
+            case 'ArrowRight':
+                if (isTab == false || tabOptions[selectedTab].length == 0) {
+                    playSound("border");
+                    break;
+                }
+                isTab = false;
+                tabOptions[selectedTab][selectedOption].className = "menu-option selected";
+                menuItems[selectedTab].className = "menu-tab marked";
+                
+                if (tabOptions[selectedTab][selectedOption].previousElementSibling != null && tabOptions[selectedTab][selectedOption].previousElementSibling.className == "option-separator") {
+                    tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "none";
+                }
+                if (tabOptions[selectedTab][selectedOption].nextElementSibling != null && tabOptions[selectedTab][selectedOption].previousElementSibling.className == "option-separator") {
+                    tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = "none";
+                }
+                    
+                playSound("tick");
+                break;
+            
+            case 'Enter':
+            if (isTab) {
+                playSound("select");
+                //Trigger ArrowRight
+                break;
+            }
+            playSound("enter-back");
+
+            if (selectedTab == 2){
+                let optionName = tabOptions[selectedTab][selectedOption].id;
+                if (optionName == "lightMode") {
+                    userConfiguration["darkMode"] = false;
+                    setDarkModeState(false);                    
+                } else if (optionName == "darkMode") {
+                    userConfiguration["darkMode"] = true;
+                    applyDarkMode();
+                    setDarkModeState(true);
+                }
+            } else {
+                
+                let value = userConfiguration[tabOptions[selectedTab][selectedOption].id];
+                if (typeof value === 'boolean') {
+                    tabOptions[selectedTab][selectedOption].innerHTML = (tabOptions[selectedTab][selectedOption].innerHTML).replace(booleanTgl(value), booleanTgl(!value));
+                    userConfiguration[tabOptions[selectedTab][selectedOption].id] = !value;
+            }   else if (typeof value === 'int') {
+
+            }
+
+            } 
+            fetch(backendURL+"/config/set", {
+                    method: "POST",
+                    body: JSON.stringify(userConfiguration),
+                    headers: {
+                        "Content-type": "application/json; charset=UTF-8"
+                    }
+                }).then((response) => console.log(response));
+            
+            break;
+
+            case 'ArrowLeft':
+                isTab = true;
+                menuItems[selectedTab].className = "menu-tab selected";
+                tabOptions[selectedTab].forEach((item) => {
+                    item.className = "menu-option";
+                });
+                if (tabOptions[selectedTab][selectedOption].previousElementSibling != null && tabOptions[selectedTab][selectedOption].previousElementSibling.className == "option-separator") {
+                    tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "";
+                }
+                if (tabOptions[selectedTab][selectedOption].nextElementSibling != null && tabOptions[selectedTab][selectedOption].previousElementSibling.className == "option-separator") {
+                    tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = "";
+                }
+                playSound("tick");
+                break;
+            
+            case 'ArrowUp':
+                if (isTab){
+                if (selectedTab == 0) {
+                    playSound("border");
+                    break;
+                }
+                menuItems[selectedTab].className = "menu-tab";
+                selectedTab--;
+                menuItems[selectedTab].className = "menu-tab selected";
+                selectedOption = 0;
+            } else {
+                if (selectedOption == 0)
+                {
+                    playSound("border");
+                    break;
+                }
+                tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "";
+                tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = "";
+                tabOptions[selectedTab][selectedOption].className = "menu-option";
+                selectedOption--;
+                tabOptions[selectedTab][selectedOption].className = "menu-option selected";
+                tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "none";
+            }
+            playSound("tick");
+                break;
+            case 'ArrowDown':
+                if (isTab){
+                if (selectedTab == menuItems.length - 1) {
+                    playSound("border");
+                    break;
+                }
+                
+                menuItems[selectedTab].className = "menu-tab";
+                selectedTab++;
+                menuItems[selectedTab].className = "menu-tab selected";
+                selectedOption = 0;
+            } else {
+                if (selectedOption+1 == tabOptions[selectedTab].length)
+                {
+                    playSound("border");
+                    break;
+                }
+                    tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "";
+                    tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = "";
+                    tabOptions[selectedTab][selectedOption].className = "menu-option";
+                    selectedOption++;
+                    tabOptions[selectedTab][selectedOption].className = "menu-option selected";
+                    tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = "none";
+            }
+                playSound("tick");
+                break;
+            case 'Backspace':
+                goHome();
+                break;
+            case 'Escape':
+                goHome();
+                break;
+            default:
+                break;
+        }
+        document.querySelectorAll(".options").forEach((item) => {
+            item.style.display = "none";
+        });
+
+        switch(selectedTab){
+            case 0:
+                document.getElementById("options-0").style.display = "";
+                break;
+            case 1:
+                document.getElementById("options-1").style.display = "";
+                break;
+            case 2:
+                document.getElementById("options-2").style.display = "";
+                break;
+            case 3:
+                document.getElementById("options-3").style.display = "";
+                break;
+        } 
+
+});
+});   
+
+</script>
+</head>
+<body>
+    <article class="homeMenu">
+        <div class="settings-container">
+            <div class="header">
+                <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M83.285,52.4V46.9H73.1a23.155,23.155,0,0,0-4.83-11.633l7.208-7.209-3.888-3.888-7.209,7.208a23.155,23.155,0,0,0-11.633-4.83V16.361h-5.5V26.544a23.155,23.155,0,0,0-11.633,4.83l-7.209-7.208L24.52,28.054l7.208,7.209A23.155,23.155,0,0,0,26.9,46.9H16.715v5.5H26.9a23.157,23.157,0,0,0,4.829,11.633L24.52,71.237l3.888,3.889,7.209-7.209a23.146,23.146,0,0,0,11.633,4.83V82.931h5.5V72.747a23.146,23.146,0,0,0,11.633-4.83l7.209,7.209,3.888-3.889-7.208-7.208A23.157,23.157,0,0,0,73.1,52.4ZM50,67.415A17.77,17.77,0,1,1,67.77,49.646,17.79,17.79,0,0,1,50,67.415Z" fill="#707676"/></svg>
+                <h2>System Settings</h2>
+            </div>
+        </div>
+        <div class="separator"></div>
+        <main class="settings-body">
+            <div class="menu">
+                <div class="menu-tab">Library</div>
+                <div class="menu-tab">Navigation</div>
+                <div class="menu-tab">Themes</div>
+                <div class="separator"></div>
+                <div class="menu-tab">About</div>
+            </div>
+
+            <div class="menu-options">
+                <div class="options" id="options-0" style="display:none;">
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="librarySource">Library Sources &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[BNUMBER]</div>
+                    <div class="option-separator"></div>
+                    <div class="option-description">Services chosen here will be used as library provider</div>
+
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="skipNoArt">Skip apps without art [BTOGGLE]</div>
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="maxGamesInHomeScreen">Max games to display [BNUMBER]</div>
+                    <div class="option-separator"></div>
+                    <div class="option-description">Number of games to show in Homescreen, additional ones can be accesed from "All Software" button</div>
+                </div>
+                <div class="options" id="options-1" style="display:none;">
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="loop">Cursor loop effect 	&nbsp;	&nbsp;	&nbsp; [BTOGGLE]</div>
+                    <div class="option-separator"></div>
+                    <div class="option-description">Return cursor from the other side of the screen when navigating</div>
+                </div>
+                <div class="options" id="options-2" style="display:none;">
+                    <div class="option-separator"></div>
+
+                    <div class="menu-option" id="lightMode" style="display: flex; align-items: center;">
+                    <svg class="option-img" width="200" height="100" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="0" y="0" width="200" height="100" fill="white" stroke="black" stroke-width="2" rx="3" ry="3"></rect>
+                    </svg>Basic White
+                    </div>
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="darkMode" style="display: flex; align-items: center;">
+                    <svg class="option-img" width="200" height="100" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="0" y="0" width="200" height="100" fill="black" stroke="black" stroke-width="2" rx="3" ry="3"></rect>
+                    </svg>Basic Black
+                    </div>
+                    <div class="option-separator"></div>
+                </div>
+                <div class="options" id="options-3" style="display:none;">
+                    <div class="option-separator"></div>
+                    <div id="about-text" class="option-description" style="margin-left: 100px;font-size: 32px;color: rgba(30, 39, 50, 0.747)">
+                    <div>Hardware Information<br>---------------</div>
+                    <div id="computer_name">Name: unknown</div>
+                    <div id="cpu_name">CPU: unknown</div>
+                    <div id="arch">Arch: unknown</div>
+                    <div id="gpu_name">GPU: unknown</div>
+                    <div id="total_ram">RAM: unknown</div>
+                    <div id="storage">Storage: unknown</div>
+                    <div id="distro">OS: unknown</div>
+                    <br>
+                
+                    <div>https://github.com/b1on1cdog/mukkuru</div>
+                    <br>
+                    <div>Mukkuru v0.1.4</div>
+                    <div>Made with ♥ by b1on1cdog</div>
+                    </div>
+                    <div class="option-separator"></div>
+                </div>
+            </div>
+
+            </div>
+        </main>
+        <footer class="homeFooter">
+            <div class="controllerState">
+                <div class="controllerState-type">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 184.689 100"><path d="M158 14.466H26.692a16.047 16.047 0 0 0-16 16v39.068a16.047 16.047 0 0 0 16 16H158a16.047 16.047 0 0 0 16-16V30.466a16.047 16.047 0 0 0-16-16zm.8 10.31a3.359 3.359 0 1 1-3.359 3.358 3.357 3.357 0 0 1 3.359-3.358zm0 13.969a3.359 3.359 0 1 1-3.36 3.355 3.358 3.358 0 0 1 3.36-3.355zM26.691 26.786a6.177 6.177 0 1 1-6.177 6.177 6.177 6.177 0 0 1 6.177-6.177zm-7.263 33.04a3.359 3.359 0 1 1 3.359-3.358 3.358 3.358 0 0 1-3.359 3.358zm7.263 7.253a3.359 3.359 0 1 1 3.358-3.359 3.359 3.359 0 0 1-3.358 3.359zm0-13.97a3.359 3.359 0 1 1 3.358-3.358 3.359 3.359 0 0 1-3.358 3.358zm7.109 6.717a3.359 3.359 0 1 1 3.358-3.358 3.359 3.359 0 0 1-3.358 3.358zm105.42 17.14H43.958v-52.19h95.262zm9.108-41.579a3.359 3.359 0 1 1 3.358 3.358 3.358 3.358 0 0 1-3.358-3.358zM158.8 65.068a6.177 6.177 0 1 1 6.177-6.177 6.177 6.177 0 0 1-6.177 6.177zm7.263-26.323a3.359 3.359 0 1 1 3.358-3.358 3.359 3.359 0 0 1-3.359 3.358z" fill="2E2E2E"/></svg>
+                </div>
+            </div>
+            <div class="keyGuideList pending">
+                <div class="keyGuide">
+                    <svg class="keyGuide-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M59.765 57.536a5.611 5.611 0 0 1-.821 3.15 6.024 6.024 0 0 1-2.171 1.985 9.644 9.644 0 0 1-3.016 1.029 19.232 19.232 0 0 1-3.309.291h-6.564V51.237h7.041a12.05 12.05 0 0 1 6.563 1.482 5.319 5.319 0 0 1 2.277 4.817zm-6.22-11.09a7 7 0 0 0 2.355-1.058 5.194 5.194 0 0 0 1.588-1.8 5.473 5.473 0 0 0 .582-2.62 4.6 4.6 0 0 0-2.222-4.315 11.857 11.857 0 0 0-5.982-1.3h-5.982v11.438h6.829a11.355 11.355 0 0 0 2.832-.345zM83.285 50A33.285 33.285 0 1 1 50 16.715 33.285 33.285 0 0 1 83.285 50zm-18.227 7.8a9.861 9.861 0 0 0-.609-3.547 8.167 8.167 0 0 0-1.72-2.752 8.707 8.707 0 0 0-2.647-1.88 10.89 10.89 0 0 0-3.335-.926v-.105a9.181 9.181 0 0 0 4.765-2.911 7.815 7.815 0 0 0 1.8-5.241 8.939 8.939 0 0 0-1.033-4.5 8.572 8.572 0 0 0-2.7-2.912 11.221 11.221 0 0 0-3.779-1.587 19.281 19.281 0 0 0-4.235-.475H38.644V68.44h12.334a21.8 21.8 0 0 0 5.478-.662 14.093 14.093 0 0 0 4.473-1.958 9.277 9.277 0 0 0 4.129-8.02z" fill="2e2e2e"/></svg>
+                    <div class="keyGuide-text">
+                        Back
+                    </div>
+                </div>
+                <div class="keyGuide">
+                    <svg class="keyGuide-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M49.83,36.051l6.987,17.574H42.79ZM83.285,50A33.285,33.285,0,1,1,50,16.715,33.285,33.285,0,0,1,83.285,50ZM68.463,67.44,52.371,29.964H47.607L31.356,67.44h5.823l3.759-9.211H58.724l3.81,9.211Z" fill="2E2E2E"/></svg>
+                    <div class="keyGuide-text">
+                        OK
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

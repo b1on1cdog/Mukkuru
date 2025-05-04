@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Mukkuru</title>
+    <link rel="stylesheet" href="./assets/css/style.css">
+    <script src="mukkuru.js"></script>
+    <script>
+const cssOverride = document.createElement('style');
+
+//at this point we do not have access to userConfiguration, so we are using localStorage
+if (localStorage.getItem("darkMode") == "true") {
+    applyDarkMode();
+}
+
+/* First time rendering, temporarily lock it */
+if (localStorage.getItem("loadState") != "OK"){
+    localStorage.setItem("loadState", "BAD");
+    backend_log("blocking rendering")
+    cssOverride.textContent = `
+    body > * {
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+  `;
+  document.head.appendChild(cssOverride);
+}
+
+let currentRow = 1;
+
+document.addEventListener('DOMContentLoaded', () => {
+    /*Load games*/
+    const gameList = document.querySelector('.gameList');
+    gameLaunchers = document.querySelectorAll('.gameLauncher');
+    homeMenu = document.getElementsByClassName("homeMenu")[0];
+    /*
+        Mukkuru should have it's own game source, since some users might want games outside
+        from Steam or they might want to include/exclude some games from it
+    */
+
+    fetch(backendURL+"/config/get").then(function(response) {
+        return response.json();
+    }).then(function(data) {
+        userConfiguration = data;
+        if (userConfiguration != null && userConfiguration != undefined && Object.keys(userConfiguration).length > 0) {
+            localStorage.setItem("userConfiguration", JSON.stringify(data));
+            backend_log("[debug] config is ready");
+            configReady();
+        } else {
+            backend_log(`[debug] config init failed ${userConfiguration} ${userConfiguration.length}`);
+        }
+
+        if (userConfiguration["darkMode"] == true) {
+    /*
+    We will get the colors from CSS, this way if colors need to be changed in future,
+    only css modifications are needed.
+    To-do: migrate darkMode to CSS
+    */
+    if (localStorage.getItem("darkMode") != "true") {
+        backend_log("[debug] new session with darkMode enabled");
+        localStorage.setItem("darkMode", true);
+        applyDarkMode();
+    } else {
+        backend_log("[debug] using existing session");
+    }
+    document.documentElement.style.setProperty("--select-border", "#0b0b0b");
+    document.getElementsByClassName("homeMenu")[0].style.setProperty("--bg-color", darkColor);
+    document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "#4E4E4E"); // this one must be slightly different to background 
+
+    document.querySelectorAll(".footerButton-icon").forEach((element) => { 
+    if (element instanceof SVGElement) {
+            element.getElementsByTagName("path")[0].style.fill = lightColor;
+        }
+    });
+    document.getElementsByClassName("controllerState-type")[0].getElementsByTagName("svg")[0].getElementsByTagName("path")[0].style.fill = lightColor;
+    document.getElementsByClassName("wifiState-icon")[0].getElementsByTagName("path")[0].style.fill = lightColor;
+    document.querySelectorAll(".keyGuide-icon").forEach((element) => element.getElementsByTagName("path")[0].style.fill = lightColor);
+        }
+    
+    if (localStorage.getItem("loadState") == "BAD"){
+        cssOverride.remove();
+        localStorage.setItem("loadState", "OK");
+        backend_log("disabling render restriction");
+    }
+    unvanish(homeMenu, 50);
+    unblockElements();
+    
+    });    
+    fetch(backendURL+"/library/get").then(function(response) {
+        return response.json();
+    }).then(function(data) {
+    /*
+    We are using an IIFE because we need to wait for config to be initialized,
+    an alternative is the sync method Atomics.wait(), but since it was introduced
+    just 4 years ago (as of 2025), i didn't want to compromise app compatibility
+    just yet
+    */
+    (async () => {
+    backend_log("[debug] library load thread init");
+    gameArray = Object.entries(data);
+    gamesSkipped = 0;
+    gamesAdded = 0;
+    await isConfigReady;
+    gameLimit = userConfiguration["maxGamesInHomeScreen"];
+
+    gameArray.forEach((item) => {
+
+    const AppID = item[0];
+    box_src = './thumbnails/'+AppID+'.jpg';
+
+        if (item[1]["Thumbnail"]) {
+
+        } else {
+            if (userConfiguration["skipNoArt"] == true){
+                gamesSkipped++;
+                return;
+            } else {
+                box_src = "./assets/vector/missing.svg";
+            }
+        }
+
+    const button = document.createElement('button');
+    button.className = 'gameLauncher';
+    button.id = AppID; // Set your unique ID here
+
+    const title = document.createElement('div');
+    title.className = 'gameLauncher-title';
+    title.textContent = item[1]["AppName"];
+    title.dataset.text = title.textContent;
+
+    const thumbnail = document.createElement('img');
+    thumbnail.className = 'gameLauncher-thumbnail';
+    thumbnail.src = box_src;
+    thumbnail.alt = item[1]["AppName"];
+ 
+    button.appendChild(title);
+    button.appendChild(thumbnail);
+
+    if (gameLimit > gamesAdded){
+        gameList.appendChild(button);
+        gamesAdded++;
+    }
+        
+    });
+
+    if (gamesAdded >= gameLimit) {
+        backend_log("Game limit exceeded, creating all-software button");
+        const moreButton = document.createElement('button');
+        moreButton.className = 'gameLauncher-more';
+        moreButton.id = "allSoftware";
+
+        const thumbnail = document.createElement('img');
+        thumbnail.className = 'gameLauncher-icon';
+        thumbnail.src = "assets/img/all-software.png";
+        //
+        const title = document.createElement('div');
+        title.className = 'gameLauncher-title';
+        title.textContent = "All Software";
+        title.dataset.text = title.textContent;
+        moreButton.appendChild(title);
+        //
+        moreButton.appendChild(thumbnail);
+
+        gameList.appendChild(moreButton);
+    }
+
+    gameLaunchers = document.querySelectorAll('.gameLauncher, .gameLauncher-more');
+    backend_log("[debug] Skipped " + gamesSkipped + " games due to user settings");
+                
+    if (gameLaunchers.length > 0){
+    gameLaunchers[0].focus(); // Focus the first game by default
+    document.querySelectorAll('.gameLauncher-placeholder').forEach(e => e.remove());
+    
+    if (gameLaunchers.length < userConfiguration["maxGamesInHomeScreen"]){
+        blocksToAdd = userConfiguration["maxGamesInHomeScreen"] - gameLaunchers.length;
+        while (blocksToAdd > 0) {
+            blocksToAdd--;
+            const block = document.createElement('button');
+            block.className = 'gameLauncher-placeholder';
+            block.disabled = true;
+            gameList.appendChild(block);
+            backend_log("[debug] game limit exceeded, adding 'more' button");
+        }    
+    }
+
+    document.querySelectorAll(".gameLauncher-title").forEach(el => {
+    if (el.textContent.length > 25) {//32
+            el.innerHTML = `<span>${el.innerHTML}</span>`;
+            }
+        });
+    } else {
+        backend_log(`[debug] no games -> arr-length ${gameArray.length}, gameLimit ${gameLimit}, gamesAdded ${gamesAdded}, userConfiguration ${userConfiguration}`);
+    }
+})();//END IIFE
+    }).catch(function(err) {
+        backend_log('[error] Fetch Error :'+ err);
+    });
+
+    const utilityButtons = Array.from(document.querySelectorAll('.footerNavigation button'))
+    const profileRow = document.querySelectorAll('.userList-user');
+    let currentIndex = 0;
+
+    fetch(backendURL+"/username").then(function(response) {
+        return response.text();
+    }).then(function(data) {
+        profileRow[0].title = data;
+    }).catch(function(err) {
+        console.log('Fetch Error :-S', err);
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (homeMenu.style.opacity < 1) {
+            return;
+        }
+        const eventRef = Math.floor(Math.random() * 9001)
+        tick = true;
+        let navigatingRow = [profileRow, gameLaunchers, utilityButtons];
+        let cols = [1, gameLaunchers.length, 6];
+        
+        switch(e.key) {
+            case 'ArrowRight':
+            if (currentIndex == cols[currentRow]-1 && !userConfiguration["loop"]) {
+                playSound("border");
+            } else if (currentIndex == cols[currentRow]-1) {
+                currentIndex = 0;
+                playSound("select");
+            } else {
+                currentIndex = (currentIndex + 1) % navigatingRow[currentRow].length;
+                playSound("select");
+            }
+                if (currentRow == 1 && currentIndex > 3) {
+                    gameLaunchers[currentIndex-4].style.display = 'none';
+                }
+                break;
+            case 'ArrowLeft':
+            if (currentRow == 1 && currentIndex > 3) {
+                gameLaunchers[currentIndex-4].style.display = '';
+            }
+
+                if (currentIndex == 0 && !userConfiguration["loop"]) {
+                    playSound("border");
+                } else if (currentIndex == 0) {
+                    currentIndex = cols[currentRow]-1
+                    playSound("select");
+                } else {
+                    currentIndex = (currentIndex - 1 + navigatingRow[currentRow].length) % navigatingRow[currentRow].length;
+                    playSound("select");
+                }
+                break;
+            case 'ArrowDown':
+                if (currentRow == 2) {
+                    playSound("border");
+                } else {
+                    currentIndex = 0
+                    currentRow = currentRow + 1;
+                    playSound("select");
+                    if (currentRow == 1 && gameLaunchers.length == 0){
+                        currentRow = 2;
+                    }
+                }
+               // currentIndex = Math.min(currentIndex + cols, gameLaunchers.length - 1);
+                break;
+            case 'ArrowUp':
+                if (currentRow == 0) {
+                    playSound("border")
+                } else {
+                    currentIndex = 0;
+                    currentRow = currentRow - 1;
+                    playSound("select");
+                    if (currentRow == 1 && gameLaunchers.length == 0){
+                        currentRow = 0;
+                    }
+                }
+                //currentIndex = Math.max(currentIndex - cols, 0);
+                break;
+            case 'Enter':
+                if(document.activeElement === gameLaunchers[currentIndex]) {
+                    console.log("launching game....");
+                    navigatingRow[currentRow][currentIndex].click();
+                    AppID = navigatingRow[currentRow][currentIndex].id;
+                    fetch(backendURL+"/library/launch/"+AppID).then(function(response) {
+                        return response.text();
+                    }).then(function(data) {
+                        console.log(data);                        
+                    });
+                    playSound("run");
+                } else if (currentRow == 2){
+                    switch (currentIndex) {
+                        case 0:
+                        fetch(backendURL+"/library/scan").then(function(response) {
+                            return response.json();
+                        }).then(function(data){
+                            window.location.reload();
+                        });
+                        playSound("enter-back");
+                        break;
+                        case 4:
+                        playSound("settings");
+                        vanish(homeMenu);
+                        sleep(500).then(() => {
+                            window.location.replace(backendURL+"/frontend/settings.html")
+                        });    
+                            break;
+                        case 5:
+                        fetch(backendURL+"/app/exit").then(function(response) {
+                            return 0;
+                        });
+                            playSound("power");
+                            break;
+                        default:
+                            console.log("no action specified");
+                            playSound("run");
+                            break;
+                    }
+                }
+                return;
+            default:
+                return;
+        }
+        if (gameLaunchers.length > 0 && currentRow == 1) {
+            
+        title = gameLaunchers[currentIndex].querySelectorAll('.gameLauncher-title')[0];
+        
+        if (title.dataset.text.length > 25){
+        const span = title.querySelectorAll(".gameLauncher-title span");
+        title.textContent = (title.dataset.text).slice(0,24);
+        oEventRef = eventRef;
+        setTimeout(() => {
+            if (eventRef == oEventRef){
+                if (title.dataset.text.length > 25){
+                    title.innerHTML = "<span>" +title.dataset.text + "</span>";
+                }
+                console.log(title.dataset.text);
+            } else {
+                //reject the timed event of a previous selection
+            }
+        }, 2000);
+    }
+
+        }
+
+
+        if (currentRow == 1 && currentIndex == 0 && gameLaunchers.length > 5){
+            gameLaunchers[0].style.display = '';
+            gameLaunchers[1].style.display = '';
+            gameLaunchers[2].style.display = '';
+            gameLaunchers[3].style.display = '';
+            gameLaunchers[4].style.display = '';
+        }
+        navigatingRow[currentRow][currentIndex].focus();
+        e.preventDefault();
+    });
+});
+
+
+</script>
+</head>
+<body>
+    <article class="homeMenu">
+        <header class="homeHeader">
+            <div class="userList">
+                <a href="#" class="userList-user" title="User">
+                    <img class="userList-icon" src="./assets/avatar.png" alt="User Picture">
+                </a>
+            </div>
+            <div class="statusBar">
+                <div class="timeState">
+                    <div class="currentTime">
+                        <span class="timeHour">8</span><span class="timeState-separator">:</span><span class="timeMinute">17</span>
+                    </div>
+                </div>
+                <div class="wifiState">
+                    <svg class="wifiState-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M1 9l2 2a12.73 12.73 0 0 1 18 0l2-2A15.57 15.57 0 0 0 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z" fill="#2E2E2E"/></svg>
+                </div>
+                <div class="batteryState">
+                </div>
+        </header>
+        <main class="homeBody">
+            <div class="gameList">
+            </div>
+            <div class="footerNavigation pending">
+                <button class="footerButton refresh" aria-label="Refresh Library">
+                    <img class="footerButton-icon" src="assets/img/refresh.png" alt="refresh-icon">
+                </button>
+                <button class="footerButton store" aria-label="eShop">
+                    <img class="footerButton-icon" src="assets/vector/eShop.svg" alt="store-icon">
+                </button>
+                <button class="footerButton album" aria-label="Album">
+                    <img class="footerButton-icon" src="assets/vector/gallary.svg" alt="gallary-icon">
+                </button>
+                <button class="footerButton controller" aria-label="Controller">
+                    <svg class="footerButton-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M38.116,85.841a16.632,16.632,0,0,1-11.844-4.89L14.309,68.987c-.09-.089-.173-.181-.255-.276l-1.847-1.943,1.884-1.911L67.965,10.983l1.943,1.847c.112.1.206.181.3.273L82.163,25.06a16.79,16.79,0,0,1,0,23.689l-32.2,32.2A16.629,16.629,0,0,1,38.116,85.841Zm-18.2-19.029,10.248,10.25a11.289,11.289,0,0,0,15.91,0l32.2-32.2a11.289,11.289,0,0,0,0-15.91L68.025,18.7Zm48.9-31.052a3.044,3.044,0,1,0,0,4.306A3.044,3.044,0,0,0,68.812,35.76Zm-.063,10.176a3.044,3.044,0,1,0,0,4.305A3.044,3.044,0,0,0,68.749,45.936ZM58.576,46a3.044,3.044,0,1,0,0,4.306A3.044,3.044,0,0,0,58.576,46Zm.1-10.133a3.044,3.044,0,1,0,0,4.305A3.044,3.044,0,0,0,58.676,35.863ZM48.478,56.1a6.346,6.346,0,1,0,0,8.974A6.346,6.346,0,0,0,48.478,56.1Z" fill="#707676"/></svg>                </button>
+                <button class="footerButton settings" aria-label="System Settings">
+                    <svg class="footerButton-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M83.285,52.4V46.9H73.1a23.155,23.155,0,0,0-4.83-11.633l7.208-7.209-3.888-3.888-7.209,7.208a23.155,23.155,0,0,0-11.633-4.83V16.361h-5.5V26.544a23.155,23.155,0,0,0-11.633,4.83l-7.209-7.208L24.52,28.054l7.208,7.209A23.155,23.155,0,0,0,26.9,46.9H16.715v5.5H26.9a23.157,23.157,0,0,0,4.829,11.633L24.52,71.237l3.888,3.889,7.209-7.209a23.146,23.146,0,0,0,11.633,4.83V82.931h5.5V72.747a23.146,23.146,0,0,0,11.633-4.83l7.209,7.209,3.888-3.889-7.208-7.208A23.157,23.157,0,0,0,73.1,52.4ZM50,67.415A17.77,17.77,0,1,1,67.77,49.646,17.79,17.79,0,0,1,50,67.415Z" fill="#707676"/></svg>
+                </button>
+                <button class="footerButton power" aria-label="Power">
+                    <svg class="footerButton-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M79.8,49.646A29.8,29.8,0,1,1,39.125,21.913v6.015a24.3,24.3,0,1,0,21.75,0V21.913A29.84,29.84,0,0,1,79.8,49.646ZM52.75,15.038h-5.5V44.6h5.5Z" fill="#707676"/></svg>
+                </button>
+            </div>
+        </main>
+        <footer class="homeFooter pending">
+            <div class="controllerState">
+                <div class="controllerState-type">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 184.689 100"><path d="M158 14.466H26.692a16.047 16.047 0 0 0-16 16v39.068a16.047 16.047 0 0 0 16 16H158a16.047 16.047 0 0 0 16-16V30.466a16.047 16.047 0 0 0-16-16zm.8 10.31a3.359 3.359 0 1 1-3.359 3.358 3.357 3.357 0 0 1 3.359-3.358zm0 13.969a3.359 3.359 0 1 1-3.36 3.355 3.358 3.358 0 0 1 3.36-3.355zM26.691 26.786a6.177 6.177 0 1 1-6.177 6.177 6.177 6.177 0 0 1 6.177-6.177zm-7.263 33.04a3.359 3.359 0 1 1 3.359-3.358 3.358 3.358 0 0 1-3.359 3.358zm7.263 7.253a3.359 3.359 0 1 1 3.358-3.359 3.359 3.359 0 0 1-3.358 3.359zm0-13.97a3.359 3.359 0 1 1 3.358-3.358 3.359 3.359 0 0 1-3.358 3.358zm7.109 6.717a3.359 3.359 0 1 1 3.358-3.358 3.359 3.359 0 0 1-3.358 3.358zm105.42 17.14H43.958v-52.19h95.262zm9.108-41.579a3.359 3.359 0 1 1 3.358 3.358 3.358 3.358 0 0 1-3.358-3.358zM158.8 65.068a6.177 6.177 0 1 1 6.177-6.177 6.177 6.177 0 0 1-6.177 6.177zm7.263-26.323a3.359 3.359 0 1 1 3.358-3.358 3.359 3.359 0 0 1-3.359 3.358z" fill="2E2E2E"/></svg>
+                </div>
+            </div>
+            <div class="keyGuideList pending">
+                <div class="keyGuide">
+                    <svg class="keyGuide-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,16.715A33.285,33.285,0,1,0,83.285,50,33.285,33.285,0,0,0,50,16.715Zm19.731,36.5H53.213V69.731H46.787V53.213H30.269V46.787H46.787V30.269h6.426V46.787H69.731Z" fill="2E2E2E"/></svg>
+                    <div class="keyGuide-text">
+                        Options
+                    </div>
+                </div>
+                <div class="keyGuide">
+                    <svg class="keyGuide-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M49.83,36.051l6.987,17.574H42.79ZM83.285,50A33.285,33.285,0,1,1,50,16.715,33.285,33.285,0,0,1,83.285,50ZM68.463,67.44,52.371,29.964H47.607L31.356,67.44h5.823l3.759-9.211H58.724l3.81,9.211Z" fill="2E2E2E"/></svg>
+                    <div class="keyGuide-text">
+                        Start
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+    <script>
+        (() => {
+            const now = new Date();
+            const h = document.querySelector('.timeHour');
+            h.innerText = now.getHours();
+            const m = document.querySelector('.timeMinute');
+
+            if (now.getMinutes() < 10) {
+                m.innerText = "0" + now.getMinutes();
+            } else {
+                m.innerText = now.getMinutes();
+            }
+            
+        })();
+    </script>
+</body>
+</html>

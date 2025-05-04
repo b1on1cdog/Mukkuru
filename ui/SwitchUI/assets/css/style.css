@@ -1,0 +1,487 @@
+html {
+    --bg-color: #EBEBEB;
+    --main-color: #2E2E2E;
+    --accent-color: #03bbc5;
+    --select-light: #67f7e1;
+    --select-dark: #27c0d1;
+    --select-border: #fff;
+    --font-sans: 'source-han-sans-simplified-c', sans-serif;
+    --font-bold: var(--font-sans);
+    --font-number: 'din-2014', sans-serif;
+    overflow: hidden;
+    font-family: var(--font-sans);
+    font-size: 24px;
+    height: 100%;
+    width: 100%;
+    background-color: var(--bg-color);
+}
+
+.homeMenu {
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--bg-color);
+    display: flex; 
+    flex-flow: column nowrap;
+    opacity: 0;    
+}
+
+.pending {
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+.homeBody {
+    flex-grow: 1;
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+    justify-content: center;
+}
+
+.homeHeader {
+    width: 100vw;
+    display: flex;
+    flex-flow: row nowrap;
+    padding: 36px 64px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
+button {
+    background-color: transparent;
+    border: none;
+    margin: 0;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+}
+
+.userList {
+    margin-left: 0;
+    margin-right: auto;
+    display: flex;
+    flex-flow: row nowrap;
+}
+
+.userList-user {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    outline: none;
+    position: relative;
+}
+
+.userList-user::after {
+    content: attr(title);
+    position: absolute;
+    top: calc(100% + 8px);
+    font-size: 20px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 120ms ease;
+    color: var(--accent-color);
+}
+
+.userList-user:first-of-type::after {
+    left: -12px;
+}
+
+.userList-user:nth-of-type(2)::after {
+    left: -32px;
+}
+
+.userList-user:focus::after {
+    opacity: 1;
+}
+
+.userList-user + .userList-user {
+    margin-left: 12px;
+}
+
+
+.userList-icon {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px var(--select-border), 0 1px 1px 3px rgba(0, 0, 0, .1);
+    transform-origin: center center;
+    transition: transform 80ms ease;
+}
+
+.userList-user:focus > .userList-icon {
+    transform: scale(1.1);
+    box-shadow: 
+        0 0 0 calc(3px / 1.1) var(--select-border), 
+        0 0 0 calc(4px + 3px / 1.1) var(--select-light),
+        0 calc(1px / 1.1) calc(1px / 1.1) calc(4px + 3px / 1.1) rgba(0, 0, 0, .1);
+    animation: userlist-select 1s ease-in-out infinite;
+}
+
+@keyframes userlist-select {
+    0% {
+        box-shadow: 
+            0 0 0 calc(3px / 1.1) var(--select-border), 
+            0 0 0 calc(4px + 3px / 1.1) var(--select-light),
+            0 calc(1px / 1.1) calc(1px / 1.1) calc(4px + 3px / 1.1) rgba(0, 0, 0, .1);
+    }
+    50% {
+        box-shadow: 
+            0 0 0 calc(3px / 1.1) var(--select-border), 
+            0 0 0 calc(4px + 3px / 1.1) var(--select-dark),
+            0 calc(1px / 1.1) calc(1px / 1.1) calc(4px + 3px / 1.1) rgba(0, 0, 0, .1);
+    }
+    100% {
+        box-shadow: 
+            0 0 0 calc(3px / 1.1) var(--select-border), 
+            0 0 0 calc(4px + 3px / 1.1) var(--select-light),
+            0 calc(1px / 1.1) calc(1px / 1.1) calc(4px + 3px / 1.1) rgba(0, 0, 0, .1);
+    }
+}
+
+.statusBar {
+    margin-left: auto;
+    margin-right: 0;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+}
+
+.timeState {
+    color: var(--main-color);
+    font-family: var(--font-number);
+    display: flex;
+    flex-flow: row nowrap;
+    font-weight: 500;
+}
+
+.currentTime {
+    font-size: 24px;
+    letter-spacing: 2px;
+    line-height: 24px;
+}
+.timeState-separator {
+    vertical-align: 2px;
+}
+
+.timeState + .wifiState {
+    margin-left: 12px;
+}
+
+.wifiState {
+    width: 26px;
+    height: 26px;
+    display: flex;
+    transform: translateY(-1px)
+}
+
+.wifiState-icon {
+    width: 100%;
+    height: 100%;
+}
+
+.wifiState + .batteryState {
+    margin-left: 20px;
+}
+
+.batteryState {
+    width: 20px;
+    height: 10px;
+    background-color: var(--main-color);
+    box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--main-color);
+    position: relative;
+}
+.batteryState::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: calc(100% + 4px);
+    transform: translateY(-50%);
+    width: 3px;
+    height: 6px;
+    background-color: var(--main-color);
+}
+
+
+.gameList {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 8px 124px;
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: flex-start;
+    overflow: visible;
+}
+
+.gameLauncher {
+    height: 246px;
+    width: 246px;
+    box-shadow: 0 2px 2px rgba(0, 0, 0, .1);
+    flex-shrink: 0;
+    position: relative;
+    outline: none;
+}
+
+.gameLauncher-more {
+    position: relative;
+    flex-shrink: 0;
+    outline: none;
+    position: relative;
+}
+
+.gameLauncher + .gameLauncher-more {
+    margin-left: 64px;
+}
+.gameLauncher-more:focus > .gameLauncher_Title {
+    opacity: 1;
+}
+
+.gameLauncher-more:focus {
+margin-top: 30px;
+box-shadow: 
+    0px 0px 15px var(--select-light),
+    0px 0px 15px rgba(0, 0, 0, .1);
+height: 160px;
+border-radius: 50%;
+animation: footerButton-select - 1s ease-in-out infinite;
+}
+
+
+.gameLauncher:focus {
+    box-shadow: 
+        0 0 0 3px var(--select-border), 
+        0 0 0 calc(4px + 3px) var(--select-light),
+        0 1px 1px calc(4px + 3px) rgba(0, 0, 0, .1);
+    animation: game-select 1s ease-in-out infinite;
+}
+
+@keyframes game-select {
+    0% {
+        box-shadow: 
+        0 0 0 3px var(--select-border), 
+        0 0 0 calc(4px + 3px) var(--select-light),
+        0 1px 1px calc(4px + 3px) rgba(0, 0, 0, .1);
+    }
+    50% {
+        box-shadow: 
+        0 0 0 3px var(--select-border), 
+        0 0 0 calc(4px + 3px) var(--select-dark),
+        0 1px 1px calc(4px + 3px) rgba(0, 0, 0, .1);
+    }
+    100% {
+        box-shadow: 
+        0 0 0 3px var(--select-border), 
+        0 0 0 calc(4px + 3px) var(--select-light),
+        0 1px 1px calc(4px + 3px) rgba(0, 0, 0, .1);
+    }
+}
+
+.gameLauncher + .gameLauncher {
+    margin-left: 16px;
+}
+.gameLauncher-title {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 24px;
+    color: var(--accent-color);
+    user-select: none;
+    opacity: 0;
+    transition: opacity 120ms ease;
+
+    width: 350px; /* Set a fixed width, 250 covers box size */
+    overflow: hidden; /* Hide the overflow text */
+    white-space: nowrap; /* Prevent wrapping of text */
+    display: inline-block;
+}
+
+
+.gameLauncher:focus > .gameLauncher-title {
+    opacity: 1;
+}
+
+.gameLauncher-thumbnail {
+    width: 100%;
+    height: 100%;
+}
+
+.gameLauncher-placeholder {
+    width: 246px;
+    height: 246px;
+    box-sizing: border-box;
+    border: 3px solid rgba(255, 255, 255, .5);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, .1);
+    flex-shrink: 0;
+}
+
+.gameLauncher + .gameLauncher-placeholder,
+.gameLauncher-placeholder + .gameLauncher-placeholder {
+    margin-left: 16px;
+}
+
+.footerNavigation {
+    flex-shrink: 0;
+    display: flex;
+    flex-flow: row nowrap;
+}
+
+.gameList + .footerNavigation {
+    margin-top: 56px;
+}
+
+.footerButton {
+    width: 88px;
+    height: 88px;
+    background-color: var(--select-border);
+    border-radius: 50%;
+    box-shadow: 0 0 4px rgba(0, 0, 0, .18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    outline: none;
+    position: relative;
+}
+
+.footerButton::after{
+    content: attr(aria-label);
+    display: block;
+    white-space: nowrap;
+    position: absolute;
+    top: calc(100% + 8px);
+    color: var(--accent-color);
+    font-size: 20px;
+    opacity: 0;
+    transition: opacity 120ms ease;
+}
+
+.footerButton:focus{
+    box-shadow: 
+        0 0 0 4px var(--select-light),
+        0 1px 1px 4px rgba(0, 0, 0, .1);
+    animation: footerButton-select 1s ease-in-out infinite;
+}
+
+.footerButton:focus::after{
+    opacity: 1;
+}
+
+@keyframes footerButton-select {
+    0% {
+        box-shadow: 
+        0 0 0 4px var(--select-light),
+        0 1px 1px 4px rgba(0, 0, 0, .1);
+    }
+    50% {
+        box-shadow: 
+        0 0 0 4px var(--select-dark),
+        0 1px 1px 4px rgba(0, 0, 0, .1);
+    }
+    100% {
+        box-shadow: 
+        0 0 0 4px var(--select-light),
+        0 1px 1px 4px rgba(0, 0, 0, .1);
+    }
+}
+
+.footerButton {
+    margin-left: 20px;
+}
+
+.footerButton-icon {
+    width: calc(100% - 28px);
+    height: calc(100% - 28px);
+}
+
+.homeFooter {
+    margin: auto 32px 0 32px;
+    padding: 0 24px;
+    height: 72px;
+    border-top: 1px solid var(--main-color);
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+}
+
+.controllerState {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    margin-left: 0;
+    margin-right: auto;
+}
+
+.controllerState-type {
+    width: 66px;
+    height: 36px;
+}
+.keyGuideList {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    margin-left: auto;
+    margin-right: 0;
+}
+.keyGuide {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+}
+.keyGuide + .keyGuide {
+    margin-left: 16px;
+}
+.keyGuide-icon {
+    width: 32px;
+    height: 32px;
+}
+.keyGuide-text {
+    font-family: var(--font-bold);
+    font-size: 16px;
+    transform: translateY(-1px);
+    letter-spacing: .4px;
+    color: var(--main-color);
+}
+.keyGuide-icon + .keyGuide-text {
+    margin-left: 4px;
+}
+
+@keyframes scroll-text {
+    0% {
+        transform: translateX(0%); /* Start at the initial position */
+    }
+    50% {
+        transform: translateX(-110%); /* Move the entire text off the screen */
+    }
+    50.1% {
+        transform: translateX(90%); /* Move the entire text off the screen */
+    }
+    100% {
+        transform: translateX(0%);
+    }
+}
+
+.animate span {
+    display: inline-block;
+    animation: scroll-text 8s linear infinite;
+}
+
+
+.gameLauncher-title .paused {
+    animation-play-state: paused; /* Pause the animation */
+    animation-duration: 0s; /* Stop animation, no movement */
+}
+
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+    }
+}
+
+.gameLauncher-title span{
+    display: inline-block;
+   /* padding-left: 100%;  Start with the text off-screen to the right */
+    padding-left: 1em;
+    animation: scroll-text 8s linear infinite;  /*Smooth scroll */
+}
