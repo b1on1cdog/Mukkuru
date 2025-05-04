@@ -1,0 +1,4 @@
+.trash
+__pycache__
+artwork\Square\*
+ui\SwitchUI\thumbnails\*
