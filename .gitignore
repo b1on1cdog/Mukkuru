@@ -1,4 +1,11 @@
 .trash
 __pycache__
-artwork\Square\*
-ui\SwitchUI\thumbnails\*
+artwork/Square/*
+ui/SwitchUI/thumbnails/*
+mukkuru.build/
+mukkuru.exe
+mukkuru.cmd
+*.ps1
+build/
+nuitka-crash-report.xml
+mukkuru.png

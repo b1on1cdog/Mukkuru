@@ -1,42 +1,30 @@
 #!/usr/bin/env python3
 import sys
 import os
-import subprocess, time
+import threading
 import requests # type: ignore
-
-from PySide6.QtWidgets import QApplication # type: ignore
-from PySide6.QtWebEngineWidgets import QWebEngineView # type: ignore
-from PySide6.QtCore import QUrl, Qt # type: ignore
-from PySide6.QtWebEngineCore import QWebEngineProfile, QWebEngineSettings, QWebEnginePage# type: ignore
-from PySide6.QtGui import QContextMenuEvent# type: ignore
+import backend
+from PySide6.QtWidgets import QApplication
+from PySide6.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtCore import QUrl, Qt
+from PySide6.QtWebEngineCore import QWebEngineProfile, QWebEngineSettings, QWebEnginePage
+from PySide6.QtGui import QContextMenuEvent, QIcon
 
 def main():
+    '''Starts a webview'''
     pid = os.getpid()
     try:
-        r=requests.get("http://localhost:49347/ping")
+        r=requests.get("http://localhost:49347/ping", timeout=5)
         print("Mukkuru backend is already running, skipping execution...")
     except:
-        p = subprocess.Popen([sys.executable, 'backend.py'], 
-                                    stdout=subprocess.PIPE, 
-                                    stderr=subprocess.STDOUT)
-        time.sleep(0.2)
+        threading.Thread(target=backend.main).start()
 
     os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = '--autoplay-policy=no-user-gesture-required'
 
     app = QApplication(sys.argv)
     # Create the QWebEngineView
     web = QWebEngineView()
-
-    '''
-    # Use this for persistent localStorage
-    storage_path = os.path.join(QDir.homePath(), ".mukkuru")
-    profile = QWebEngineProfile("Mukkuru", app)
-    profile.setPersistentStoragePath(storage_path)
-    profile.setPersistentCookiesPolicy(QWebEngineProfile.ForcePersistentCookies)
-    page = QWebEnginePage(profile, web)
-    web.setPage(page)
-    '''
-    web.setWindowTitle("Mukkuru v0.1.4")
+    web.setWindowTitle(backend.APP_VERSION)
     web.resize(1280, 800)
     web.settings().setAttribute(QWebEngineSettings.LocalStorageEnabled, True)
     web.setContextMenuPolicy(Qt.NoContextMenu)
@@ -47,7 +35,9 @@ def main():
     web.load(QUrl(f"http://localhost:49347/frontend/index.html?pid={pid}"))
     web.show()
     # Execute the app
+    app.setWindowIcon(QIcon("mukkuru.ico"))
     app.exec()
+    backend.quit_app()
     sys.exit()
 
 if __name__ == "__main__":

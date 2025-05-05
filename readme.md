@@ -5,12 +5,13 @@ This is still in early stages and is not yet suitable for final use.<br/>
 
 # Current features
 - Switch theme<br/>
+- Dark mode<br/>
 - Scan games from Steam Library<br/>
 - Automatically download boxarts from SteamGridDB (when available)<br/>
 - Linux and Windows Support<br/>
+- Strict static analysis compliance<br/>
 
 # Planed features (To-do list)
-- 12 Hours time<br/>
 - Localization<br/>
 - CSS Loader<br/>
 - Chosing custom themes from settings<br/>
@@ -20,25 +21,31 @@ This is still in early stages and is not yet suitable for final use.<br/>
 
 # Changelog
 -----------------
-Changes with "[ui]" only affect default theme<br/>
+# 0.1.6
+- Added 12-Hour time<br/>
+- App version now only needs to be changed in a single place<br/>
 
 # 0.1.5
-- 
+- Added option to scan for games at Mukkuru startup<br/>
+- Game library can now be accesed during a scan<br/>
+- Huge Backend code re-structuration (Addresing W0603, E0602, C0301, C0303)<br/>
+- Added Backwards config.json compatibility<br/>
+- Added a timeout of 20 seconds to network requests (W3101)<br/>
 # 0.1.4
-- Removed context menu
-- Added fluent transitions [ui]
-- Settings code re-structuration
-- Fixed game library race condition
+- Removed context menu<br/>
+- Added fluent transitions <br/>
+- Settings code re-structuration<br/>
+- Fixed game library race condition<br/>
 # 0.1.3
 - Dark mode can now be toggled from settings<br/>
 - Dark mode now applies to settings<br/>
 - Added "about" tab, it will show system information<br/>
-- Solved FOUC during page transitions [ui]<br/>
+- Solved FOUC during page transitions <br/>
 # 0.1.2
 - Implemented dark mode<br/>
 - Fixed bug that broke game launching in Windows<br/>
 - Fixed sounds were not playing at app launch<br/>
-- Fixed small lines in launcher borders [ui]<br/>
+- Fixed small lines in launcher borders<br/>
 # 0.1.1
 - Changed mukkuru config folder<br/>
 - Added SteamGridDB API, boxarts are now downloaded automatically (when available)<br/>

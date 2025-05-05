@@ -92,10 +92,9 @@ fetch(backendURL+"/hardware").then(function(response) {
         document.getElementById("cpu_name").innerText = "CPU: " + cpu;
         document.getElementById("gpu_name").innerText = "GPU: " + gpu;
         document.getElementById("distro").innerText = "OS: " + hardwareInformation["distro"];
-
+        documentElement.getElementById("app_version").innerText = hardwareInformation["app_version"];
         } catch (err) {
-            console.log(err);
-
+            backend_log(err);
         }
     });
 
@@ -257,22 +256,7 @@ document.addEventListener('keydown', (e) => {
         document.querySelectorAll(".options").forEach((item) => {
             item.style.display = "none";
         });
-
-        switch(selectedTab){
-            case 0:
-                document.getElementById("options-0").style.display = "";
-                break;
-            case 1:
-                document.getElementById("options-1").style.display = "";
-                break;
-            case 2:
-                document.getElementById("options-2").style.display = "";
-                break;
-            case 3:
-                document.getElementById("options-3").style.display = "";
-                break;
-        } 
-
+        document.getElementById(`options-${selectedTab}`).style.display = "";
 });
 });   
 
@@ -292,6 +276,7 @@ document.addEventListener('keydown', (e) => {
                 <div class="menu-tab">Library</div>
                 <div class="menu-tab">Navigation</div>
                 <div class="menu-tab">Themes</div>
+                <div class="menu-tab">Region and Language</div>
                 <div class="separator"></div>
                 <div class="menu-tab">About</div>
             </div>
@@ -309,6 +294,11 @@ document.addEventListener('keydown', (e) => {
                     <div class="menu-option" id="maxGamesInHomeScreen">Max games to display [BNUMBER]</div>
                     <div class="option-separator"></div>
                     <div class="option-description">Number of games to show in Homescreen, additional ones can be accesed from "All Software" button</div>
+
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="startupGameScan">Scan games at startup [BTOGGLE]</div>
+                    <div class="option-separator"></div>
+                    <div class="option-description">Scan games automatically everytime Mukkuru opens</div>
                 </div>
                 <div class="options" id="options-1" style="display:none;">
                     <div class="option-separator"></div>
@@ -334,6 +324,11 @@ document.addEventListener('keydown', (e) => {
                 </div>
                 <div class="options" id="options-3" style="display:none;">
                     <div class="option-separator"></div>
+                    <div class="menu-option" id="12H">Use 12-Hour Time [BTOGGLE]</div>
+                    <div class="option-separator"></div>
+                </div>
+                <div class="options" id="options-4" style="display:none;">
+                    <div class="option-separator"></div>
                     <div id="about-text" class="option-description" style="margin-left: 100px;font-size: 32px;color: rgba(30, 39, 50, 0.747)">
                     <div>Hardware Information<br>---------------</div>
                     <div id="computer_name">Name: unknown</div>
@@ -345,9 +340,9 @@ document.addEventListener('keydown', (e) => {
                     <div id="distro">OS: unknown</div>
                     <br>
                 
-                    <div>https://github.com/b1on1cdog/mukkuru</div>
+                    <div id="app_version">https://github.com/b1on1cdog/mukkuru</div>
                     <br>
-                    <div>Mukkuru v0.1.4</div>
+                    <div>Mukkuru v0.1.6</div>
                     <div>Made with ♥ by b1on1cdog</div>
                     </div>
                     <div class="option-separator"></div>

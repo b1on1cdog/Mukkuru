@@ -180,3 +180,28 @@ let configReady;
 const isConfigReady = new Promise((resolve) => {
   configReady = resolve; // assign resolver to outer variable
 });
+
+function clockUpdate(meridiem){
+    backend_log("[time]");
+
+    const now = new Date();
+    const h = document.querySelector('.timeHour');
+
+    let hours = now.getHours();
+    let suffix = "";
+    if (meridiem && hours > 12) {
+      hours = hours - 12;
+      suffix = " PM";
+    } else if (meridiem) {
+      suffix = " AM";
+    }
+
+    h.innerText = hours;
+    const m = document.querySelector('.timeMinute');
+
+    if (now.getMinutes() < 10) {
+        m.innerText = "0" + now.getMinutes();
+    } else {
+        m.innerText = now.getMinutes() + suffix;
+    }
+  }

@@ -39,7 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
         Mukkuru should have it's own game source, since some users might want games outside
         from Steam or they might want to include/exclude some games from it
     */
-
     fetch(backendURL+"/config/get").then(function(response) {
         return response.json();
     }).then(function(data) {
@@ -84,6 +83,10 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem("loadState", "OK");
         backend_log("disabling render restriction");
     }
+    clockUpdate(userConfiguration["12H"]);
+    setInterval(() => {
+        clockUpdate(userConfiguration["12H"]);
+    }, 30000);
     unvanish(homeMenu, 50);
     unblockElements();
     
@@ -422,20 +425,5 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         </footer>
     </div>
-    <script>
-        (() => {
-            const now = new Date();
-            const h = document.querySelector('.timeHour');
-            h.innerText = now.getHours();
-            const m = document.querySelector('.timeMinute');
-
-            if (now.getMinutes() < 10) {
-                m.innerText = "0" + now.getMinutes();
-            } else {
-                m.innerText = now.getMinutes();
-            }
-            
-        })();
-    </script>
 </body>
 </html>
