@@ -7,25 +7,13 @@
     <title>Mukkuru</title>
     <link rel="stylesheet" href="./assets/css/style.css">
     <script src="mukkuru.js"></script>
+    <script src="localization.js"></script>
     <script>
 const cssOverride = document.createElement('style');
 
 //at this point we do not have access to userConfiguration, so we are using localStorage
 if (localStorage.getItem("darkMode") == "true") {
     applyDarkMode();
-}
-
-/* First time rendering, temporarily lock it */
-if (localStorage.getItem("loadState") != "OK"){
-    localStorage.setItem("loadState", "BAD");
-    backend_log("blocking rendering")
-    cssOverride.textContent = `
-    body > * {
-      visibility: hidden !important;
-      pointer-events: none !important;
-    }
-  `;
-  document.head.appendChild(cssOverride);
 }
 
 let currentRow = 1;
@@ -77,19 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementsByClassName("wifiState-icon")[0].getElementsByTagName("path")[0].style.fill = lightColor;
     document.querySelectorAll(".keyGuide-icon").forEach((element) => element.getElementsByTagName("path")[0].style.fill = lightColor);
         }
-    
-    if (localStorage.getItem("loadState") == "BAD"){
-        cssOverride.remove();
-        localStorage.setItem("loadState", "OK");
-        backend_log("disabling render restriction");
-    }
+
     clockUpdate(userConfiguration["12H"]);
     setInterval(() => {
         clockUpdate(userConfiguration["12H"]);
     }, 30000);
-    unvanish(homeMenu, 50);
-    unblockElements();
-    
+    allowRendering();
     });    
     fetch(backendURL+"/library/get").then(function(response) {
         return response.json();
@@ -361,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </head>
 <body>
-    <article class="homeMenu">
+    <article class="homeMenu pending">
         <header class="homeHeader">
             <div class="userList">
                 <a href="#" class="userList-user" title="User">
@@ -380,25 +361,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="batteryState">
                 </div>
         </header>
-        <main class="homeBody">
+        <main class="homeBody pending">
             <div class="gameList">
             </div>
             <div class="footerNavigation pending">
-                <button class="footerButton refresh" aria-label="Refresh Library">
+                <button id="scanFB" class="footerButton refresh" aria-label="Refresh Library">
                     <img class="footerButton-icon" src="assets/img/refresh.png" alt="refresh-icon">
                 </button>
-                <button class="footerButton store" aria-label="eShop">
+                <button id="storeFB" class="footerButton store" aria-label="Store">
                     <img class="footerButton-icon" src="assets/vector/eShop.svg" alt="store-icon">
                 </button>
                 <button class="footerButton album" aria-label="Album">
                     <img class="footerButton-icon" src="assets/vector/gallary.svg" alt="gallary-icon">
                 </button>
-                <button class="footerButton controller" aria-label="Controller">
+                <button id="controllerFB" class="footerButton controller" aria-label="Controller">
                     <svg class="footerButton-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M38.116,85.841a16.632,16.632,0,0,1-11.844-4.89L14.309,68.987c-.09-.089-.173-.181-.255-.276l-1.847-1.943,1.884-1.911L67.965,10.983l1.943,1.847c.112.1.206.181.3.273L82.163,25.06a16.79,16.79,0,0,1,0,23.689l-32.2,32.2A16.629,16.629,0,0,1,38.116,85.841Zm-18.2-19.029,10.248,10.25a11.289,11.289,0,0,0,15.91,0l32.2-32.2a11.289,11.289,0,0,0,0-15.91L68.025,18.7Zm48.9-31.052a3.044,3.044,0,1,0,0,4.306A3.044,3.044,0,0,0,68.812,35.76Zm-.063,10.176a3.044,3.044,0,1,0,0,4.305A3.044,3.044,0,0,0,68.749,45.936ZM58.576,46a3.044,3.044,0,1,0,0,4.306A3.044,3.044,0,0,0,58.576,46Zm.1-10.133a3.044,3.044,0,1,0,0,4.305A3.044,3.044,0,0,0,58.676,35.863ZM48.478,56.1a6.346,6.346,0,1,0,0,8.974A6.346,6.346,0,0,0,48.478,56.1Z" fill="#707676"/></svg>                </button>
-                <button class="footerButton settings" aria-label="System Settings">
+                <button id="settingsFB" class="footerButton settings" aria-label="System Settings">
                     <svg class="footerButton-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M83.285,52.4V46.9H73.1a23.155,23.155,0,0,0-4.83-11.633l7.208-7.209-3.888-3.888-7.209,7.208a23.155,23.155,0,0,0-11.633-4.83V16.361h-5.5V26.544a23.155,23.155,0,0,0-11.633,4.83l-7.209-7.208L24.52,28.054l7.208,7.209A23.155,23.155,0,0,0,26.9,46.9H16.715v5.5H26.9a23.157,23.157,0,0,0,4.829,11.633L24.52,71.237l3.888,3.889,7.209-7.209a23.146,23.146,0,0,0,11.633,4.83V82.931h5.5V72.747a23.146,23.146,0,0,0,11.633-4.83l7.209,7.209,3.888-3.889-7.208-7.208A23.157,23.157,0,0,0,73.1,52.4ZM50,67.415A17.77,17.77,0,1,1,67.77,49.646,17.79,17.79,0,0,1,50,67.415Z" fill="#707676"/></svg>
                 </button>
-                <button class="footerButton power" aria-label="Power">
+                <button id="powerFB" class="footerButton power" aria-label="Power">
                     <svg class="footerButton-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M79.8,49.646A29.8,29.8,0,1,1,39.125,21.913v6.015a24.3,24.3,0,1,0,21.75,0V21.913A29.84,29.84,0,0,1,79.8,49.646ZM52.75,15.038h-5.5V44.6h5.5Z" fill="#707676"/></svg>
                 </button>
             </div>
@@ -412,13 +393,13 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="keyGuideList pending">
                 <div class="keyGuide">
                     <svg class="keyGuide-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,16.715A33.285,33.285,0,1,0,83.285,50,33.285,33.285,0,0,0,50,16.715Zm19.731,36.5H53.213V69.731H46.787V53.213H30.269V46.787H46.787V30.269h6.426V46.787H69.731Z" fill="2E2E2E"/></svg>
-                    <div class="keyGuide-text">
+                    <div id="options-keyGuide" class="keyGuide-text">
                         Options
                     </div>
                 </div>
                 <div class="keyGuide">
                     <svg class="keyGuide-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M49.83,36.051l6.987,17.574H42.79ZM83.285,50A33.285,33.285,0,1,1,50,16.715,33.285,33.285,0,0,1,83.285,50ZM68.463,67.44,52.371,29.964H47.607L31.356,67.44h5.823l3.759-9.211H58.724l3.81,9.211Z" fill="2E2E2E"/></svg>
-                    <div class="keyGuide-text">
+                    <div id="start-keyGuide" class="keyGuide-text">
                         Start
                     </div>
                 </div>

@@ -162,7 +162,6 @@ function unblockElements(){
   elements.forEach(el => {
       el.classList.remove('pending');
   });
-  //document.getElementsByClassName("homeMenu")[0].style.setProperty("display", "flex");
 }
 
 var docStyle = window.getComputedStyle(document.documentElement);
@@ -182,25 +181,27 @@ const isConfigReady = new Promise((resolve) => {
 });
 
 function clockUpdate(meridiem){
-    backend_log("[time]");
-
     const now = new Date();
     const h = document.querySelector('.timeHour');
 
     let hours = now.getHours();
     let suffix = "";
+
     if (meridiem && hours > 12) {
       hours = hours - 12;
       suffix = " PM";
     } else if (meridiem) {
       suffix = " AM";
+      if (hours == 0) {
+        hours = 12;
+      }
     }
 
     h.innerText = hours;
     const m = document.querySelector('.timeMinute');
 
     if (now.getMinutes() < 10) {
-        m.innerText = "0" + now.getMinutes();
+        m.innerText = "0" + now.getMinutes() + suffix;
     } else {
         m.innerText = now.getMinutes() + suffix;
     }

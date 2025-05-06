@@ -12,6 +12,10 @@ import re
 import base64
 import threading
 import struct
+import time
+# Debug only
+import sys
+import hashlib
 
 import platform
 import distro
@@ -36,7 +40,19 @@ mukkuru_env = {}
 hardcoded_exclusions = ["Proton Experimental",
                         "Steamworks Common Redistributables",
                         "Steam Linux Runtime 3.0 (sniper)"]
-APP_VERSION = "Mukkuru v0.1.6"
+APP_VERSION = "Mukkuru v0.1.8"
+
+def gen_build_number():
+    ''' generate 5 MD5 digits to use as build number '''
+    path = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(__file__)
+    hasher = hashlib.md5()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(4096), b''):
+            hasher.update(chunk)
+    full_md5 = hasher.hexdigest()
+    global APP_VERSION # Temporal W0603 violation
+    APP_VERSION = APP_VERSION + " build-"+full_md5[-5:]
+    return APP_VERSION
 
 def read_binary_vdf(vdf_path):
     """Read binary VDF file using a Python implementation"""
@@ -426,6 +442,19 @@ def scan_local_artwork(games = None):
         else:
             print(f"{k} already has artwork, skipping...")
     return "200"
+@app.route('/localization')
+def localize():
+    ''' get a json with current selected language strings'''
+    user_config = get_config(True)
+    language = user_config["language"]
+    with open(Path(f'ui/{user_config["theme"]}/translations.json'), encoding='utf-8') as f:
+        localization = json.load(f)
+        if language in localization:
+            localization = localization[language]
+            localization["available"] = True
+            return localization
+    localization = {"available" : False}
+    return json.dumps(localization)
 
 #This one must receive POST data
 @app.route('/library/add')
@@ -457,7 +486,12 @@ def get_config(raw = False):
             "darkMode" : False,
             "startupGameScan" : False,
             "12H" : True,
+            "fullScreen" : False,
+            "language" : "EN"
         }
+    while "config.json" not in mukkuru_env:
+        time.sleep(0.1)
+
     if not Path(mukkuru_env["config.json"]).is_file():
         print("No config.json")
         with open(mukkuru_env["config.json"], 'w', encoding='utf-8') as f:
@@ -555,9 +589,14 @@ def scan_thumbnails(games):
 def get_version():
     ''' get current app version '''
     return APP_VERSION
+def is_fullscreen():
+    ''' show whether app should be in fullscreen '''
+    user_config = get_config(True)
+    return user_config["fullScreen"]
 
 def main():
     ''' start of app execution '''
+    gen_build_number()
     mukkuru_env["steam"] = {}
     if os.name == 'nt':
         print("Running on Windows")

@@ -12,7 +12,8 @@ This is still in early stages and is not yet suitable for final use.<br/>
 - Strict static analysis compliance<br/>
 
 # Planed features (To-do list)
-- Localization<br/>
+- Auto-resize settings toggles text<br/>
+- Cache screens for faster loading times<br/>
 - CSS Loader<br/>
 - Chosing custom themes from settings<br/>
 - Plugin support, with a plugin storefront<br/>
@@ -21,10 +22,19 @@ This is still in early stages and is not yet suitable for final use.<br/>
 
 # Changelog
 -----------------
+# 0.1.8
+- Language can now be switched from Settings<br/>
+- Localization now does not require app restart<br/>
+- Improved localization logic<br/>
+- Fixed issue where 12-Hour suffix was not added if minutes were under 10<br/>
+# 0.1.7
+- Added localization<br/>
+- Rendering is now temporarily locked until everything is ready to display<br/>
+- Fix time bug at 12:00AM in 12-Hour time<br/>
 # 0.1.6
 - Added 12-Hour time<br/>
 - App version now only needs to be changed in a single place<br/>
-
+- Added Fullscreen toggle<br/>
 # 0.1.5
 - Added option to scan for games at Mukkuru startup<br/>
 - Game library can now be accesed during a scan<br/>

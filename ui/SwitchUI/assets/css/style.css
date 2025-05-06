@@ -246,7 +246,6 @@ border-radius: 50%;
 animation: footerButton-select - 1s ease-in-out infinite;
 }
 
-
 .gameLauncher:focus {
     box-shadow: 
         0 0 0 3px var(--select-border), 
