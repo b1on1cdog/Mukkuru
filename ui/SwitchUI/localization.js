@@ -89,6 +89,7 @@ function allowRendering(reload = false) {
          // patchHTML(el.id, ..., translation[el.dataset.loc]);
           break;
         case "swapText":
+          backend_log("translating ->"+el.id)
           swapText(el.id, translation[el.dataset.loc]);
           break;
         case "swapTGL":
@@ -111,28 +112,3 @@ function allowRendering(reload = false) {
   });
 
 }
-
-/*
-Possible way to make this logic simpler (at expense of HTML complexity):
-data-loc: localization key
-data-trm: translation method
-
-const elements = document.querySelectorAll('[data-loc]');
-  elements.forEach(el => {
-    switch(el.dataset.trm) {
-      case "ariaLabel":
-        swapAriaLabel(el.id, translation[el.dataset.loc]);
-        break;
-      case "patchHTML":
-        patchHTML(el.id, ..., translation[el.dataset.loc]);
-        break;
-      case "swapText":
-        swapText(el.id, translation[el.dataset.loc]);
-        break;
-      case "swapTGL":
-        swapTGL(el.id, translation[el.dataset.loc]);
-        break;
-    }
-  });
-
-*/

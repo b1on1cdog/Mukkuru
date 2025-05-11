@@ -33,14 +33,13 @@ app = Flask(__name__)
 '''
 To-do:
 -Query images from userdata instead of app folder (optional)
--Address W0718 (broad exceptions)
 '''
 # App settings
 mukkuru_env = {}
 hardcoded_exclusions = ["Proton Experimental",
                         "Steamworks Common Redistributables",
                         "Steam Linux Runtime 3.0 (sniper)"]
-APP_VERSION = "Mukkuru v0.1.8"
+APP_VERSION = "Mukkuru v0.2.0"
 
 def gen_build_number():
     ''' generate 5 MD5 digits to use as build number '''
@@ -362,7 +361,7 @@ def quit_app():
     #os.kill(mukkuru_env["pid"], signal.SIGTERM)
     os._exit(0)
 
-@app.route('/library/launch/<appId>')
+@app.route('/library/launch/<app_id>')
 def launch_app(app_id):
     '''launches an app using its appID'''
     games = get_games(True)

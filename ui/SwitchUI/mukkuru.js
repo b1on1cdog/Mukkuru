@@ -171,6 +171,7 @@ var darkColor = docStyle.getPropertyValue('--main-color'); //#2E2E2E
 function applyDarkMode(){
   document.documentElement.style.setProperty("--bg-color", darkColor);
   document.documentElement.style.setProperty("--main-color", lightColor);
+  document.documentElement.style.setProperty("--bland-bg","#5E5E5E" );
   console.log("[debug] dark mode enabled");
 }
 

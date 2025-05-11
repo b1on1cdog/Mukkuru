@@ -21,6 +21,8 @@ let currentRow = 1;
 document.addEventListener('DOMContentLoaded', () => {
     /*Load games*/
     const gameList = document.querySelector('.gameList');
+    const appList = document.querySelector('.appList');
+    appLaunchers = document.querySelector('.appLauncher');
     gameLaunchers = document.querySelectorAll('.gameLauncher');
     homeMenu = document.getElementsByClassName("homeMenu")[0];
     /*
@@ -126,7 +128,21 @@ document.addEventListener('DOMContentLoaded', () => {
         gameList.appendChild(button);
         gamesAdded++;
     }
-        
+    
+    const app = document.createElement('button');
+    app.className = 'appLauncher';
+    app.id = "app_" + AppID;
+    const appTitle = document.createElement('div');
+    appTitle.className = "appLauncher-title";
+    appTitle.textContent = item[1]["AppName"]
+    appTitle.dataset.text = appTitle.textContent;
+    const appImage = document.createElement('img');
+    appImage.className = 'appLauncher-thumbnail';
+    appImage.src = box_src;
+    appImage.alt = item[1]["AppName"];
+    app.appendChild(appTitle);
+    app.appendChild(appImage);
+    appList.appendChild(app);
     });
 
     if (gamesAdded >= gameLimit) {
@@ -141,7 +157,10 @@ document.addEventListener('DOMContentLoaded', () => {
         //
         const title = document.createElement('div');
         title.className = 'gameLauncher-title';
+        title.id = "allSoftware-title";
         title.textContent = "All Software";
+        title.dataset.trm = "swapText";
+        title.dataset.loc = "AllSoftware";
         title.dataset.text = title.textContent;
         moreButton.appendChild(title);
         //
@@ -151,6 +170,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     gameLaunchers = document.querySelectorAll('.gameLauncher, .gameLauncher-more');
+    appLaunchers = document.querySelectorAll('.appLauncher');
+
+    appLaunchers.forEach(item => {
+        item.addEventListener('focus', () => {
+            item.scrollIntoView({ behavior: "instant", block: "center" });
+        });
+    });
     backend_log("[debug] Skipped " + gamesSkipped + " games due to user settings");
                 
     if (gameLaunchers.length > 0){
@@ -200,8 +226,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const eventRef = Math.floor(Math.random() * 9001)
         tick = true;
-        let navigatingRow = [profileRow, gameLaunchers, utilityButtons];
-        let cols = [1, gameLaunchers.length, 6];
+        let navigatingRow = [profileRow, gameLaunchers, utilityButtons, appLaunchers];
+        let cols = [1, gameLaunchers.length, 6, appLaunchers.length];
         
         switch(e.key) {
             case 'ArrowRight':
@@ -216,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
                 if (currentRow == 1 && currentIndex > 3) {
                     gameLaunchers[currentIndex-4].style.display = 'none';
-                }
+                } 
                 break;
             case 'ArrowLeft':
             if (currentRow == 1 && currentIndex > 3) {
@@ -236,6 +262,12 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'ArrowDown':
                 if (currentRow == 2) {
                     playSound("border");
+                } else if (currentRow == 3 && currentIndex + 6 < navigatingRow[currentRow].length) {
+                    currentIndex = currentIndex + 6;
+                    playSound("select");
+                } else if (currentRow == 3 && currentIndex + 6 >= navigatingRow[currentRow].length) {
+                    currentIndex = navigatingRow[currentRow].length-1;
+                    playSound("border");
                 } else {
                     currentIndex = 0
                     currentRow = currentRow + 1;
@@ -248,7 +280,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'ArrowUp':
                 if (currentRow == 0) {
-                    playSound("border")
+                    playSound("border");
+                } else if (currentRow == 3 && currentIndex > 5) {
+                    currentIndex = currentIndex - 6;
+                    playSound("select");
+                } else if (currentRow == 3 && currentIndex < 6) {
+                    currentIndex = 0;
+                    playSound("border");
                 } else {
                     currentIndex = 0;
                     currentRow = currentRow - 1;
@@ -260,10 +298,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 //currentIndex = Math.max(currentIndex - cols, 0);
                 break;
             case 'Enter':
-                if(document.activeElement === gameLaunchers[currentIndex]) {
+                if (document.activeElement.id == "allSoftware") {
+                    currentRow = 3;
+                    document.getElementsByClassName("gameList")[0].style.display = "none";
+                    document.getElementsByClassName("homeHeader")[0].style.display = "none";
+                    document.getElementsByClassName("footerNavigation")[0].style.display = "none";
+                    document.getElementsByClassName("appList")[0].style.display = "grid";
+                    currentIndex = 0;
+                } else if(document.activeElement === gameLaunchers[currentIndex]) {
                     console.log("launching game....");
                     navigatingRow[currentRow][currentIndex].click();
                     AppID = navigatingRow[currentRow][currentIndex].id;
+                    fetch(backendURL+"/library/launch/"+AppID).then(function(response) {
+                        return response.text();
+                    }).then(function(data) {
+                        console.log(data);                        
+                    });
+                    playSound("run");
+                } else if(document.activeElement === appLaunchers[currentIndex]) {
+                    console.log("launching game....");
+                    navigatingRow[currentRow][currentIndex].click();
+                    AppID = navigatingRow[currentRow][currentIndex].id;
+                    AppID = AppID.replace("app_", "");
                     fetch(backendURL+"/library/launch/"+AppID).then(function(response) {
                         return response.text();
                     }).then(function(data) {
@@ -300,15 +356,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 return;
+            case 'Backspace':
+                if (currentRow == 3){
+                    goHome();
+                }
+                break;
+            case 'Escape':
+                if (currentRow == 3){
+                    goHome();
+                }//to-do: restore home menu without reloading
+                break;
             default:
                 return;
         }
-        if (gameLaunchers.length > 0 && currentRow == 1) {
-            
-        title = gameLaunchers[currentIndex].querySelectorAll('.gameLauncher-title')[0];
-        
+
+        if (currentRow == 1 || currentRow == 3){
+
+        let launchers = (currentRow == 1)?gameLaunchers:appLaunchers;
+        let titleDOM = (currentRow == 1)?".gameLauncher-title":".appLauncher-title";
+
+        if (launchers.length > 0) {
+        title = launchers[currentIndex].querySelectorAll(titleDOM)[0];
         if (title.dataset.text.length > 25){
-        const span = title.querySelectorAll(".gameLauncher-title span");
+        const span = title.querySelectorAll(titleDOM+" span");
         title.textContent = (title.dataset.text).slice(0,24);
         oEventRef = eventRef;
         setTimeout(() => {
@@ -317,13 +387,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     title.innerHTML = "<span>" +title.dataset.text + "</span>";
                 }
                 console.log(title.dataset.text);
-            } else {
-                //reject the timed event of a previous selection
             }
         }, 2000);
     }
 
         }
+
+        }//
 
 
         if (currentRow == 1 && currentIndex == 0 && gameLaunchers.length > 5){
@@ -361,7 +431,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="batteryState">
                 </div>
         </header>
+
         <main class="homeBody pending">
+            <div class="appList" style="display: none;">
+            </div>
             <div class="gameList">
             </div>
             <div class="footerNavigation pending">

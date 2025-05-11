@@ -4,7 +4,7 @@ Cross-Platform customizable game launcher written in Python, optimized for GameP
 This is still in early stages and is not yet suitable for final use.<br/>
 
 # Current features
-- Switch theme<br/>
+- Switch-like theme<br/>
 - Dark mode<br/>
 - Scan games from Steam Library<br/>
 - Automatically download boxarts from SteamGridDB (when available)<br/>
@@ -12,7 +12,9 @@ This is still in early stages and is not yet suitable for final use.<br/>
 - Strict static analysis compliance<br/>
 
 # Planed features (To-do list)
-- Auto-resize settings toggles text<br/>
+- Order recent played items in main screen <br/>
+- Switch-Like contextual menus (when pressing options and some footer items) <br/>
+- Allow to add games as favorite <br/>
 - Cache screens for faster loading times<br/>
 - CSS Loader<br/>
 - Chosing custom themes from settings<br/>
@@ -22,6 +24,14 @@ This is still in early stages and is not yet suitable for final use.<br/>
 
 # Changelog
 -----------------
+# 0.2.0
+- All-software menu apps now have visible title<br/>
+- All-software menu apps are now launchable<br/>
+- All-software button now has visible title<br/>
+# 0.1.9
+- Added all-software menu<br/>
+- Footer is now fixed to screen<br/>
+- Fluent scrolling effect (all-software menu)<br/>
 # 0.1.8
 - Language can now be switched from Settings<br/>
 - Localization now does not require app restart<br/>
