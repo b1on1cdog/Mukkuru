@@ -31,6 +31,7 @@ def main():
     time.sleep(0.1)
     web.setWindowTitle(backend.APP_VERSION)
     web.resize(1280, 800)
+    web.setCursor(Qt.BlankCursor)
     web.settings().setAttribute(QWebEngineSettings.LocalStorageEnabled, True)
     web.setContextMenuPolicy(Qt.NoContextMenu)
     if backend.is_fullscreen():

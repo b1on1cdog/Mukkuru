@@ -115,6 +115,11 @@ function sleep (time) {
   return new Promise((resolve) => setTimeout(resolve, time));
 }
 
+function blink(element){
+  vanish(element);
+  setTimeout(unvanish, 300, element, 35);
+}
+
 function vanish(element)
 {
     var oppArray = ["0.9", "0.8", "0.7", "0.6", "0.5", "0.4", "0.3", "0.2", "0.1", "0"];
@@ -122,7 +127,7 @@ function vanish(element)
     (function next() {
         element.style.opacity = oppArray[x];
         if(++x < oppArray.length) {
-            setTimeout(next, 25); //depending on how fast you want to fade
+            setTimeout(next, 20); //depending on how fast you want to fade
         }
     })();
 }

@@ -84,12 +84,29 @@ document.addEventListener('DOMContentLoaded', () => {
     just yet
     */
     (async () => {
-    backend_log("[debug] library load thread init");
-    gameArray = Object.entries(data);
+    //backend_log("[debug] library load thread init");
+    //gameArr = Object.entries(data);
+    gameArr = Object.entries(data);
+    const favoriteGames = new Set(userConfiguration.favorite);
+    gameArray = [
+        ...gameArr.filter(([key]) => favoriteGames.has(key)),
+        ...gameArr.filter(([key]) => !favoriteGames.has(key))
+    ];
     gamesSkipped = 0;
     gamesAdded = 0;
     await isConfigReady;
     gameLimit = userConfiguration["maxGamesInHomeScreen"];
+
+    //make last played game displayed first
+    if (data[userConfiguration.lastPlayed] != undefined ) {
+        index = gameArray.findIndex(([key]) => key === userConfiguration.lastPlayed);
+        backend_log("lastPlayed game: "+userConfiguration.lastPlayed);
+        gameEl = gameArray[index];
+        delete gameArray[index];
+        gameArray.unshift(gameEl);
+    } else {
+        console.log(gameArray);
+    }
 
     gameArray.forEach((item) => {
 
@@ -106,6 +123,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 box_src = "./assets/vector/missing.svg";
             }
         }
+    
+    if (userConfiguration["blacklist"].AppID != undefined){
+        gamesSkipped++;
+        return;
+    }
 
     const button = document.createElement('button');
     button.className = 'gameLauncher';
@@ -299,12 +321,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'Enter':
                 if (document.activeElement.id == "allSoftware") {
+                    playSound("run");
+                    setTimeout(function () {
                     currentRow = 3;
                     document.getElementsByClassName("gameList")[0].style.display = "none";
                     document.getElementsByClassName("homeHeader")[0].style.display = "none";
                     document.getElementsByClassName("footerNavigation")[0].style.display = "none";
                     document.getElementsByClassName("appList")[0].style.display = "grid";
                     currentIndex = 0;
+                    }, 300);
+                    blink(homeMenu);
                 } else if(document.activeElement === gameLaunchers[currentIndex]) {
                     console.log("launching game....");
                     navigatingRow[currentRow][currentIndex].click();
@@ -370,7 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
         }
 
-        if (currentRow == 1 || currentRow == 3){
+        if (currentRow == 1){
 
         let launchers = (currentRow == 1)?gameLaunchers:appLaunchers;
         let titleDOM = (currentRow == 1)?".gameLauncher-title":".appLauncher-title";
@@ -442,10 +468,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <img class="footerButton-icon" src="assets/img/refresh.png" alt="refresh-icon">
                 </button>
                 <button id="storeFB" class="footerButton store" aria-label="Store">
-                    <img class="footerButton-icon" src="assets/vector/eShop.svg" alt="store-icon">
+                    <img class="footerButton-icon" src="assets/vector/store.svg" alt="store-icon">
                 </button>
-                <button class="footerButton album" aria-label="Album">
-                    <img class="footerButton-icon" src="assets/vector/gallary.svg" alt="gallary-icon">
+                <button id="downloadFB" data-trm="ariaLabel" data-loc="Downloads" class="footerButton download" aria-label="Downloads">
+                    <img class="footerButton-icon" src="assets/vector/download.svg" alt="download-icon">
                 </button>
                 <button id="controllerFB" class="footerButton controller" aria-label="Controller">
                     <svg class="footerButton-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M38.116,85.841a16.632,16.632,0,0,1-11.844-4.89L14.309,68.987c-.09-.089-.173-.181-.255-.276l-1.847-1.943,1.884-1.911L67.965,10.983l1.943,1.847c.112.1.206.181.3.273L82.163,25.06a16.79,16.79,0,0,1,0,23.689l-32.2,32.2A16.629,16.629,0,0,1,38.116,85.841Zm-18.2-19.029,10.248,10.25a11.289,11.289,0,0,0,15.91,0l32.2-32.2a11.289,11.289,0,0,0,0-15.91L68.025,18.7Zm48.9-31.052a3.044,3.044,0,1,0,0,4.306A3.044,3.044,0,0,0,68.812,35.76Zm-.063,10.176a3.044,3.044,0,1,0,0,4.305A3.044,3.044,0,0,0,68.749,45.936ZM58.576,46a3.044,3.044,0,1,0,0,4.306A3.044,3.044,0,0,0,58.576,46Zm.1-10.133a3.044,3.044,0,1,0,0,4.305A3.044,3.044,0,0,0,58.676,35.863ZM48.478,56.1a6.346,6.346,0,1,0,0,8.974A6.346,6.346,0,0,0,48.478,56.1Z" fill="#707676"/></svg>                </button>

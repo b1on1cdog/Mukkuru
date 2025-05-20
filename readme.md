@@ -12,7 +12,8 @@ This is still in early stages and is not yet suitable for final use.<br/>
 - Strict static analysis compliance<br/>
 
 # Planed features (To-do list)
-- Order recent played items in main screen <br/>
+- Add scanning animation <br/>
+- Order recent played items in main screen<br/>
 - Switch-Like contextual menus (when pressing options and some footer items) <br/>
 - Allow to add games as favorite <br/>
 - Cache screens for faster loading times<br/>
@@ -24,10 +25,33 @@ This is still in early stages and is not yet suitable for final use.<br/>
 
 # Changelog
 -----------------
+# 0.2.5
+- Using a private api instead of SteamGridDB one, to prevent API key misuse<br/>
+- Added vanish effect when entering all-software menu <br/>
+- Added sound effect when pressing all-software button <br/>
+# 0.2.4
+- Expanded exclusions <br/>
+- Fixed crash when searching a game title <br/>
+# 0.2.3
+- Disabled resource logs <br/>
+- Fixed bug that made non-steam games artwork fetching fail<br/>
+- Last played game will now be first one in homescreen <br/>
+- Corrected Crash when a game title didn't match <br/>
+- Changed storage calculation dir from / to /home in Linux <br/>
+- Steam Deck GPU is now abbreviated <br/>
+# 0.2.2
+- Fixed crash when some directories didn't exists<br/>
+- Improved game artwork fetching accuracy<br/>
+- If an artwork is duplicated, the one that does not exactly match game title will be removed<br/>
+# 0.2.1
+- Fixed items in applist overlapping keyGuide<br/>
+- Fixed extraneous gap between apps in smaller resolutions<br/>
+- Fixed applist names being cut<br/>
 # 0.2.0
 - All-software menu apps now have visible title<br/>
 - All-software menu apps are now launchable<br/>
 - All-software button now has visible title<br/>
+- Fixed variable mismatch that made apps not to launch<br/>
 # 0.1.9
 - Added all-software menu<br/>
 - Footer is now fixed to screen<br/>

@@ -226,8 +226,8 @@ button {
     width: 100%;
    /* padding: 8px 124px;*/
     display: grid;
-    grid-template-columns: repeat(6, minmax(190px, 1fr));
-    grid-template-rows: repeat(3, minmax(190px, 1fr));
+    grid-template-columns: repeat(6, minmax(10%, 1fr));/*190px*/
+    grid-template-rows: repeat(3, max-content);
     padding: 40px 50px 60px 50px;
     gap: 6px;
     overflow: hidden;
@@ -484,15 +484,12 @@ animation: footerButton-select - 1s ease-in-out infinite;
     flex-flow: row nowrap;
     align-items: center;
     /* appList optimizations*/
-    
     position: fixed;
     bottom: 0;
     left: 0;
     width: 92%;
     z-index: 1000;
     background: var(--bg-color);
-    box-shadow: 0 -1px 5px rgba(0,0,0,0.1);
-    
 }
 
 .controllerState {

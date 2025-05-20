@@ -16,6 +16,7 @@ import time
 # Debug only
 import sys
 import hashlib
+import logging
 
 import platform
 import distro
@@ -30,16 +31,25 @@ import grid_db
 import binvdf
 
 app = Flask(__name__)
-'''
-To-do:
--Query images from userdata instead of app folder (optional)
-'''
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 # App settings
 mukkuru_env = {}
 hardcoded_exclusions = ["Proton Experimental",
                         "Steamworks Common Redistributables",
-                        "Steam Linux Runtime 3.0 (sniper)"]
-APP_VERSION = "Mukkuru v0.2.0"
+                        "Steam Linux Runtime 1.0 (scout)",
+                        "Steam Linux Runtime 2.0 (soldier)",
+                        "Steam Linux Runtime 3.0 (sniper)",
+                        "Proton 9.0",
+                        "Proton 8.0",
+                        "Proton 7.0",
+                        "Proton 5.0",
+                        "Proton 4.2",
+                        "Proton 3.7",
+                        "Proton 3.16",
+                        "Proton 3.0",
+                        "Proton Hotfix"]
+APP_VERSION = "Mukkuru v0.2.5"
 
 def gen_build_number():
     ''' generate 5 MD5 digits to use as build number '''
@@ -193,7 +203,8 @@ def get_non_steam_games(shortcuts_pattern):
                         "LaunchOptions": app_options,
                         "Hero": os.path.join(mukkuru_env["steam"]["gridPath"], app_id+"_hero.jpg"),
                         "Logo": os.path.join(mukkuru_env["steam"]["gridPath"], app_id+"_logo.png"),
-                        "Cover": os.path.join(mukkuru_env["steam"]["gridPath"], app_id+"p.jpg")
+                        "Cover": os.path.join(mukkuru_env["steam"]["gridPath"], app_id+"p.jpg"),
+                        "Source" : "non-steam"
                     }
         except (FileNotFoundError, PermissionError, struct.error, ValueError, IndexError) as e:
             print(f"Error processing {file}: {e}")
@@ -221,7 +232,6 @@ def library_scan(options):
             app_id, name = parse_acf(str(acf_file))
             if name in hardcoded_exclusions:
                 continue
-            print(f"found {app_id}")
             if app_id:
                 games[app_id] = {
                     "AppName": name,
@@ -230,6 +240,7 @@ def library_scan(options):
                     "LaunchOptions": f'steam://rungameid/{app_id}',
                     "Hero": os.path.join(library_cache, f"{app_id}", "library_hero.jpg"),
                     "Logo": os.path.join(library_cache, f"{app_id}", "logo.png"),
+                    "Source" : "steam",
                 }
     # Scan Non-Steam games
     if options & option_nonsteam:
@@ -324,7 +335,6 @@ def harware_info():
     ''' get hardware info as a json '''
     memory_info = psutil.virtual_memory()
     platform_info = platform.uname()
-    disk_info = psutil.disk_usage('/')
 
     hardware_info = {}
 
@@ -347,11 +357,21 @@ def harware_info():
             hardware_info["distro"] = lines[2].strip() if len(lines) > 1 else "Microsoft Windows"
         except subprocess.CalledProcessError:
             hardware_info["distro"] = "Windows"
+
+    disk_info = psutil.disk_usage('/')
+    if hardware_info["os"] == "Linux":
+        disk_info = psutil.disk_usage('/home')
     hardware_info["disk_total"] = math.ceil(disk_info.total/(1000*1000*1000))
     hardware_info["disk_used"] = round(disk_info.used/(1000*1000*1000),1)
     hardware_info["disk_free"] = round(disk_info.free/(1000*1000*1000),1)
     hardware_info["cpu"] = get_cpu_name()
-    hardware_info["gpu"] = get_gpu_name()
+    gpu = get_gpu_name()
+    if "Custom GPU 0405" in gpu:
+        gpu = "AMD Custom GPU 0405"
+
+    gpu = gpu.replace("Advanced Micro Devices, Inc. ", "")
+    gpu = gpu.replace("[AMD/ATI] ", "")
+    hardware_info["gpu"] = gpu
     hardware_info["app_version"] = APP_VERSION
     return json.dumps(hardware_info)
 
@@ -371,6 +391,9 @@ def launch_app(app_id):
                    stderr=subprocess.DEVNULL,
                    stdout=subprocess.DEVNULL,
                    env=os.environ.copy(), shell=True, check=False)
+    user_config = get_config(True)
+    user_config["lastPlayed"] = app_id
+    update_config(user_config)
     return "200"
 
 def read_steam_username():
@@ -397,12 +420,11 @@ def number_aware_scorer(s1, s2):
 
 def find_strict_number_match(game_title, image_files, threshold=80):
     ''' calculate a score for the game title, discard if under threshold '''
-    # Get the best match (even if bad)
     match, score = process.extractOne(game_title, image_files, scorer=number_aware_scorer)
     # Reject if score is below threshold
     if score >= threshold:
         return match
-    return None  # Explicit "no match"
+    return None
 
 def copy_file(source, destination):
     ''' copy a file from "source" to "destination" '''
@@ -410,36 +432,92 @@ def copy_file(source, destination):
         dst.write(src.read())
 
 
-def fetch_local_artwork(game_title, app_id):
+def fetch_artwork(game_title, app_id, platform_name, force_online = False):
     '''get apps artwork'''
-    image_files = glob.glob(os.path.join(mukkuru_env["artwork"],"Square", '*.jpg'))
-    match = find_strict_number_match(game_title, image_files, threshold=80)
     user_config = get_config(True)
+    square_thumbnail_dir = f'ui/{user_config["theme"]}/thumbnails/'
+    square_fetch_dir = os.path.join(mukkuru_env["artwork"],"Square")
+    if not Path(square_fetch_dir).is_dir():
+        os.mkdir(square_fetch_dir)
+    if not Path(square_thumbnail_dir).is_dir():
+        os.mkdir(square_thumbnail_dir)
+
+    if force_online is False:
+        image_files = glob.glob(os.path.join(square_fetch_dir, '*.jpg'))
+        if len(image_files) == 0:
+            match = None
+        else:
+            match =find_strict_number_match(grid_db.sanitize_filename_ascii(game_title),image_files)
+    else:
+        match = None
     if match is None:
-        filename = grid_db.download_square_image(game_title,
-                                                 save_path=os.path.join(mukkuru_env["artwork"],
-                                                                       "Square"))
+        game_identifier = grid_db.GameIdentifier(game_title, app_id, platform_name) # pylint: disable=E1101
+        filename = grid_db.download_square_image(game_identifier, square_fetch_dir)
         if filename is not False:
             if filename.endswith(".jpg"):
                 print(f'downloaded {game_title} artwork from api')
-                copy_file(filename, f'ui/{user_config["theme"]}/thumbnails/{app_id}.jpg')
+                copy_file(filename, f'{square_thumbnail_dir}{app_id}.jpg')
             else:
                 print(f'failed to download {game_title} artwork from api')
         return None
-    print(f'Found: {match} for {game_title}')
-    copy_file(match, f'ui/{user_config["theme"]}/thumbnails/{app_id}.jpg')
+    #print(f'Found: {match} for {game_title}')
+    copy_file(match, f'{square_thumbnail_dir}{app_id}.jpg')
     return match
 
+def sha256_hash_file(filepath, chunk_size=8192):
+    ''' get sha256 of file, processed as chunks to prevent memory overuse '''
+    sha256 = hashlib.sha256()
+    with open(filepath, 'rb') as f:
+        for chunk in iter(lambda: f.read(chunk_size), b''):
+            sha256.update(chunk)
+    return sha256.hexdigest()
+
+def clear_possible_mismatches(games):
+    ''' clear artwork duplicates '''
+    print("start artwork cleanup....")
+    file_hashes = {}
+    #square_path = os.path.join(mukkuru_env["artwork"],"Square")
+    user_config = get_config(True)
+    square_path = f'ui/{user_config["theme"]}/thumbnails/'
+    user_config = get_config(True)
+    #app_hashes = {}
+    files = glob.glob(os.path.join(square_path, '*.jpg'))
+    for file in files:
+        file_hash = sha256_hash_file(file)
+        file_hashes.setdefault(file_hash, []).append(file)
+    for _, v in file_hashes.items():
+        if len(v) > 1:
+            for x in v:
+                # Get appid
+                #app_hashes.setdefault(k, []).append(os.path.splitext(os.path.basename(x))[0])
+                app_id = os.path.splitext(os.path.basename(x))[0]
+                app_name = games[app_id]["AppName"]
+                src_image =  os.path.join(grid_db.sanitize_filename_ascii(app_name), ".jpg")
+                games[app_id]["Thumbnail"] = False
+                print(f"removing duplicated {x}")
+                os.remove(x) # delete duplicated thumbnail
+                if Path(src_image).is_file():
+                    copy_file(src_image, f'ui/{user_config["theme"]}/thumbnails/{app_id}.jpg')
+                else:
+                    game_source = games[app_id]["Source"]
+                    fetch_artwork(app_name, app_id, game_source, force_online=True)
+    #if len(file_hashes) > 0:
+    #    for k in app_hashes:
+    return
+
 @app.route('/library/artwork/scan')
-def scan_local_artwork(games = None):
+def scan_artwork(games = None):
     ''' scan for games artwork '''
     if games is None:
         games = get_games(True)
     for k in games.keys():
         if not Path(f"ui/SwitchUI/assets/thumbnail/{k}.jpg").is_file():
-            fetch_local_artwork(games[k]["AppName"], k)
+            game_source = games[k]["Source"]
+            fetch_artwork(games[k]["AppName"], k, game_source)
         else:
             print(f"{k} already has artwork, skipping...")
+    clear_possible_mismatches(games)
+    scan_thumbnails(games)
     return "200"
 @app.route('/localization')
 def localize():
@@ -465,11 +543,16 @@ def update_games(games):
     '''save game library'''
     with open(mukkuru_env["library.json"], 'w', encoding='utf-8') as f:
         json.dump(games, f)
+
 @app.route('/library/get')
 def get_games(raw = False):
     '''get game library as json'''
-    with open(mukkuru_env["library.json"], encoding='utf-8') as f:
-        games = json.load(f)
+    try:
+        with open(mukkuru_env["library.json"], encoding='utf-8') as f:
+            games = json.load(f)
+    except FileNotFoundError:
+        games = {}
+        update_games(games)
     if raw is False:
         return json.dumps(games)
     return games
@@ -486,7 +569,10 @@ def get_config(raw = False):
             "startupGameScan" : False,
             "12H" : True,
             "fullScreen" : False,
-            "language" : "EN"
+            "language" : "EN",
+            "blacklist" : [],
+            "favorite" : [],
+            "lastPlayed" : ""
         }
     while "config.json" not in mukkuru_env:
         time.sleep(0.1)
@@ -537,7 +623,7 @@ def scan_games():
     options = user_config["librarySource"]
     games = library_scan(int(options))
     #game_library.update(games)
-    scan_local_artwork(games)
+    scan_artwork(games)
     for k, _ in games.items(): #games.keys
         if not Path(f'ui/{user_config["theme"]}/thumbnails/{k}.jpg').is_file():
             games[k]["Thumbnail"] = False
