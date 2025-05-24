@@ -28,7 +28,9 @@ This is still in early stages and is not yet suitable for final use.<br/>
 # Changelog
 -----------------
 # 0.2.8
-
+- Removed some unused debugging logs<br/>
+- Minor bugfixes<br/>
+- Improved network detection accuracy<br/>
 # 0.2.7
 - Renamed 'backend.py' to 'mukkuru.py', webview is now launched from backend and not viceversa <br/>
 - Optional experimental pywebview file, as an alternative to pyside6<br/>

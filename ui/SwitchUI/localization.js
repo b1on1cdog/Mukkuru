@@ -89,7 +89,7 @@ function allowRendering(reload = false) {
          // patchHTML(el.id, ..., translation[el.dataset.loc]);
           break;
         case "swapText":
-          backend_log("translating ->"+el.id)
+      //    backend_log("translating ->"+el.id)
           swapText(el.id, translation[el.dataset.loc]);
           break;
         case "swapTGL":
@@ -99,7 +99,7 @@ function allowRendering(reload = false) {
           backend_log("unknown translation rule");
           break;
       }
-      backend_log(el.id + " > " + el.innerText.length)
+     // backend_log(el.id + " > " + el.innerText.length)
     });
 
 

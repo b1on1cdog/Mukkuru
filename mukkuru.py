@@ -37,8 +37,8 @@ if platform.system() == "Windows":
 
 app = Flask(__name__)
 log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR)
-# App settings
+log.setLevel(logging.CRITICAL)
+
 mukkuru_env = {}
 hardcoded_exclusions = ["Proton Experimental",
                         "Steamworks Common Redistributables",
@@ -63,7 +63,7 @@ def app_version():
         for chunk in iter(lambda: f.read(4096), b''):
             hasher.update(chunk)
     full_md5 = hasher.hexdigest()
-    return "Mukkuru v0.2.7 build-"+full_md5[-5:]
+    return "Mukkuru v0.2.8 build-"+full_md5[-5:]
 
 def read_binary_vdf(vdf_path):
     """Read binary VDF file using a Python implementation"""
@@ -363,8 +363,8 @@ def get_active_net_interfaces():
             active.append(iface)
     return active
 
-def has_internet(host="8.8.8.8", port=53, timeout=0.5):
-    ''' Ping Google servers to determine whether device has access to net '''
+def has_internet(host="8.8.8.8", port=53, timeout=0.3):
+    ''' Ping servers to determine whether device has access to net '''
     try:
         socket.setdefaulttimeout(timeout)
         socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
@@ -409,7 +409,9 @@ def connection_status():
     ''' returns a json with connection status'''
     status = {}
     status["wifi"] = is_using_wireless()
-    status["internet"] = has_internet()
+    status["internet"] = has_internet() or has_internet()
+    if status["internet"] is False:
+        status["internet"] = has_internet(host="8.8.4.4") or has_internet(host="1.1.1.1")
     status["signal"] = wireless_signal()
     return json.dumps(status)
 @app.route("/hardware/battery")
@@ -703,9 +705,9 @@ def get_config(raw = False):
 @app.route('/config/set', methods = ['GET', 'POST', 'DELETE'])
 def set_config():
     '''update user configuration from request'''        
-    print("setting configuration...")
+    #print("setting configuration...")
     if request.method == 'POST':
-        print(request.get_json())
+        #print(request.get_json())
         user_config = request.get_json()
         update_config(user_config)
         return "200"
@@ -810,7 +812,6 @@ def main():
                                                            "steamapps", "libraryfolders.vdf")
 
         find_stuser = mukkuru_env["steam"]["shortcuts"].split('*')[0]
-        #print(find_stuser)
         steam_id = os.listdir(find_stuser)[0]
         mukkuru_env["steam"]["shortcuts"] = mukkuru_env["steam"]["shortcuts"].replace("*",
                                                                                       steam_id, 1)
@@ -856,6 +857,7 @@ def main():
                                                       "config", "config.vdf")
     if threading.current_thread() is threading.main_thread():
         threading.Thread(target=start_server).start()
+        #This might cause a race condition if your computer is slower than a snail
         time.sleep(2)
         Frontend(is_fullscreen(), app_version()).start()
     else:

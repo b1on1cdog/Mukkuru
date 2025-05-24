@@ -30,12 +30,14 @@ class Frontend(QObject):
             self.web.showFullScreen()
         self.web.loadFinished.connect(self.on_load_finished)
         self.timer = QTimer()
-        self.timer.timeout.connect(self.update_event)  # Connect the function to call
+        self.timer.timeout.connect(self.update_event)
         self.timer.start(2000)
 
     def update_event(self):
         ''' Code that will be executed periodically, this code might block UI '''
         threading.Thread(target=self.background_event).start()
+        if self.user_config is None:
+            return
         if self.fullscreen_state != self.user_config["fullScreen"]:
             self.fullscreen_state = not self.fullscreen_state
             if self.fullscreen_state:
@@ -44,12 +46,11 @@ class Frontend(QObject):
                 self.web.showNormal()
 
     def background_event(self):
-        ''' update_event code that can run async '''
+        ''' update_event code that will run in another thread '''
         self.update_user_config()
 
     def on_load_finished(self):
         ''' runs when web content fully loaded '''
-        self.update_user_config()
 
     def close(self):
         ''' close mukkuru server '''
@@ -77,20 +78,3 @@ class Frontend(QObject):
         except (TimeoutError, requests.exceptions.RequestException,
                 json.decoder.JSONDecodeError, TypeError) as e:
             print(f'request error {e}')
-COMMENT = '''
-    def observer(self):
-        while True:
-            time.sleep(2)
-            print("reading user config...")
-            self.update_user_config()
-            if self.user_config is None:
-                print("no config to read yet")
-            elif self.user_config["fullScreen"] and not self.fullscreen_state:
-                print("Entering fullscreen")
-                QTimer.singleShot(50, self.web.showFullScreen)
-                self.fullscreen_state = True
-            elif not self.user_config["fullScreen"] and self.fullscreen_state:
-                print("Exiting fullscreen")
-                QTimer.singleShot(50, self.web.showNormal)
-                self.fullscreen_state = False
-'''

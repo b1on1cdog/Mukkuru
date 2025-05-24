@@ -140,9 +140,9 @@ document.addEventListener('keydown', (e) => {
                 break;
             }
             playSound("enter-back");
-
+            elem = tabOptions[selectedTab][selectedOption];
             if (selectedTab == 2){
-                let optionName = tabOptions[selectedTab][selectedOption].id;
+                let optionName = elem.id;
                 if (optionName == "lightMode") {
                     userConfiguration["darkMode"] = false;
                     setDarkModeState(false);                    
@@ -152,7 +152,7 @@ document.addEventListener('keydown', (e) => {
                     setDarkModeState(true);
                 }
             } else {
-                elem = tabOptions[selectedTab][selectedOption];
+                //elem = tabOptions[selectedTab][selectedOption];
                 if (elem.dataset.hasOwnProperty("key")) {
                     userConfiguration[elem.dataset.key] = elem.dataset.value;
 
@@ -174,8 +174,8 @@ document.addEventListener('keydown', (e) => {
                         "Content-type": "application/json; charset=UTF-8"
                     }
                 }).then((response) => {
+
                     if (elem != undefined && elem != null) {
-                    
                         if (elem.dataset.key == "language") {
                             allowRendering(true);
                             backend_log("apply language....");
