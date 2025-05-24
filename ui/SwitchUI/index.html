@@ -355,24 +355,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (currentRow == 2){
                     switch (currentIndex) {
                         case 0:
-                        fetch(backendURL+"/library/scan").then(function(response) {
-                            return response.json();
-                        }).then(function(data){
-                            window.location.reload();
-                        });
+                            fetch(backendURL+"/library/scan").then(function(response) {
+                                return response.json();
+                            }).then(function(data){
+                                window.location.reload();
+                            });
                         playSound("enter-back");
                         break;
+                        case 1:
+                            /* This should provide a contextual menu asking user for storefront to open*/
+                            fetch(backendURL+"/store/steam").then(function(response) {
+                                return response.json();
+                            }).then(function(data){
+                                window.location.reload();
+                            });
+                            playSound("run");
                         case 4:
-                        playSound("settings");
-                        vanish(homeMenu);
-                        sleep(500).then(() => {
-                            window.location.replace(backendURL+"/frontend/settings.html")
-                        });    
+                            playSound("settings");
+                            vanish(homeMenu);
+                            sleep(500).then(() => {
+                                window.location.replace(backendURL+"/frontend/settings.html")
+                            });    
                             break;
                         case 5:
-                        fetch(backendURL+"/app/exit").then(function(response) {
-                            return 0;
-                        });
+                            fetch(backendURL+"/app/exit").then(function(response) {
+                                return 0;
+                            });
                             playSound("power");
                             break;
                         default:
@@ -455,6 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <svg class="wifiState-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M1 9l2 2a12.73 12.73 0 0 1 18 0l2-2A15.57 15.57 0 0 0 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z" fill="#2E2E2E"/></svg>
                 </div>
                 <div class="batteryState">
+                    <div class="batteryLevel" style="width: 0%;"></div>
                 </div>
         </header>
 

@@ -186,6 +186,47 @@ const isConfigReady = new Promise((resolve) => {
   configReady = resolve; // assign resolver to outer variable
 });
 
+function hardwareStatusUpdate(){
+     fetch(backendURL+"/hardware/battery").then(function(response) {
+        return response.json();
+    }).then(function(battery) {
+      if (battery == null) {
+          document.getElementsByClassName("batteryState")[0].style.display = "none";
+      } else {
+          document.getElementsByClassName("batteryLevel")[0].style.width = "" + (100-battery.percent);
+      }
+    });
+
+      fetch(backendURL+"/hardware/network").then(function(response) {
+        return response.json();
+    }).then(function(network) {
+      const wifiState = document.getElementsByClassName("wifiState-icon")[0];
+      const wifiPath = wifiState.querySelectorAll("path")[0];
+      if (!network.internet) {
+        backend_log("no network");
+        wifiState.style.opacity = "0.4";
+      } else if (!network.wifi) {
+        backend_log("using ethernet connection..");
+        wifiState.style.opacity = "1";
+        wifiPath.setAttribute("d", "M159.13 136.02l-35.26-29.32L0 256.01 123.86 405.3l35.26-29.29-99.6-119.99 99.61-120zm-17.62 142.89h45.8v-45.8h-45.8v45.8zm228.98-45.8h-45.8v45.8h45.8v-45.8zm-137.39 45.8h45.8v-45.8h-45.8v45.8zM388.11 106.7l-35.26 29.32 99.62 119.99L352.85 376l35.26 29.29L512 256.01 388.11 106.7z")
+        wifiState.setAttribute("viewBox", "0 0 500 500");
+        wifiState.style.width = "32px";
+        wifiState.style.height = "32px";
+      } else if (network.wifi) {
+        wifiState.style.opacity = "1";
+        if (network.signal > 70) {
+          wifiPath.setAttribute("d", "M1 9l2 2a12.73 12.73 0 0 1 18 0l2-2A15.57 15.57 0 0 0 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z");
+        } else if (network.signal > 40) {
+          wifiPath.setAttribute("d", "M 9 17 L 12 20 L 15 17 C 13.35 15.34 10.66 15.34 9 17 Z M 5 13 L 7 15 C 9.76 12.24 14.24 12.24 17 15 L 19 13 C 15.14 9.14 8.87 9.14 5 13 Z");
+        } else {
+          wifiPath.setAttribute("d", "M 9 17 L 12 20 L 15 17 C 13.35 15.34 10.66 15.34 9 17 Z");
+        }
+
+      }
+    });
+
+}
+
 function clockUpdate(meridiem){
     const now = new Date();
     const h = document.querySelector('.timeHour');
@@ -211,4 +252,5 @@ function clockUpdate(meridiem){
     } else {
         m.innerText = now.getMinutes() + suffix;
     }
+    hardwareStatusUpdate();
   }

@@ -12,6 +12,8 @@ This is still in early stages and is not yet suitable for final use.<br/>
 - Strict static analysis compliance<br/>
 
 # Planed features (To-do list)
+- Add joystick buttons<br/>
+- Allow user to use his own SteamGrid api key <br/>
 - Add scanning animation <br/>
 - Order recent played items in main screen<br/>
 - Switch-Like contextual menus (when pressing options and some footer items) <br/>
@@ -25,6 +27,20 @@ This is still in early stages and is not yet suitable for final use.<br/>
 
 # Changelog
 -----------------
+# 0.2.8
+
+# 0.2.7
+- Renamed 'backend.py' to 'mukkuru.py', webview is now launched from backend and not viceversa <br/>
+- Optional experimental pywebview file, as an alternative to pyside6<br/>
+- Solved last W0603 violation <br/>
+- Fullscreen now works without rebooting app <br/>
+- Noticeable webview code refactoring <br/>
+# 0.2.6
+- More robust Windows Steam Path detection<br/>
+- Store button now opens Steam storefront in bigpicture mode <br/>
+- Added ethernet icon if device does not use wireless <br/>
+- Battery icon now reacts to device battery percentage <br/>
+- Battery icon is now not visible if device has no battery <br/>
 # 0.2.5
 - Using a private api instead of SteamGridDB one, to prevent API key misuse<br/>
 - Added vanish effect when entering all-software menu <br/>
