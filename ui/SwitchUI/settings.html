@@ -5,36 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Mukkuru - Settings</title>
-    <!-- link rel="stylesheet" href="./assets/css/style.css" -->
     <link rel="stylesheet" href="./assets/css/settings.css">
     <script src="mukkuru.js"></script>
     <script src="localization.js"></script>
     <script>
-
 //at this point we do not have access to userConfiguration, so we are using localStorage
 if (localStorage.getItem("darkMode") == "true") {
     applyDarkMode();
 }
 
+//To-do: simplify function
 function setDarkModeState(state){
-        if (state == true){
-        localStorage.setItem("darkMode", true);
-        document.getElementsByClassName("homeMenu")[0].style.setProperty("--bg-color", darkColor);
-        document.getElementsByClassName("controllerState-type")[0].getElementsByTagName("svg")[0].getElementsByTagName("path")[0].style.fill = lightColor;
-        document.querySelectorAll(".keyGuide-icon").forEach((element) => element.getElementsByTagName("path")[0].style.fill = lightColor);
-        document.getElementById("about-text").style.setProperty("color", "#A7C4D9");
-        document.querySelectorAll(".option-description").forEach((element) => element.style.setProperty("color", "#A7C4D9"));
-        } else {
-        localStorage.setItem("darkMode", false);
-        document.getElementsByClassName("homeMenu")[0].style.setProperty("--bg-color", lightColor);
-        document.getElementsByClassName("controllerState-type")[0].getElementsByTagName("svg")[0].getElementsByTagName("path")[0].style.fill = darkColor;
-        document.querySelectorAll(".keyGuide-icon").forEach((element) => element.getElementsByTagName("path")[0].style.fill = darkColor);
-        document.getElementById("about-text").style.setProperty("color", "rgba(39, 51, 67, 0.747)");
-        document.querySelectorAll(".option-description").forEach((element) => element.style.setProperty("color", "rgba(39, 51, 67, 0.747)"));
-        
+    localStorage.setItem("darkMode", state);
+    document.getElementById(state?"darkMode":"lightMode").classList.add("checked");
+    document.getElementById(state?"lightMode":"darkMode").classList.remove("checked");
+    document.getElementsByClassName("homeMenu")[0].style.setProperty("--bg-color", state?darkColor:lightColor);
+    document.getElementsByClassName("controllerState-type")[0].getElementsByTagName("svg")[0].getElementsByTagName("path")[0].style.fill = state?lightColor:darkColor;
+    document.querySelectorAll(".keyGuide-icon").forEach((element) => element.getElementsByTagName("path")[0].style.fill = state?lightColor:darkColor);
+    document.getElementById("about-text").style.setProperty("color", state?"#A7C4D9":"rgba(39, 51, 67, 0.747)");
+    document.querySelectorAll(".option-description").forEach((element) => element.style.setProperty("color", state?"#A7C4D9":"rgba(39, 51, 67, 0.747)"));
+    if (state == true){
+        applyDarkMode();
+    } else {
         document.documentElement.style.setProperty("--bg-color", lightColor);
         document.documentElement.style.setProperty("--main-color", darkColor);
-        }
+    }
+}
+
+const SOURCE_OPTIONS = {
+  STEAM:        1 << 0, // 1
+  NONSTEAM:     1 << 1, // 2
+  EGS:          1 << 2, // 4
+};
+
+function getSelectedOptions(bitmask) {
+  return Object.entries(SOURCE_OPTIONS)
+    .filter(([_, value]) => bitmask & value)
+    .map(([name]) => name);
+}
+
+function updateLibraryOptions(){
+    library_options = userConfiguration["librarySource"];
+    Object.entries(SOURCE_OPTIONS).forEach(([key, bit], index) => {
+    if (library_options & bit) {
+      document.getElementById(`sources-${index}`)?.classList.add("checked");
+    } else {
+        document.getElementById(`sources-${index}`)?.classList.remove("checked");
+    }
+  });
 }
 
 /*
@@ -42,11 +60,10 @@ To-do: The vertical line must become cyan during dark mode
 */
 document.addEventListener('DOMContentLoaded', () => {
 const homeMenu = document.getElementsByClassName("homeMenu")[0];
-
 const menuItems = document.querySelectorAll('.menu-tab');
 const menuOptions = document.querySelectorAll('.menu-option');
-
-menuItems[0].className = "menu-tab selected";
+//menuItems[0].className = "menu-tab selected";
+menuItems[0].classList.add("selected");
 
 fetch(backendURL+"/config/get").then(function(response) {
         return response.json();
@@ -65,7 +82,8 @@ fetch(backendURL+"/config/get").then(function(response) {
         } else {
             localStorage.setItem("darkMode", false);
         }
-allowRendering();
+        updateLibraryOptions();
+        allowRendering();
 });    
 
 
@@ -75,10 +93,9 @@ fetch(backendURL+"/hardware").then(function(response) {
         hardwareInformation = data
         try {
         document.getElementById("total_ram").innerText = "RAM: " + hardwareInformation["total_ram"] + "GiB";
-
-        document.getElementById("storage").innerText = "Storage: " + hardwareInformation["disk_total"] + "Gb";
+        patchHTML("storage", "unknown", hardwareInformation["disk_total"] + "Gb");
+        patchHTML("computer_name", "unknown", hardwareInformation["computer_name"]);
         document.getElementById("arch").innerText = "Arch: " + hardwareInformation["arch"];
-        document.getElementById("computer_name").innerText = "Name: " + hardwareInformation["computer_name"];
         cpu = hardwareInformation["cpu"];
         gpu = hardwareInformation["gpu"]
         cpu = cpu.replace(" Processor", "");
@@ -95,11 +112,20 @@ fetch(backendURL+"/hardware").then(function(response) {
 
 selectedOption = 0;
 selectedTab = 0;
+lockedOption = false;
 
 let isTab = true;
 
 // Options optimization
 let tabOptions = {};
+
+const optionRangeMin = {
+    "maxGamesInHomeScreen" : 6
+}
+
+const optionRangeMax = {
+    "maxGamesInHomeScreen" : 24
+}
 
 document.querySelectorAll(".options").forEach((item, index) => {
     options = item.querySelectorAll(".menu-option");
@@ -108,6 +134,43 @@ document.querySelectorAll(".options").forEach((item, index) => {
 });
 //
 
+function changeLockedValue(position) {
+    elem = tabOptions[selectedTab][selectedOption];
+    keyName = elem.id;
+    value = userConfiguration[keyName];
+
+    prefix = "< ";
+    postfix = " >";
+    if (value+position == optionRangeMin[keyName]) {
+        prefix = "";
+    } else if (value+position == optionRangeMax[keyName]) {
+        postfix = "";
+    }
+
+    if (position == 0) {
+        lockedOption = !lockedOption;
+        if (!lockedOption) {
+            elem.querySelector('.toggle-chars').textContent = "" + value;
+        } else {
+            elem.querySelector('.toggle-chars').textContent = prefix + value + postfix;
+        }
+        return;
+    }
+
+    if (typeof(value) == 'number') {
+        value = value+position;
+
+        if (value < optionRangeMin[keyName] || value > optionRangeMax[keyName]){
+            playSound("border");
+            return;
+        }
+
+        userConfiguration[keyName] = value;
+        elem.querySelector('.toggle-chars').textContent = prefix + value + postfix;
+        playSound("tick");
+    }
+}
+
 document.addEventListener('keydown', (e) => {
     if (homeMenu.style.opacity < 1) {
             return;
@@ -115,13 +178,19 @@ document.addEventListener('keydown', (e) => {
 
         switch(e.key) {
             case 'ArrowRight':
+                if (lockedOption) {
+                    changeLockedValue(1);
+                    break;
+                }
                 if (isTab == false || tabOptions[selectedTab].length == 0) {
                     playSound("border");
                     break;
                 }
                 isTab = false;
-                tabOptions[selectedTab][selectedOption].className = "menu-option selected";
+             //   tabOptions[selectedTab][selectedOption].className = "menu-option selected";
+                tabOptions[selectedTab][selectedOption].classList.add("selected");
                 menuItems[selectedTab].className = "menu-tab marked";
+              //  menuItems[selectedTab].classList.add("marked");
                 
                 if (tabOptions[selectedTab][selectedOption].previousElementSibling != null && tabOptions[selectedTab][selectedOption].previousElementSibling.className == "option-separator") {
                     tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "none";
@@ -141,32 +210,32 @@ document.addEventListener('keydown', (e) => {
             }
             playSound("enter-back");
             elem = tabOptions[selectedTab][selectedOption];
-            if (selectedTab == 2){
-                let optionName = elem.id;
-                if (optionName == "lightMode") {
-                    userConfiguration["darkMode"] = false;
-                    setDarkModeState(false);                    
-                } else if (optionName == "darkMode") {
-                    userConfiguration["darkMode"] = true;
-                    applyDarkMode();
-                    setDarkModeState(true);
-                }
-            } else {
                 //elem = tabOptions[selectedTab][selectedOption];
-                if (elem.dataset.hasOwnProperty("key")) {
-                    userConfiguration[elem.dataset.key] = elem.dataset.value;
-
+            if (elem.dataset.hasOwnProperty("key")) {
+                if (elem.dataset.value == "true" || elem.dataset.value == "false") {
+                    tstate = (elem.dataset.value == "true");
+                    userConfiguration[elem.dataset.key] = tstate;
+                    if (elem.dataset.key = "darkMode") {
+                        setDarkModeState(tstate);
+                    }
+                } else if (elem.dataset.hasOwnProperty("flip")) {
+                    userConfiguration[elem.dataset.key] ^= SOURCE_OPTIONS[elem.dataset.flip];
+                    updateLibraryOptions();
                 } else {
-                
+                    userConfiguration[elem.dataset.key] = elem.dataset.value;
+                }
+                    
+
+            } else {
                 let value = userConfiguration[tabOptions[selectedTab][selectedOption].id];
                 if (typeof value === 'boolean') {
                     tabOptions[selectedTab][selectedOption].innerHTML = (tabOptions[selectedTab][selectedOption].innerHTML).replace(booleanTgl(value), booleanTgl(!value));
                     userConfiguration[tabOptions[selectedTab][selectedOption].id] = !value;
-                }   else if (typeof value === 'int') {
-                //to-do: allow number rotation
+                }   else if (typeof value === 'number') {
+                    changeLockedValue(0);
                 }
         }
-            } 
+            
             fetch(backendURL+"/config/set", {
                     method: "POST",
                     body: JSON.stringify(userConfiguration),
@@ -187,10 +256,20 @@ document.addEventListener('keydown', (e) => {
             break;
 
             case 'ArrowLeft':
+                if (isTab) {
+                    playSound("border");
+                    break;
+                }
+                if (lockedOption) {
+                    changeLockedValue(-1);
+                    break;
+                }
                 isTab = true;
-                menuItems[selectedTab].className = "menu-tab selected";
+                //menuItems[selectedTab].className = "menu-tab selected";
+                menuItems[selectedTab].classList.add("selected");
                 tabOptions[selectedTab].forEach((item) => {
-                    item.className = "menu-option";
+                    //item.className = "menu-option";
+                    item.classList.remove("selected");
                 });
                 if (tabOptions[selectedTab][selectedOption].previousElementSibling != null && tabOptions[selectedTab][selectedOption].previousElementSibling.className == "option-separator") {
                     tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "";
@@ -202,14 +281,19 @@ document.addEventListener('keydown', (e) => {
                 break;
             
             case 'ArrowUp':
+                if (lockedOption) {
+                    changeLockedValue(0);
+                }
                 if (isTab){
                 if (selectedTab == 0) {
                     playSound("border");
                     break;
                 }
                 menuItems[selectedTab].className = "menu-tab";
+                //menuItems[selectedTab].classList.remove("selected");
                 selectedTab--;
                 menuItems[selectedTab].className = "menu-tab selected";
+                //menuItems[selectedTab].classList.add("selected");
                 selectedOption = 0;
             } else {
                 if (selectedOption == 0)
@@ -219,14 +303,19 @@ document.addEventListener('keydown', (e) => {
                 }
                 tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "";
                 tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = "";
-                tabOptions[selectedTab][selectedOption].className = "menu-option";
+                //tabOptions[selectedTab][selectedOption].className = "menu-option";
+                tabOptions[selectedTab][selectedOption].classList.remove("selected");
                 selectedOption--;
-                tabOptions[selectedTab][selectedOption].className = "menu-option selected";
+                //tabOptions[selectedTab][selectedOption].className = "menu-option selected";
+                tabOptions[selectedTab][selectedOption].classList.add("selected");
                 tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "none";
             }
-            playSound("tick");
+                playSound("tick");
                 break;
             case 'ArrowDown':
+                if (lockedOption) {
+                    changeLockedValue(0);
+                }
                 if (isTab){
                 if (selectedTab == menuItems.length - 1) {
                     playSound("border");
@@ -234,7 +323,9 @@ document.addEventListener('keydown', (e) => {
                 }
                 
                 menuItems[selectedTab].className = "menu-tab";
+               // menuItems[selectedTab].classList.remove("selected");
                 selectedTab++;
+                //menuItems[selectedTab].classList.add("selected");
                 menuItems[selectedTab].className = "menu-tab selected";
                 selectedOption = 0;
             } else {
@@ -245,9 +336,11 @@ document.addEventListener('keydown', (e) => {
                 }
                     tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "";
                     tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = "";
-                    tabOptions[selectedTab][selectedOption].className = "menu-option";
+                    //tabOptions[selectedTab][selectedOption].className = "menu-option";
+                    tabOptions[selectedTab][selectedOption].classList.remove("selected");
                     selectedOption++;
-                    tabOptions[selectedTab][selectedOption].className = "menu-option selected";
+                    tabOptions[selectedTab][selectedOption].classList.add("selected");
+                    //tabOptions[selectedTab][selectedOption].className = "menu-option selected";
                     tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = "none";
             }
                 playSound("tick");
@@ -281,60 +374,66 @@ document.addEventListener('keydown', (e) => {
         <div class="separator"></div>
         <main class="settings-body">
             <div class="menu">
-                <div id="libraryTab" class="menu-tab">Library</div>
-                <div id="navigationTab" class="menu-tab">Navigation</div>
-                <div id="themesTab" class="menu-tab">Themes</div>
-                <div id="languageTab" class="menu-tab">Language</div>
+                <div id="sourcesTab" data-loc="LibrarySources" data-trm="swapText" class="menu-tab">Sources</div>
+                <div id="libraryTab" class="menu-tab" data-loc="Library" data-trm="swapText">Library</div>
+                <div id="navigationTab" class="menu-tab" data-loc="Navigation" data-trm="swapText">Navigation</div>
+                <div id="themesTab" class="menu-tab" data-loc="Themes" data-trm="swapText">Themes</div>
+                <div id="languageTab" class="menu-tab" data-loc="Language" data-trm="swapText">Language</div>
                 <div class="separator"></div>
-                <div id="aboutTab" class="menu-tab">About</div>
+                <div id="aboutTab" class="menu-tab" data-loc="About" data-trm="swapText">About</div>
             </div>
 
             <div class="menu-options">
                 <div class="options" id="options-0" style="display:none;">
-                    <div class="option-separator"></div>
-                    <div class="menu-option" id="librarySource">Library Sources &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[BNUMBER]</div>
-                    <div class="option-separator"></div>
                     <div class="option-description" id="librarySource-desc">Services chosen here will be used as library provider</div>
-
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="skipNoArt">Skip apps without art [BTOGGLE]</div>
+                    <div class="menu-option" id="sources-0" data-key="librarySource" data-flip="STEAM">Steam</div>
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="maxGamesInHomeScreen">Max games to display [BNUMBER]</div>
+                    <div class="menu-option" id="sources-1" data-key="librarySource" data-flip="NONSTEAM">Non-Steam</div>
                     <div class="option-separator"></div>
-                    <div class="option-description" id="maxGamesInHomeScreen-desc">Number of games to show in Homescreen, additional ones can be accesed from "All Software" button</div>
-
+                    <div class="menu-option" id="sources-2" data-key="librarySource" data-flip="EGS">EGS</div>
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="startupGameScan">Scan games at startup [BTOGGLE]</div>
-                    <div class="option-separator"></div>
-                    <div class="option-description" id="startupGameScan-desc">Scan games automatically everytime Mukkuru opens</div>
                 </div>
                 <div class="options" id="options-1" style="display:none;">
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="fullScreen">Use Fullscreen &nbsp;	&nbsp;	&nbsp; [BTOGGLE]</div>
+                    <div class="menu-option" id="skipNoArt" data-trm="swapTGL" data-loc="id">Skip apps without art [BTOGGLE]</div>
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="loop">Cursor loop effect 	&nbsp;	&nbsp;	&nbsp; [BTOGGLE]</div>
+                    <div class="menu-option" id="maxGamesInHomeScreen" data-loc="id" data-trm="swapTGL">Max games to display [BNUMBER]</div>
                     <div class="option-separator"></div>
-                    <div class="option-description" id="loop-desc">Return cursor from the other side of the screen when navigating</div>
+                    <div class="option-description" id="maxGamesInHomeScreen-desc" data-loc="id" data-trm="swapText">Number of games to show in Homescreen, additional ones can be accesed from "All Software" button</div>
+
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="startupGameScan" data-trm="swapTGL" data-loc="id">Scan games at startup [BTOGGLE]</div>
+                    <div class="option-separator"></div>
+                    <div class="option-description" id="startupGameScan-desc" data-trm="swapTGL" data-loc="id">Scan games automatically everytime Mukkuru opens</div>
                 </div>
                 <div class="options" id="options-2" style="display:none;">
                     <div class="option-separator"></div>
+                    <div class="menu-option" id="fullScreen" data-trm="swapTGL" data-loc="fullScreen">Use Fullscreen &nbsp;	&nbsp;	&nbsp; [BTOGGLE]</div>
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="loop" data-trm="swapTGL" data-loc="loop">Cursor loop effect 	&nbsp;	&nbsp;	&nbsp; [BTOGGLE]</div>
+                    <div class="option-separator"></div>
+                    <div class="option-description" id="loop-desc" data-trm="swapText" data-loc="loop-desc">Return cursor from the other side of the screen when navigating</div>
+                </div>
+                <div class="options" id="options-3" style="display:none;">
+                    <div class="option-separator"></div>
 
-                    <div class="menu-option" id="lightMode" style="display: flex; align-items: center;">
+                    <div class="menu-option" id="lightMode"  data-loc="lightMode" data-trm="patchHTML" data-patch="Basic White" data-key="darkMode" data-value="false" style="display: flex; align-items: center;">
                     <svg class="option-img" width="200" height="100" xmlns="http://www.w3.org/2000/svg">
                         <rect x="0" y="0" width="200" height="100" fill="white" stroke="black" stroke-width="2" rx="3" ry="3"></rect>
                     </svg>Basic White
                     </div>
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="darkMode" style="display: flex; align-items: center;">
+                    <div class="menu-option" id="darkMode" data-loc="darkMode" data-trm="patchHTML" data-patch="Basic Black" data-key="darkMode" data-value="true" style="display: flex; align-items: center;">
                     <svg class="option-img" width="200" height="100" xmlns="http://www.w3.org/2000/svg">
                         <rect x="0" y="0" width="200" height="100" fill="black" stroke="black" stroke-width="2" rx="3" ry="3"></rect>
                     </svg>Basic Black
                     </div>
                     <div class="option-separator"></div>
                 </div>
-                <div class="options" id="options-3" style="display:none;">
+                <div class="options" id="options-4" style="display:none;">
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="12H">Use 12-Hour Time [BTOGGLE]</div>
+                    <div class="menu-option" id="12H" data-trm="swapTGL" data-loc="id">Use 12-Hour Time [BTOGGLE]</div>
                     <div class="option-separator"></div>
                     <br>
                     <div class="option-separator"></div>
@@ -343,23 +442,23 @@ document.addEventListener('keydown', (e) => {
                     <div class="menu-option" id="SpanishLang" data-loc="SpanishLang" data-trm="swapText" data-key="language" data-value="ES">Spanish</div>
                     <div class="option-separator"></div>
                 </div>
-                <div class="options" id="options-4" style="display:none;">
+                <div class="options" id="options-5" style="display:none;">
                     <div class="option-separator"></div>
                     <div id="about-text" class="option-description" style="margin-left: 100px;font-size: 32px;color: rgba(30, 39, 50, 0.747)">
-                    <div id="hardwareInfo">Hardware Information</div>
+                    <div id="hardwareInfo" data-trm="swapTGL" data-loc="hardwareInfo">Hardware Information</div>
                     <div>---------------</div>
-                    <div id="computer_name">Name: unknown</div>
+                    <div id="computer_name" data-loc="Name" data-trm="patchHTML" data-patch="Name">Name: unknown</div>
                     <div id="cpu_name">CPU: unknown</div>
                     <div id="arch">Arch: unknown</div>
                     <div id="gpu_name">GPU: unknown</div>
                     <div id="total_ram">RAM: unknown</div>
-                    <div id="storage">Storage: unknown</div>
+                    <div id="storage" data-loc="storage" data-trm="patchHTML" data-patch="Storage">Storage: unknown</div>
                     <div id="distro">OS: unknown</div>
                     <br>
                 
                     <div>https://github.com/b1on1cdog/mukkuru</div>
                     <br>
-                    <div id="app_version">Mukkuru v0.1.6</div>
+                    <div id="app_version">Crash loading hardware info</div>
                     <div>Made with ♥ by b1on1cdog</div>
                     </div>
                     <div class="option-separator"></div>

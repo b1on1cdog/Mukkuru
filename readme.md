@@ -25,12 +25,24 @@ This is still in early stages and is not yet suitable for final use.<br/>
 - MacOS support<br/>
 - User friendly installer<br/>
 
+# Known issues
+- A too small window might cause view issues<br/>
+- A too big window might cause keyguide to display incorrectly in app launcher<br/>
+- Some images are failling to load <br/>
 # Changelog
 -----------------
+# 0.2.9
+- Avatar image is now downloaded from Steam API<br/>
+- Selected theme/library source is now highlighted in a different font color<br/>
+- [UNFINISHED] Added Epic games as library source (Windows only)<br/>
+- Library sources can now be set from Settings <br/>
+- Solved left arrow exception in settings<br/>
+- Simplified some code<br/>
 # 0.2.8
 - Removed some unused debugging logs<br/>
 - Minor bugfixes<br/>
 - Improved network detection accuracy<br/>
+- Numeric options can now be altered from Settings UI<br/>
 # 0.2.7
 - Renamed 'backend.py' to 'mukkuru.py', webview is now launched from backend and not viceversa <br/>
 - Optional experimental pywebview file, as an alternative to pyside6<br/>

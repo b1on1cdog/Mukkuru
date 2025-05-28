@@ -130,9 +130,12 @@
       cursor: pointer;
       margin: 10px 0;
   }
+.menu-option.checked {
+    color: rgb(88, 172, 120);
+}
 
   .option-img {
-    margin-left: 88px;
+    margin-left: 68px;
     padding: 16px 20px;
   }
   /*

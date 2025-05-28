@@ -10,7 +10,7 @@
         "SystemSettings": "Ajustes",
         "Themes" : "Temas",
         "Navigation" : "Navegacion",
-        "LibrarySources" : "Fuentes de biblioteca",
+        "LibrarySources" : "Fuentes",
         "LibrarySources-desc" : "Los servicios elegidos se usaran como proveedor de juegos",
         "About" : "Acerca de",
         "Back" : "Volver",
@@ -35,6 +35,8 @@
         "controllerFB" : "Control",
         "SpanishLang" : "Español",
         "EnglishLang" : "Ingles",
-        "Downloads" : "Descargas"
+        "Downloads" : "Descargas",
+        "storage" : "Almacenamiento",
+        "Name" : "Nombre"
     }
 }

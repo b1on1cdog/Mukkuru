@@ -45,11 +45,6 @@ function allowRendering(reload = false) {
         location.reload();
       }
     } else {
-    swapText("aboutTab", translation["About"]);
-    swapText("navigationTab", translation["Navigation"]);
-    swapText("languageTab", translation["Language"]);
-    swapText("libraryTab", translation["Library"]);
-    swapText("themesTab", translation["Themes"]);
     swapText("options-keyGuide", translation["Options"]);
     swapText("start-keyGuide", translation["Start"]);
     swapText("ok-keyGuide", translation["OK"]);
@@ -57,22 +52,6 @@ function allowRendering(reload = false) {
     swapTGL("librarySource", translation["LibrarySources"]);
     swapText("librarySource-desc", translation["LibrarySources-desc"]);
     swapText("settings-header", translation["SystemSettings"]);
-
-    swapTGL("skipNoArt", translation["skipNoArt"]);
-    swapTGL("fullScreen", translation["fullScreen"]);
-    swapTGL("12H", translation["12H"]);
-    swapTGL("loop", translation["loop"]);
-    swapText("loop-desc", translation["loop-desc"]);
-    swapTGL("startupGameScan", translation["startupGameScan"]);
-    swapText("startupGameScan-desc", translation["startupGameScan-desc"]);
-    swapTGL("maxGamesInHomeScreen", translation["maxGamesInHomeScreen"]);
-    swapText("maxGamesInHomeScreen-desc", translation["maxGamesInHomeScreen-desc"]);
-
-    swapTGL("hardwareInfo", translation["hardwareInfo"]);
-
-    patchHTML("lightMode", "Basic White", translation["lightMode"]);
-    patchHTML("darkMode", "Basic Black", translation["darkMode"]);
-
     swapAriaLabel("settingsFB", translation["settingsFB"]);
     swapAriaLabel("storeFB", translation["storeFB"]);
     swapAriaLabel("scanFB", translation["scanFB"]);
@@ -81,19 +60,23 @@ function allowRendering(reload = false) {
 
     const elements = document.querySelectorAll('[data-loc]');
     elements.forEach(el => {
+      let loc_key = el.dataset.loc;
+      if (loc_key == "id") {
+        loc_key = el.id;
+      }
       switch(el.dataset.trm) {
         case "ariaLabel":
-          swapAriaLabel(el.id, translation[el.dataset.loc]);
+          swapAriaLabel(el.id, translation[loc_key]);
           break;
         case "patchHTML":
-         // patchHTML(el.id, ..., translation[el.dataset.loc]);
+          patchHTML(el.id, el.dataset.patch, translation[loc_key]);
           break;
         case "swapText":
       //    backend_log("translating ->"+el.id)
-          swapText(el.id, translation[el.dataset.loc]);
+          swapText(el.id, translation[loc_key]);
           break;
         case "swapTGL":
-          swapTGL(el.id, translation[el.dataset.loc]);
+          swapTGL(el.id, translation[loc_key]);
           break;
         default:
           backend_log("unknown translation rule");

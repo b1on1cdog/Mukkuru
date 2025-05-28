@@ -21,6 +21,8 @@ import platform
 import distro
 import psutil
 
+import requests
+
 from flask import Flask, request
 from flask import send_from_directory
 from fuzzywuzzy import fuzz
@@ -55,6 +57,8 @@ hardcoded_exclusions = ["Proton Experimental",
                         "Proton 3.0",
                         "Proton Hotfix"]
 
+AVATAR_DOWNLOAD_URL = "https://api.panyolsoft.com/steam/avatar/[USERNAME]"
+
 def app_version():
     ''' generate 5 MD5 digits to use as build number '''
     path = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(__file__)
@@ -63,7 +67,7 @@ def app_version():
         for chunk in iter(lambda: f.read(4096), b''):
             hasher.update(chunk)
     full_md5 = hasher.hexdigest()
-    return "Mukkuru v0.2.8 build-"+full_md5[-5:]
+    return "Mukkuru v0.2.9 build-"+full_md5[-5:]
 
 def read_binary_vdf(vdf_path):
     """Read binary VDF file using a Python implementation"""
@@ -143,6 +147,38 @@ def get_steam_libraries(vdf_path):
     # Include main Steam folder
     paths.append(os.path.join(mukkuru_env["steam"]["path"], "steamapps"))
     return paths
+
+def get_egs_games():
+    ''' [Windows only] get games from epic games launcher '''
+    #To-do: look for alternate ProgramData paths
+    manifest_dir = r"C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests"
+    if not os.path.exists(manifest_dir):
+        print(f"Manifest directory not found: {manifest_dir}")
+    games = {}
+    for filename in os.listdir(manifest_dir):
+        if filename.endswith(".item"):
+            filepath = os.path.join(manifest_dir, filename)
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    manifest = json.load(f)
+                    app_name = manifest["DisplayName"]
+                    app_id = manifest["AppName"]
+                    game_dir = os.path.join(manifest["InstallLocation"],
+                                            manifest["LaunchExecutable"])
+                    if app_name and app_id:
+                        games[app_id] = {
+                            "AppName" : app_name,
+                            "catalogNamespace" : manifest["MainGameCatalogNamespace"],
+                            "catalogItemID" : manifest["MainGameCatalogItemId"],
+                            "LaunchOptions" : "",
+                            "Exe" : game_dir,
+                            "StartDir" : manifest["InstallLocation"],
+                            "Source" : "egs"
+                        }
+
+            except (PermissionError, IndexError, json.decoder.JSONDecodeError) as e:
+                print(f"Exception occured: {e}")
+    return "Not implemented"
 
 def parse_text_vdf(vdf_text):
     """Simple text VDF parser (simplified version)"""
@@ -236,9 +272,11 @@ def library_scan(options):
     '''
     1 - Steam
     2 - Non-Steam
+    4 - EGS
     '''
     option_steam = 1 << 0  # 0001 = 1
     option_nonsteam = 1 << 1  # 0010 = 2
+    option_egs = 1 << 2  # 0100 = 4
 
     # Get Steam library paths
     if options & option_steam:
@@ -268,6 +306,9 @@ def library_scan(options):
     if options & option_nonsteam:
         non_steam_games = get_non_steam_games(mukkuru_env["steam"]["shortcuts"])
         games.update(non_steam_games)
+    if options & option_egs:
+        egs_games = get_egs_games()
+        games.update(egs_games)
     if Path(mukkuru_env["steam"]["shortcuts"]).is_file():
         print(f'Using { mukkuru_env["steam"]["shortcuts"] }\n')
     else:
@@ -495,6 +536,24 @@ def read_steam_username():
             return matches[0]  # Return the first found username
         print("No usernames found under 'Accounts'.")
         return None
+
+def download_steam_avatar():
+    ''' (if not exists) downloads steam avatar picture '''
+    steam_username = read_steam_username()
+    if steam_username is None:
+        print("Unable to query avatar picture")
+        return
+    avatar_path = os.path.join(mukkuru_env["artwork"], "Avatar", steam_username+".jpg")
+    if Path(avatar_path).is_file():
+        print("Avatar image exists, skipping...")
+        return
+    r=requests.get(AVATAR_DOWNLOAD_URL.replace("[USERNAME]", steam_username), timeout=20)
+    avatar_url = r.text
+    if "http" in avatar_url:
+        print("downloading steam user avatar image...")
+        grid_db.download_file(avatar_url, avatar_path)
+    else:
+        print(f"Invalid avatar url: {avatar_url}")
 
 def number_aware_scorer(s1, s2):
     '''give bad score to filenames with wrong number, to prevent game sequels confusions'''
@@ -766,9 +825,10 @@ def main_web():
 @app.route('/frontend/<path:path>')
 def static_file(path):
     ''' serve asset '''
-    query = request.args.get('pid', default='', type=str)
-    if not query == '':
-        mukkuru_env["pid"] = int(query)
+    if path == "assets/avatar.jpg":
+        avatar_file = os.path.join(mukkuru_env["artwork"], "Avatar", f"{get_user()}.jpg")
+        if Path(avatar_file).is_file():
+            return send_from_directory(mukkuru_env["artwork"], f"Avatar/{get_user()}.jpg")
     user_config = get_config(True)
     return send_from_directory(f'{os.getcwd()}/ui/{user_config["theme"]}/', path)
 
@@ -842,6 +902,7 @@ def main():
         os.mkdir(os.path.join(mukkuru_env["artwork"], "Logo") )
         os.mkdir(os.path.join(mukkuru_env["artwork"], "Heroes") )
         os.mkdir(os.path.join(mukkuru_env["artwork"], "Grid") )
+        os.mkdir(os.path.join(mukkuru_env["artwork"], "Avatar") )
     user_config = get_config(True)
     if not Path(mukkuru_env["library.json"]).is_file():
         print("No library.json")
@@ -855,6 +916,7 @@ def main():
                                                                                  "grid", 1)
     mukkuru_env["steam"]["config.vdf"] = os.path.join(mukkuru_env["steam"]["path"],
                                                       "config", "config.vdf")
+    download_steam_avatar()
     if threading.current_thread() is threading.main_thread():
         threading.Thread(target=start_server).start()
         #This might cause a race condition if your computer is slower than a snail

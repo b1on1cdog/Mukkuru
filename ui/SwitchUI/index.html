@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (userConfiguration["darkMode"] == true) {
+        
     /*
     We will get the colors from CSS, this way if colors need to be changed in future,
     only css modifications are needed.
@@ -84,7 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
     just yet
     */
     (async () => {
-    //backend_log("[debug] library load thread init");
     //gameArr = Object.entries(data);
     gameArr = Object.entries(data);
     const favoriteGames = new Set(userConfiguration.favorite);
@@ -450,7 +450,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <header class="homeHeader">
             <div class="userList">
                 <a href="#" class="userList-user" title="User">
-                    <img class="userList-icon" src="./assets/avatar.png" alt="User Picture">
+                    <img class="userList-icon" src="./assets/avatar.jpg" alt="User Picture">
                 </a>
             </div>
             <div class="statusBar">
