@@ -37,6 +37,10 @@
         "EnglishLang" : "Ingles",
         "Downloads" : "Descargas",
         "storage" : "Almacenamiento",
-        "Name" : "Nombre"
+        "Name" : "Nombre",
+        "showKeyGuide" : "Mostrar guia de botones",
+        "listStyle" : "Estilo de lista principal",
+        "libraryStyle" : "Estilo de biblioteca",
+        "uiSounds" : "Efectos de sonido del sistema"
     }
 }

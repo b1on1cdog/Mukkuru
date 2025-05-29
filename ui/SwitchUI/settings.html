@@ -9,6 +9,7 @@
     <script src="mukkuru.js"></script>
     <script src="localization.js"></script>
     <script>
+
 //at this point we do not have access to userConfiguration, so we are using localStorage
 if (localStorage.getItem("darkMode") == "true") {
     applyDarkMode();
@@ -48,7 +49,7 @@ function updateLibraryOptions(){
     library_options = userConfiguration["librarySource"];
     Object.entries(SOURCE_OPTIONS).forEach(([key, bit], index) => {
     if (library_options & bit) {
-      document.getElementById(`sources-${index}`)?.classList.add("checked");
+        document.getElementById(`sources-${index}`)?.classList.add("checked");
     } else {
         document.getElementById(`sources-${index}`)?.classList.remove("checked");
     }
@@ -74,6 +75,8 @@ fetch(backendURL+"/config/get").then(function(response) {
             option.innerHTML = option.textContent.replace("[BTOGGLE]", `<span class="toggle-chars">${booleanTgl(userConfiguration[option.id])}</span>`  );
         } else if (option.innerHTML.includes("[BNUMBER]")) {
             option.innerHTML = option.textContent.replace("[BNUMBER]", `<span class="toggle-chars">${userConfiguration[option.id]}</span>`  );
+        } else if (option.innerHTML.includes("[BLIST]")) {
+            option.innerHTML = option.textContent.replace("[BLIST]", `<span class="toggle-chars">${userConfiguration[option.id]}</span>`  );
         }
         document.getElementById("options-0").style.display = "";
 });
@@ -83,6 +86,7 @@ fetch(backendURL+"/config/get").then(function(response) {
             localStorage.setItem("darkMode", false);
         }
         updateLibraryOptions();
+        showKeyGuide(userConfiguration["showKeyGuide"]);
         allowRendering();
 });    
 
@@ -127,6 +131,11 @@ const optionRangeMax = {
     "maxGamesInHomeScreen" : 24
 }
 
+const blistOptions = {
+    "listStyle" : ["Switch", "PS5"],
+    "uiSounds" : ["Switch", "PS5"]
+}
+
 document.querySelectorAll(".options").forEach((item, index) => {
     options = item.querySelectorAll(".menu-option");
     console.log("reading...");
@@ -141,6 +150,7 @@ function changeLockedValue(position) {
 
     prefix = "< ";
     postfix = " >";
+    if (typeof(value) == 'number') {
     if (value+position == optionRangeMin[keyName]) {
         prefix = "";
     } else if (value+position == optionRangeMax[keyName]) {
@@ -157,7 +167,6 @@ function changeLockedValue(position) {
         return;
     }
 
-    if (typeof(value) == 'number') {
         value = value+position;
 
         if (value < optionRangeMin[keyName] || value > optionRangeMax[keyName]){
@@ -165,6 +174,33 @@ function changeLockedValue(position) {
             return;
         }
 
+        userConfiguration[keyName] = value;
+        elem.querySelector('.toggle-chars').textContent = prefix + value + postfix;
+        playSound("tick");
+    } else if (typeof value == "string") {
+        current_position = blistOptions[keyName].indexOf(value);
+        max_position = blistOptions[keyName].length - 1;
+        if (current_position + position == 0) {
+            prefix = "";
+        } else if (current_position + position == max_position) {
+            postfix = "";
+        }
+        if (position == 0) {
+        
+            lockedOption = !lockedOption;
+            if (!lockedOption) {
+                elem.querySelector('.toggle-chars').textContent = "" + value;
+            } else {
+                elem.querySelector('.toggle-chars').textContent = prefix + value + postfix;
+            }
+        return;
+        }
+        current_position = current_position + position;
+        if (current_position < 0 || current_position > max_position) {
+            playSound("border");
+            return;
+        }
+        value = blistOptions[keyName][current_position];
         userConfiguration[keyName] = value;
         elem.querySelector('.toggle-chars').textContent = prefix + value + postfix;
         playSound("tick");
@@ -231,7 +267,9 @@ document.addEventListener('keydown', (e) => {
                 if (typeof value === 'boolean') {
                     tabOptions[selectedTab][selectedOption].innerHTML = (tabOptions[selectedTab][selectedOption].innerHTML).replace(booleanTgl(value), booleanTgl(!value));
                     userConfiguration[tabOptions[selectedTab][selectedOption].id] = !value;
-                }   else if (typeof value === 'number') {
+                } else if (typeof value === 'number') {
+                    changeLockedValue(0);
+                } else if (typeof value === 'string') {
                     changeLockedValue(0);
                 }
         }
@@ -414,6 +452,13 @@ document.addEventListener('keydown', (e) => {
                     <div class="menu-option" id="loop" data-trm="swapTGL" data-loc="loop">Cursor loop effect 	&nbsp;	&nbsp;	&nbsp; [BTOGGLE]</div>
                     <div class="option-separator"></div>
                     <div class="option-description" id="loop-desc" data-trm="swapText" data-loc="loop-desc">Return cursor from the other side of the screen when navigating</div>
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="showKeyGuide" data-trm="swapTGL" data-loc="id">Show keyGuide bar &nbsp;	&nbsp;	&nbsp; [BTOGGLE]</div>
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="listStyle" data-trm="swapTGL" data-loc="id">Main list style &nbsp;	&nbsp;	&nbsp; [BLIST]</div>
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="uiSounds" data-trm="swapTGL" data-loc="id">System sound effects &nbsp;	&nbsp;	&nbsp; [BLIST]</div>
+                    <div class="option-separator"></div>
                 </div>
                 <div class="options" id="options-3" style="display:none;">
                     <div class="option-separator"></div>

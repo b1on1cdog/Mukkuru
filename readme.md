@@ -5,6 +5,7 @@ This is still in early stages and is not yet suitable for final use.<br/>
 
 # Current features
 - Switch-like theme<br/>
+- PS5-like theme<br/>
 - Dark mode<br/>
 - Scan games from Steam Library<br/>
 - Automatically download boxarts from SteamGridDB (when available)<br/>
@@ -18,7 +19,6 @@ This is still in early stages and is not yet suitable for final use.<br/>
 - Order recent played items in main screen<br/>
 - Switch-Like contextual menus (when pressing options and some footer items) <br/>
 - Allow to add games as favorite <br/>
-- Cache screens for faster loading times<br/>
 - CSS Loader<br/>
 - Chosing custom themes from settings<br/>
 - Plugin support, with a plugin storefront<br/>
@@ -28,9 +28,16 @@ This is still in early stages and is not yet suitable for final use.<br/>
 # Known issues
 - A too small window might cause view issues<br/>
 - A too big window might cause keyguide to display incorrectly in app launcher<br/>
-- Some images are failling to load <br/>
 # Changelog
 -----------------
+# 0.2.10
+- Added PS5-like list style <br/>
+- Added PS5 Sound effects <br/>
+- Solved crash when a translation was not available <br/>
+- Added waitress as dependency <br/>
+- Improved loading speed <br/>
+- Fixed some images failling to load<br/>
+- Thumbnails are now loaded from mukkuru config folder <br/>
 # 0.2.9
 - Avatar image is now downloaded from Steam API<br/>
 - Selected theme/library source is now highlighted in a different font color<br/>
@@ -128,6 +135,6 @@ This is still in early stages and is not yet suitable for final use.<br/>
 
 # Donations
 ---------------
-I do not actively ask for donations, however, donations could help me spending more time in these projects<br/>
+Donations could help me spending more time in these projects<br/>
 USDT TRC20: TNkFKTZocgB7DssLa3c8SfqqAEGB2hpj8j<br/>
 BTC: 19eWbB2YCUxfX2mLAkwWrPnMGLU42Jwabo<br/>

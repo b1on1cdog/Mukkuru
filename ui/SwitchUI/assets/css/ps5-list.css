@@ -1,0 +1,175 @@
+.gameLauncher {
+    height: 140px;
+    width: 140px;
+    border-radius: 11%;
+}
+
+
+.gameLauncher-thumbnail {
+    border-radius: 11%;
+}
+
+.gameLauncher:focus {
+    height: 246px;
+    width: 246px;
+    animation: borderShineRotate 6s linear infinite;
+}
+
+.gameLauncher-title {
+    position: absolute;
+    bottom: 20%;
+    left: 110%;
+    font-size: 18px;
+    color: var(--accent-color);
+    user-select: none;
+    opacity: 0;
+
+    overflow: hidden; 
+    white-space: nowrap;
+    display: inline-block;
+
+    width: unset;
+    transform: unset;
+    transition: unset;
+
+}
+
+
+.gameLauncher-more {
+    height: 140px;
+    width: 140px;
+    border-radius: 11%;
+}
+
+.gameLauncher-icon {
+    border-radius: 11%;
+    width: 100%;
+    height: 100%;
+}
+
+.gameLauncher-more:focus {
+    height: 246px;
+    width: 246px;
+    border-radius: 11%;
+}
+
+.animate span {
+    display: unset;
+    animation: unset;
+}
+
+
+.gameLauncher-title span{
+    display: unset;
+    padding-left: unset;
+    animation: unset;  /*Smooth scroll */
+}
+
+
+.glass-effect {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 11%;
+}
+
+.glass-effect::before {
+  content: "";
+  position: absolute;
+  top: -150%;
+  left: -150%;
+  width: 300%;
+  height: 300%;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0) 40%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0) 60%
+  );
+  animation: moveShine 8s ease-in-out infinite;
+  transform: rotate(25deg);
+}
+
+@keyframes moveShine {
+  0%, 100% {
+    transform: translate(-100%, -100%) rotate(25deg);
+  }
+  50% {
+    transform: translate(100%, 100%) rotate(25deg);
+  }
+}
+
+
+@keyframes borderShineRotate {
+  0% {
+    box-shadow:
+      0 0 0 3px white,
+      0 -4px 8px 0 rgba(255, 255, 255, 0.9),    /* Top: shine */
+      4px 0 8px 0 rgba(255, 255, 255, 0.5),     /* Right: mid */
+     -4px 0 8px 0 rgba(180, 180, 255, 0.4),     /* Left: mid */
+      0 4px 8px 0 rgba(50, 50, 100, 0.3);       /* Bottom: shadow */
+  }
+
+  25% {
+    box-shadow:
+      0 0 0 3px white,
+      0 -4px 8px 0 rgba(50, 50, 100, 0.3),       /* Top: shadow */
+      4px 0 8px 0 rgba(255, 255, 255, 0.9),      /* Right: shine */
+     -4px 0 8px 0 rgba(255, 255, 255, 0.5),      /* Left: mid */
+      0 4px 8px 0 rgba(180, 180, 255, 0.4);      /* Bottom: mid */
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 3px white,
+      0 -4px 8px 0 rgba(180, 180, 255, 0.4),     /* Top: mid */
+      4px 0 8px 0 rgba(50, 50, 100, 0.3),        /* Right: shadow */
+     -4px 0 8px 0 rgba(255, 255, 255, 0.9),      /* Left: shine */
+      0 4px 8px 0 rgba(255, 255, 255, 0.5);      /* Bottom: mid */
+  }
+
+  75% {
+    box-shadow:
+      0 0 0 3px white,
+      0 -4px 8px 0 rgba(255, 255, 255, 0.5),     /* Top: mid */
+      4px 0 8px 0 rgba(180, 180, 255, 0.4),      /* Right: mid */
+     -4px 0 8px 0 rgba(50, 50, 100, 0.3),        /* Left: shadow */
+      0 4px 8px 0 rgba(255, 255, 255, 0.9);      /* Bottom: shine */
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 3px #c0bfbf,
+      0 -4px 8px 0 rgba(255, 255, 255, 0.9),     /* Top: shine */
+      4px 0 8px 0 rgba(255, 255, 255, 0.5),      /* Right: mid */
+     -4px 0 8px 0 rgba(180, 180, 255, 0.4),      /* Left: mid */
+      0 4px 8px 0 rgba(50, 50, 100, 0.3);        /* Bottom: shadow */
+  }
+}
+
+.homeBody {
+    padding-bottom: 300px;
+}
+
+.gameList + .footerNavigation {
+    margin-top: 250px;
+}
+
+
+
+/*
+
+@keyframes borderShine {
+  0% {
+    filter: hue-rotate(0deg);
+  }
+  100% {
+    filter: hue-rotate(360deg);
+  }
+}
+*/

@@ -78,7 +78,7 @@ async function initSounds() {
     'home': './assets/audio/Home.wav',
     'border': './assets/audio/Border.wav',
     'enter-back': './assets/audio/Enter & Back.wav',
-    'run': './assets/audio/Popup + Run Title.wav',
+    'run': './assets/audio/Run.wav',
     'settings': './assets/audio/Settings.wav',
   };
   
@@ -206,7 +206,6 @@ function hardwareStatusUpdate(){
         backend_log("no network");
         wifiState.style.opacity = "0.4";
       } else if (!network.wifi) {
-        backend_log("using ethernet connection..");
         wifiState.style.opacity = "1";
         wifiPath.setAttribute("d", "M159.13 136.02l-35.26-29.32L0 256.01 123.86 405.3l35.26-29.29-99.6-119.99 99.61-120zm-17.62 142.89h45.8v-45.8h-45.8v45.8zm228.98-45.8h-45.8v45.8h45.8v-45.8zm-137.39 45.8h45.8v-45.8h-45.8v45.8zM388.11 106.7l-35.26 29.32 99.62 119.99L352.85 376l35.26 29.29L512 256.01 388.11 106.7z")
         wifiState.setAttribute("viewBox", "0 0 500 500");
@@ -253,4 +252,11 @@ function clockUpdate(meridiem){
         m.innerText = now.getMinutes() + suffix;
     }
     hardwareStatusUpdate();
+  }
+
+  function showKeyGuide(state) {
+    document.getElementsByClassName("homeFooter")[0].style.display = state?"flex":"none";
+  }
+  function showBottomBar(state) {
+    document.getElementsByClassName("footerNavigation")[0].style.display = state?"flex":"none";
   }

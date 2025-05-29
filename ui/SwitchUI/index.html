@@ -16,6 +16,35 @@ if (localStorage.getItem("darkMode") == "true") {
     applyDarkMode();
 }
 
+/*
+gameLauncher
+height: 140px
+width: 140px
+border-radius: 11%
+
+gameLauncher-thumbnail
+border-radius: 11%
+
+gameLauncher: focus
+height: 246px
+width: 246px
+
+.gameLauncher-title {
+    position: absolute;
+    bottom: 20%;
+    left: 110%;
+    font-size: 18px;
+    color: var(--accent-color);
+    user-select: none;
+    opacity: 0;
+    overflow: hidden; 
+    white-space: nowrap;
+    display: inline-block;
+}
+
+
+*/
+
 let currentRow = 1;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -33,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return response.json();
     }).then(function(data) {
         userConfiguration = data;
+
         if (userConfiguration != null && userConfiguration != undefined && Object.keys(userConfiguration).length > 0) {
             localStorage.setItem("userConfiguration", JSON.stringify(data));
             backend_log("[debug] config is ready");
@@ -43,36 +73,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (userConfiguration["darkMode"] == true) {
         
-    /*
-    We will get the colors from CSS, this way if colors need to be changed in future,
-    only css modifications are needed.
-    To-do: migrate darkMode to CSS
-    */
-    if (localStorage.getItem("darkMode") != "true") {
-        backend_log("[debug] new session with darkMode enabled");
-        localStorage.setItem("darkMode", true);
-        applyDarkMode();
-    } else {
-        backend_log("[debug] using existing session");
-    }
-    document.documentElement.style.setProperty("--select-border", "#0b0b0b");
-    document.getElementsByClassName("homeMenu")[0].style.setProperty("--bg-color", darkColor);
-    document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "#4E4E4E"); // this one must be slightly different to background 
-
-    document.querySelectorAll(".footerButton-icon").forEach((element) => { 
-    if (element instanceof SVGElement) {
-            element.getElementsByTagName("path")[0].style.fill = lightColor;
+        /*
+        We will get the colors from CSS, this way if colors need to be changed in future,
+        only css modifications are needed.
+        To-do: migrate darkMode to CSS
+        */
+        if (localStorage.getItem("darkMode") != "true") {
+            backend_log("[debug] new session with darkMode enabled");
+            localStorage.setItem("darkMode", true);
+            applyDarkMode();
+        } else {
+            backend_log("[debug] using existing session");
         }
-    });
-    document.getElementsByClassName("controllerState-type")[0].getElementsByTagName("svg")[0].getElementsByTagName("path")[0].style.fill = lightColor;
-    document.getElementsByClassName("wifiState-icon")[0].getElementsByTagName("path")[0].style.fill = lightColor;
-    document.querySelectorAll(".keyGuide-icon").forEach((element) => element.getElementsByTagName("path")[0].style.fill = lightColor);
+        document.documentElement.style.setProperty("--select-border", "#0b0b0b");
+        document.getElementsByClassName("homeMenu")[0].style.setProperty("--bg-color", darkColor);
+        document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "#4E4E4E"); // this one must be slightly different to background 
+
+        document.querySelectorAll(".footerButton-icon").forEach((element) => { 
+            if (element instanceof SVGElement) {
+                element.getElementsByTagName("path")[0].style.fill = lightColor;
+            }
+        });
+        document.getElementsByClassName("controllerState-type")[0].getElementsByTagName("svg")[0].getElementsByTagName("path")[0].style.fill = lightColor;
+        document.getElementsByClassName("wifiState-icon")[0].getElementsByTagName("path")[0].style.fill = lightColor;
+        document.querySelectorAll(".keyGuide-icon").forEach((element) => element.getElementsByTagName("path")[0].style.fill = lightColor);
+    }
+
+        listStyle = userConfiguration["listStyle"];
+        if (listStyle == "PS5") {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = './assets/css/ps5-list.css';
+            document.head.appendChild(link);
+            document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "rgba(0, 0, 0, 0)");
+            showBottomBar(false);
         }
 
     clockUpdate(userConfiguration["12H"]);
     setInterval(() => {
         clockUpdate(userConfiguration["12H"]);
     }, 30000);
+    showKeyGuide(userConfiguration["showKeyGuide"]);
     allowRendering();
     });    
     fetch(backendURL+"/library/get").then(function(response) {
@@ -142,9 +183,15 @@ document.addEventListener('DOMContentLoaded', () => {
     thumbnail.className = 'gameLauncher-thumbnail';
     thumbnail.src = box_src;
     thumbnail.alt = item[1]["AppName"];
- 
+
+
     button.appendChild(title);
     button.appendChild(thumbnail);
+    if (userConfiguration["listStyle"] == "PS5") {
+        const glass = document.createElement('div');
+        glass.className = 'glass-effect';
+        button.appendChild(glass);
+    }
 
     if (gameLimit > gamesAdded){
         gameList.appendChild(button);
@@ -175,7 +222,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const thumbnail = document.createElement('img');
         thumbnail.className = 'gameLauncher-icon';
-        thumbnail.src = "assets/img/all-software.png";
+        if (userConfiguration["listStyle"] == "PS5") {
+            thumbnail.src = "assets/img/all-software-2.png";
+        } else {
+            thumbnail.src = "assets/img/all-software.png";
+        }
         //
         const title = document.createElement('div');
         title.className = 'gameLauncher-title';
@@ -403,9 +454,12 @@ document.addEventListener('DOMContentLoaded', () => {
             default:
                 return;
         }
-
-        if (currentRow == 1){
-
+        if (currentRow != 2 && userConfiguration["listStyle"] == "PS5") {
+            showBottomBar(false);
+        } else {
+            showBottomBar(true);
+        }
+        if (currentRow == 1 && userConfiguration["listStyle"] == "Switch"){
         let launchers = (currentRow == 1)?gameLaunchers:appLaunchers;
         let titleDOM = (currentRow == 1)?".gameLauncher-title":".appLauncher-title";
 
@@ -427,7 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         }
 
-        }//
+        }
 
 
         if (currentRow == 1 && currentIndex == 0 && gameLaunchers.length > 5){

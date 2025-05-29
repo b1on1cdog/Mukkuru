@@ -45,6 +45,7 @@ function allowRendering(reload = false) {
         location.reload();
       }
     } else {
+    
     swapText("options-keyGuide", translation["Options"]);
     swapText("start-keyGuide", translation["Start"]);
     swapText("ok-keyGuide", translation["OK"]);
@@ -57,9 +58,10 @@ function allowRendering(reload = false) {
     swapAriaLabel("scanFB", translation["scanFB"]);
     swapAriaLabel("powerFB", translation["powerFB"]);
     swapAriaLabel("controllerFB", translation["controllerFB"]);
-
+    
     const elements = document.querySelectorAll('[data-loc]');
     elements.forEach(el => {
+      try {
       let loc_key = el.dataset.loc;
       if (loc_key == "id") {
         loc_key = el.id;
@@ -83,6 +85,10 @@ function allowRendering(reload = false) {
           break;
       }
      // backend_log(el.id + " > " + el.innerText.length)
+    } catch (err) {
+      backend_log("exception: "+err.message);
+
+    }
     });
 
 

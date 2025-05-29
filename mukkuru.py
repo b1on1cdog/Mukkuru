@@ -23,6 +23,7 @@ import psutil
 
 import requests
 
+from waitress import serve
 from flask import Flask, request
 from flask import send_from_directory
 from fuzzywuzzy import fuzz
@@ -67,7 +68,7 @@ def app_version():
         for chunk in iter(lambda: f.read(4096), b''):
             hasher.update(chunk)
     full_md5 = hasher.hexdigest()
-    return "Mukkuru v0.2.9 build-"+full_md5[-5:]
+    return "Mukkuru v0.2.10 build-"+full_md5[-5:]
 
 def read_binary_vdf(vdf_path):
     """Read binary VDF file using a Python implementation"""
@@ -582,8 +583,7 @@ def copy_file(source, destination):
 
 def fetch_artwork(game_title, app_id, platform_name, force_online = False):
     '''get apps artwork'''
-    user_config = get_config(True)
-    square_thumbnail_dir = f'ui/{user_config["theme"]}/thumbnails/'
+    square_thumbnail_dir = os.path.join(mukkuru_env["root"], "thumbnails")
     square_fetch_dir = os.path.join(mukkuru_env["artwork"],"Square")
     if not Path(square_fetch_dir).is_dir():
         os.mkdir(square_fetch_dir)
@@ -645,7 +645,8 @@ def clear_possible_mismatches(games):
                 print(f"removing duplicated {x}")
                 os.remove(x) # delete duplicated thumbnail
                 if Path(src_image).is_file():
-                    copy_file(src_image, f'ui/{user_config["theme"]}/thumbnails/{app_id}.jpg')
+                    thumbnail_path= os.path.join(mukkuru_env["root"], "thumbnails", f'{app_id}.jpg')
+                    copy_file(src_image, thumbnail_path)
                 else:
                     game_source = games[app_id]["Source"]
                     fetch_artwork(app_name, app_id, game_source, force_online=True)
@@ -681,7 +682,8 @@ def scan_artwork(games = None):
     if games is None:
         games = get_games(True)
     for k in games.keys():
-        if not Path(f"ui/SwitchUI/assets/thumbnail/{k}.jpg").is_file():
+        thumbnail = os.path.join(mukkuru_env["root"], "thumbnails", f'{k}.jpg')
+        if not Path(thumbnail).is_file():
             game_source = games[k]["Source"]
             fetch_artwork(games[k]["AppName"], k, game_source)
         else:
@@ -742,7 +744,11 @@ def get_config(raw = False):
             "language" : "EN",
             "blacklist" : [],
             "favorite" : [],
-            "lastPlayed" : ""
+            "lastPlayed" : "",
+            "showKeyGuide" : True,
+            "listStyle" : "Switch",
+            "alwaysShowBottomBar" : True,
+            "uiSounds" : "Switch"
         }
     while "config.json" not in mukkuru_env:
         time.sleep(0.1)
@@ -795,7 +801,8 @@ def scan_games():
     #game_library.update(games)
     scan_artwork(games)
     for k, _ in games.items(): #games.keys
-        if not Path(f'ui/{user_config["theme"]}/thumbnails/{k}.jpg').is_file():
+        thumbnail_path = os.path.join(mukkuru_env["root"], "thumbnails", f'{k}.jpg')
+        if not Path(thumbnail_path).is_file():
             games[k]["Thumbnail"] = False
         else:
             games[k]["Thumbnail"] = True
@@ -825,18 +832,25 @@ def main_web():
 @app.route('/frontend/<path:path>')
 def static_file(path):
     ''' serve asset '''
+    user_config = get_config(True)
+    serve_path = f'{os.getcwd()}/ui/{user_config["theme"]}/'
     if path == "assets/avatar.jpg":
         avatar_file = os.path.join(mukkuru_env["artwork"], "Avatar", f"{get_user()}.jpg")
         if Path(avatar_file).is_file():
             return send_from_directory(mukkuru_env["artwork"], f"Avatar/{get_user()}.jpg")
-    user_config = get_config(True)
-    return send_from_directory(f'{os.getcwd()}/ui/{user_config["theme"]}/', path)
+    if path.startswith("assets/audio/"):
+        audio_file = path.replace("assets/audio/", "")
+        new_path = f'assets/audio/{user_config["uiSounds"]}/{audio_file}'
+        return send_from_directory(serve_path, new_path)
+    if path.startswith("thumbnails/") or path.startswith("hero/"):
+        return send_from_directory(mukkuru_env["root"], path, mimetype='image/jpeg')
+    return send_from_directory(serve_path, path)
 
 def scan_thumbnails(games):
     '''update the thumbnail status for all games'''
     for k in games.keys():
-        user_config = get_config(True)
-        if not Path(f'ui/{user_config["theme"]}/thumbnails/{k}.jpg').is_file():
+        thumbnail_path = os.path.join(mukkuru_env["root"], "thumbnails", f'{k}.jpg')
+        if not Path(thumbnail_path).is_file():
             games[k]["Thumbnail"] = False
         else:
             games[k]["Thumbnail"] = True
@@ -850,7 +864,8 @@ def is_fullscreen():
 
 def start_server():
     ''' init server '''
-    app.run(host='localhost', port=49347, debug=True, use_reloader=False)
+    serve(app, host="localhost", threads=6, port=49347)
+    #app.run(host='localhost', port=49347, debug=True, use_reloader=False)
 
 def main():
     ''' start of app execution '''
