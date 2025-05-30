@@ -4,6 +4,16 @@
     border-radius: 11%;
 }
 
+.background-layer {
+  position: fixed;
+  inset: 0;
+   -webkit-mask-image: radial-gradient(circle at top left, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 100%),
+                      radial-gradient(circle at top right, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 100%),
+                      radial-gradient(circle at bottom left, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 100%),
+                      radial-gradient(circle at bottom right, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 100%);
+  -webkit-mask-composite: destination-in;
+  mask-composite: intersect;
+}
 
 .gameLauncher-thumbnail {
     border-radius: 11%;
@@ -160,7 +170,9 @@
     margin-top: 250px;
 }
 
-
+.gameLauncher + .gameLauncher-more {
+    margin-left: 16px;
+}
 
 /*
 

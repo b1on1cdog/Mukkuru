@@ -83,7 +83,8 @@ fetch(backendURL+"/config/get").then(function(response) {
         if (userConfiguration["darkMode"] == true) {
             setDarkModeState(true);
         } else {
-            localStorage.setItem("darkMode", false);
+            setDarkModeState(false);
+            //localStorage.setItem("darkMode", false);
         }
         updateLibraryOptions();
         showKeyGuide(userConfiguration["showKeyGuide"]);

@@ -12,7 +12,7 @@
 const cssOverride = document.createElement('style');
 
 //at this point we do not have access to userConfiguration, so we are using localStorage
-if (localStorage.getItem("darkMode") == "true") {
+if (localStorage.getItem("darkMode") == "true" || localStorage.getItem("listStyle ") == "PS5" ) {
     applyDarkMode();
 }
 
@@ -71,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
             backend_log(`[debug] config init failed ${userConfiguration} ${userConfiguration.length}`);
         }
 
+        listStyle = userConfiguration["listStyle"];
         if (userConfiguration["darkMode"] == true) {
         
         /*
@@ -99,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll(".keyGuide-icon").forEach((element) => element.getElementsByTagName("path")[0].style.fill = lightColor);
     }
 
-        listStyle = userConfiguration["listStyle"];
+        
         if (listStyle == "PS5") {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
@@ -236,11 +237,13 @@ document.addEventListener('DOMContentLoaded', () => {
         title.dataset.loc = "AllSoftware";
         title.dataset.text = title.textContent;
         moreButton.appendChild(title);
-        //
         moreButton.appendChild(thumbnail);
-
         gameList.appendChild(moreButton);
     }
+    
+    const spacer = document.createElement('div');
+    spacer.style.minWidth = "300px";
+    gameList.appendChild(spacer);
 
     gameLaunchers = document.querySelectorAll('.gameLauncher, .gameLauncher-more');
     appLaunchers = document.querySelectorAll('.appLauncher');
@@ -248,6 +251,19 @@ document.addEventListener('DOMContentLoaded', () => {
     appLaunchers.forEach(item => {
         item.addEventListener('focus', () => {
             item.scrollIntoView({ behavior: "instant", block: "center" });
+        });
+    });
+    gameLaunchers.forEach(item => {
+        item.addEventListener('focus', () => {
+            item.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+            if (userConfiguration["listStyle"] == "PS5") {
+                bg = document.getElementById("bg");
+                bg.style.backgroundImage = "url('hero/" + item.id+ ".png')";
+                bg.style.backgroundRepeat = "no-repeat";
+                bg.style.backgroundSize = "cover"; // or 'contain' if needed
+                bg.style.backgroundPosition = "center";
+                homeMenu.style.backgroundColor = "none";
+            }
         });
     });
     backend_log("[debug] Skipped " + gamesSkipped + " games due to user settings");
@@ -313,14 +329,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentIndex = (currentIndex + 1) % navigatingRow[currentRow].length;
                 playSound("select");
             }
+                /*
                 if (currentRow == 1 && currentIndex > 3) {
                     gameLaunchers[currentIndex-4].style.display = 'none';
-                } 
+                }
+                    */
                 break;
             case 'ArrowLeft':
-            if (currentRow == 1 && currentIndex > 3) {
-                gameLaunchers[currentIndex-4].style.display = '';
-            }
 
                 if (currentIndex == 0 && !userConfiguration["loop"]) {
                     playSound("border");
@@ -456,9 +471,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (currentRow != 2 && userConfiguration["listStyle"] == "PS5") {
             showBottomBar(false);
-        } else {
+        } else if (currentRow != 3) {
             showBottomBar(true);
         }
+
         if (currentRow == 1 && userConfiguration["listStyle"] == "Switch"){
         let launchers = (currentRow == 1)?gameLaunchers:appLaunchers;
         let titleDOM = (currentRow == 1)?".gameLauncher-title":".appLauncher-title";
@@ -483,7 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         }
 
-
+        /*
         if (currentRow == 1 && currentIndex == 0 && gameLaunchers.length > 5){
             gameLaunchers[0].style.display = '';
             gameLaunchers[1].style.display = '';
@@ -491,6 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gameLaunchers[3].style.display = '';
             gameLaunchers[4].style.display = '';
         }
+        */
         navigatingRow[currentRow][currentIndex].focus();
         e.preventDefault();
     });
@@ -502,6 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
 <body>
     <article class="homeMenu pending">
         <header class="homeHeader">
+            <div class="background-layer" id="bg"></div>
             <div class="userList">
                 <a href="#" class="userList-user" title="User">
                     <img class="userList-icon" src="./assets/avatar.jpg" alt="User Picture">

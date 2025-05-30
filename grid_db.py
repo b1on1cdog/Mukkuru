@@ -5,7 +5,7 @@ import unicodedata
 import requests
 from PIL import Image
 
-API_KEY = "002e47c8fece834eb09a0aa5f003e81d"
+API_KEY = ""
 # API_URL = "https://www.steamgriddb.com/api/v2/"
 API_URL = "https://api.panyolsoft.com/steamgriddb/"
 
@@ -55,10 +55,19 @@ def get_id_from_platform(platform_id, platform_name):
         print("Failed to decode JSON")
         return 0
 
-def find_square_pic(game_id):
+def find_image_url(game_id, image_format):
     ''' find square picture '''
-    dimensions = "512x512,1024x1024"
-    url = f'{API_URL}grids/game/{game_id}?dimensions={dimensions}'
+    if image_format == "1:1":
+        dimensions = "512x512,1024x1024"
+        url = f'{API_URL}grids/game/{game_id}?dimensions={dimensions}'
+    elif image_format == "hero":
+        mimes = "image/png"
+        url = f'{API_URL}heroes/game/{game_id}?mimes={mimes}'
+    elif image_format == "logo":
+        mimes = "image/png"
+        url = f'{API_URL}logos/game/{game_id}?mimes={mimes}'
+    else:
+        return 0
     r=requests.get(url, headers={"Authorization":f'Bearer {API_KEY}'}, timeout=20)
     data = r.json()
     if data["success"]:
@@ -88,6 +97,10 @@ def sanitize_filename_ascii(name, max_length=255):
 
 def download_square_image(game_identifier, s_path):
     ''' download a 1:1 image '''
+    return download_image(game_identifier, s_path, "1:1")
+
+def download_image(game_identifier, s_path, image_format):
+    ''' find and download image from SteamGridDb '''  
     game_id = 0
     game_title = game_identifier.title
     if game_identifier.app_id != 0 and game_identifier.platform != "non-steam":
@@ -97,19 +110,26 @@ def download_square_image(game_identifier, s_path):
     if game_id == 0:
         print(f"Failed to find game {game_title}")
         return False
-    file_url = find_square_pic(game_id)
+    file_url = find_image_url(game_id, image_format)
     if file_url == 0:
-        print(f"Failed to find game assets : {game_title}")
-        return False
+        print(f"Failed to find game asset : {game_title} [{image_format}]")
+        return "Missing"
     extension = "jpg"
     if file_url.endswith(".png"):
         extension = "png"
     elif file_url.endswith(".webp"):
         extension = "webp"
-    output_file = os.path.join(s_path, f'{sanitize_filename_ascii(game_title)}.{extension}')
+    if s_path.endswith('.png') or s_path.endswith('.jpg') or s_path.endswith('.webp'):
+        output_file = s_path
+        output_extension = output_file[-3:]
+        if {extension} != output_extension:
+            output_file = output_file.replace(f'.{output_extension}', f'.{extension}')
+    else:
+        output_file = os.path.join(s_path, f'{sanitize_filename_ascii(game_title)}.{extension}')
     download_file(file_url, output_file)
-    if extension != "jpg":
+    if extension != "jpg" and image_format == "1:1":
         new_file = output_file.replace(f".{extension}", ".jpg")
+        print(f'{output_file} > {new_file}')
         im = Image.open(output_file)
         im.convert('RGB').save(new_file,"JPEG")
         os.remove(output_file)

@@ -68,7 +68,7 @@ def app_version():
         for chunk in iter(lambda: f.read(4096), b''):
             hasher.update(chunk)
     full_md5 = hasher.hexdigest()
-    return "Mukkuru v0.2.10 build-"+full_md5[-5:]
+    return "Mukkuru v0.2.11 build-"+full_md5[-5:]
 
 def read_binary_vdf(vdf_path):
     """Read binary VDF file using a Python implementation"""
@@ -179,7 +179,7 @@ def get_egs_games():
 
             except (PermissionError, IndexError, json.decoder.JSONDecodeError) as e:
                 print(f"Exception occured: {e}")
-    return "Not implemented"
+    return games
 
 def parse_text_vdf(vdf_text):
     """Simple text VDF parser (simplified version)"""
@@ -599,8 +599,12 @@ def fetch_artwork(game_title, app_id, platform_name, force_online = False):
     else:
         match = None
     if match is None:
-        game_identifier = grid_db.GameIdentifier(game_title, app_id, platform_name) # pylint: disable=E1101
-        filename = grid_db.download_square_image(game_identifier, square_fetch_dir)
+        game_identifier = grid_db.GameIdentifier(game_title, app_id, platform_name)
+        if game_identifier.platform != "non-steam":
+            output_file = output_file = os.path.join(square_thumbnail_dir, f'{app_id}.jpg')
+        else:
+            output_file = square_fetch_dir
+        filename = grid_db.download_image(game_identifier, output_file, "1:1")
         if filename is not False:
             if filename.endswith(".jpg"):
                 print(f'downloaded {game_title} artwork from api')
@@ -679,15 +683,31 @@ def open_store(storefront):
 @app.route('/library/artwork/scan')
 def scan_artwork(games = None):
     ''' scan for games artwork '''
+    config = get_config(True)
+    blacklist1 = config["boxartBlacklist"]
+    blacklist2 = config["heroBlacklist"]
+    blacklist3 = config["logoBlacklist"]
     if games is None:
         games = get_games(True)
     for k in games.keys():
         thumbnail = os.path.join(mukkuru_env["root"], "thumbnails", f'{k}.jpg')
-        if not Path(thumbnail).is_file():
-            game_source = games[k]["Source"]
-            fetch_artwork(games[k]["AppName"], k, game_source)
-        else:
-            print(f"{k} already has artwork, skipping...")
+        game_source = games[k]["Source"]
+        game_identifier = grid_db.GameIdentifier(games[k]["AppName"], k, game_source)
+        if not Path(thumbnail).is_file() and k not in blacklist1:
+            if grid_db.download_image(game_identifier, thumbnail,"1:1") == "Missing":
+                blacklist1.append(k)
+        hero = os.path.join(mukkuru_env["root"], "hero", f'{k}.png')
+        if not Path(hero).is_file() and k not in blacklist2:
+            if grid_db.download_image(game_identifier, hero, "hero") == "Missing":
+                blacklist2.append(k)
+        logo = os.path.join(mukkuru_env["root"], "logo", f'{k}.png')
+        if not Path(logo).is_file() and k not in blacklist3:
+            if grid_db.download_image(game_identifier, logo,"logo") == "Missing":
+                blacklist3.append(k)
+    config["boxartBlacklist"] = blacklist1
+    config["heroBlacklist"] = blacklist2
+    config["logoBlacklist"] = blacklist3
+    update_config(config)
     clear_possible_mismatches(games)
     scan_thumbnails(games)
     return "200"
@@ -735,7 +755,7 @@ def get_config(raw = False):
             "loop" : False,
             "skipNoArt" : False,
             "maxGamesInHomeScreen" : 12,
-            "theme" : "SwitchUI",
+            "theme" : "LuntheraUI",
             "librarySource" : 3, #0
             "darkMode" : False,
             "startupGameScan" : False,
@@ -748,7 +768,10 @@ def get_config(raw = False):
             "showKeyGuide" : True,
             "listStyle" : "Switch",
             "alwaysShowBottomBar" : True,
-            "uiSounds" : "Switch"
+            "uiSounds" : "Switch",
+            "boxartBlacklist" : [],
+            "logoBlacklist" : [],
+            "heroBlacklist" : [],
         }
     while "config.json" not in mukkuru_env:
         time.sleep(0.1)

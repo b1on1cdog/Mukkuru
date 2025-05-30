@@ -30,6 +30,13 @@ This is still in early stages and is not yet suitable for final use.<br/>
 - A too big window might cause keyguide to display incorrectly in app launcher<br/>
 # Changelog
 -----------------
+# 0.2.11
+- Renamed default ui <br/>
+- Updated SGDB Token <br/>
+- Added code to download hero and logo from SteamGridDB<br/>
+- Games with missing asset in steamGridDB will now avoid retry in future scans<br/>
+- Fixed Settings not hightlighting White when dark mode was disabled<br/>
+- Improved navigation logic<br/>
 # 0.2.10
 - Added PS5-like list style <br/>
 - Added PS5 Sound effects <br/>
@@ -41,7 +48,7 @@ This is still in early stages and is not yet suitable for final use.<br/>
 # 0.2.9
 - Avatar image is now downloaded from Steam API<br/>
 - Selected theme/library source is now highlighted in a different font color<br/>
-- [UNFINISHED] Added Epic games as library source (Windows only)<br/>
+- Added Epic games as library source (Windows only)<br/>
 - Library sources can now be set from Settings <br/>
 - Solved left arrow exception in settings<br/>
 - Simplified some code<br/>

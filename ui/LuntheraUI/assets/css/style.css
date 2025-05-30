@@ -69,6 +69,7 @@ button {
     margin-right: auto;
     display: flex;
     flex-flow: row nowrap;
+    position: fixed;
 }
 
 .userList-user {
@@ -147,12 +148,15 @@ button {
     }
 }
 
+/*
 .statusBar {
     margin-left: auto;
     margin-right: 0;
     display: flex;
     flex-flow: row nowrap;
     align-items: center;
+    z-index: 1000;
+    position: fixed;
 }
 
 .timeState {
@@ -199,6 +203,67 @@ button {
     box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--main-color);
     position: relative;
 }
+*/
+
+.statusBar {
+    display: flex;
+    align-items: center;
+    z-index: 1000;
+    position: fixed;
+    right: 5%;
+}
+
+.timeState {
+    color: var(--main-color);
+    font-family: var(--font-number);
+    display: flex;
+    flex-flow: row nowrap;
+    font-weight: 500;
+    position: relative;
+}
+
+.currentTime {
+    font-size: 24px;
+    letter-spacing: 2px;
+    line-height: 24px;
+    position: relative;
+    right: 5%;
+}
+.timeState-separator {
+    vertical-align: 2px;
+}
+
+.timeState + .wifiState {
+    margin-left: 12px;
+}
+
+.wifiState {
+    margin-left: 50px;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    transform: translateY(-1px);
+    right: 10px;
+}
+
+.wifiState-icon {
+    width: 100%;
+    height: 100%;
+}
+
+.wifiState + .batteryState {
+    margin-left: 50px;
+}
+
+.batteryState {
+    width: 20px;
+    height: 10px;
+    position: relative;
+    top: 10%;
+    right: 10%;
+    background-color: var(--main-color);
+    box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--main-color);
+}
 .batteryState::after {
     content: "";
     position: absolute;
@@ -220,11 +285,12 @@ button {
 .gameList {
     box-sizing: border-box;
     width: 100%;
-    padding: 8px 124px;
+    padding: 10px 124px;
     display: flex;
     flex-flow: row nowrap;
     justify-content: flex-start;
     overflow: visible;
+    margin-bottom: 8%;
 }
 
 .appList {
@@ -412,6 +478,8 @@ animation: footerButton-select - 1s ease-in-out infinite;
     flex-shrink: 0;
     display: flex;
     flex-flow: row nowrap;
+    bottom: 20%;
+    position: fixed;
 }
 
 .gameList + .footerNavigation {
