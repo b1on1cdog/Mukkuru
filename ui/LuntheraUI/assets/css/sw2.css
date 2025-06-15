@@ -1,0 +1,63 @@
+
+.footerNavigation {
+    background-color: var(--select-border);
+    border-radius: 100px;
+    height: 90px;
+    padding-top: 15px;
+    padding-bottom: 10px;
+    padding-right: 30px;
+    padding-left: 10px;
+}
+
+.footerNavigation {
+    bottom: 15%;
+}
+.gameLauncher:focus::before, .gameLauncher-more:focus::before, .footerButton:focus::before {
+    display: block;
+}
+
+.gameLauncher:focus, .gameLauncher-more:focus, .footerButton:focus {
+    animation: unset;
+    box-shadow: 0 1px 1px calc(4px + 3px) rgba(0, 0, 0, .1);
+}
+
+.gameLauncher, .gameLauncher-thumbnail, .gameLauncher-icon, .gameLauncher-more, .gameLauncher-more:focus {
+    width: 246px;
+    height: 246px;
+    border-radius: 12px;
+    z-index: 22;
+}
+
+.gameLauncher::before, .gameLauncher-more::before, .footerButton::before {
+    display: none;
+    content: "";
+    top: 50%;
+    left: 50%;
+    width: 104%;
+    height: 104%;
+    transform: translate(-50%, -50%);
+    border-radius: 12px;
+    z-index: -5;
+    position: absolute;
+    background: linear-gradient(90deg,rgba(104, 42, 155, 1) 0%, rgb(241, 191, 235) 50%, rgb(159, 231, 229) 100%);
+    animation: gradient-rotate 4s linear infinite;
+}
+
+.footerButton::before {
+    border-radius: 50%;
+    mask: radial-gradient(circle at center, transparent 42px, black 44px);
+}
+
+.gameLauncher + .gameLauncher-more { 
+    margin-left: 16px;
+}
+
+
+@keyframes gradient-rotate {
+    /* Not a CSS function, preprocessor will handle this*/
+    Mukkuru::BackgroundLinearGradientRotation(3.56 $# 0.5 $# rgba(104, 42, 155, 1) 0%, rgb(241, 191, 235) 50%, rgb(159, 231, 229) 100%);
+}
+
+.homeFooter {
+    border-top: unset;
+}

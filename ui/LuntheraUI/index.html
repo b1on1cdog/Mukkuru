@@ -101,13 +101,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
         
-        if (listStyle == "PS5") {
+        if (listStyle != "Switch") {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
-            link.href = './assets/css/ps5-list.css';
+            switch (listStyle) {
+                case "PS5":
+                    link.href = './assets/css/ps5-list.css';
+                    document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "rgba(0, 0, 0, 0)");
+                    showBottomBar(false);
+                    break;
+                case "Switch 2":
+                    link.href = './assets/css/sw2.css';
+                    document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "rgba(0, 0, 0, 0)");
+                    break;
+                default:
+                    break;
+            }
             document.head.appendChild(link);
-            document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "rgba(0, 0, 0, 0)");
-            showBottomBar(false);
         }
 
     clockUpdate(userConfiguration["12H"]);
@@ -223,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const thumbnail = document.createElement('img');
         thumbnail.className = 'gameLauncher-icon';
-        if (userConfiguration["listStyle"] == "PS5") {
+        if (userConfiguration["listStyle"] == "PS5" || userConfiguration["listStyle"] == "Switch 2") {
             thumbnail.src = "assets/img/all-software-2.png";
         } else {
             thumbnail.src = "assets/img/all-software.png";
@@ -436,6 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 window.location.reload();
                             });
                             playSound("run");
+                            break;
                         case 4:
                             playSound("settings");
                             vanish(homeMenu);

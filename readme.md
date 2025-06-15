@@ -8,12 +8,15 @@ This is still in early stages and is not yet suitable for final use.<br/>
 - PS5-like theme<br/>
 - Dark mode<br/>
 - Scan games from Steam Library<br/>
+- Scan games from Epic Games Library<br/>
 - Automatically download boxarts from SteamGridDB (when available)<br/>
 - Linux and Windows Support<br/>
 - Strict static analysis compliance<br/>
 
 # Planed features (To-do list)
+- Add ability to download games</br>
 - Add joystick buttons<br/>
+- Better settings toggle positioning<br/>
 - Allow user to use his own SteamGrid api key <br/>
 - Add scanning animation <br/>
 - Order recent played items in main screen<br/>
@@ -22,6 +25,8 @@ This is still in early stages and is not yet suitable for final use.<br/>
 - CSS Loader<br/>
 - Chosing custom themes from settings<br/>
 - Plugin support, with a plugin storefront<br/>
+    - The first plugin might be one to patch VNs<br/>
+    - Higurashi one will use HTTP request to interact with installer<br/>
 - MacOS support<br/>
 - User friendly installer<br/>
 
@@ -30,6 +35,11 @@ This is still in early stages and is not yet suitable for final use.<br/>
 - A too big window might cause keyguide to display incorrectly in app launcher<br/>
 # Changelog
 -----------------
+# 0.2.12
+- SW2 list style <br/>
+- [fix] opening store used to open settings instead <br/>
+- [fix] sound effects label off bounds <br/>
+- Added WIP CSS Preprocessor <br/>
 # 0.2.11
 - Renamed default ui <br/>
 - Updated SGDB Token <br/>

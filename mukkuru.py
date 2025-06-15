@@ -20,12 +20,11 @@ import socket
 import platform
 import distro
 import psutil
-
 import requests
 
 from waitress import serve
 from flask import Flask, request
-from flask import send_from_directory
+from flask import send_from_directory, send_file
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 
@@ -33,6 +32,7 @@ import grid_db
 import binvdf
 
 from mukkuru_pyside6 import Frontend
+from css_preprocessor import CssPreprocessor
 #from mukkuru_pywebview import Frontend
 
 if platform.system() == "Windows":
@@ -867,6 +867,11 @@ def static_file(path):
         return send_from_directory(serve_path, new_path)
     if path.startswith("thumbnails/") or path.startswith("hero/"):
         return send_from_directory(mukkuru_env["root"], path, mimetype='image/jpeg')
+    if path.endswith(".css"):
+        full_path = os.path.join(serve_path, path)
+        css = CssPreprocessor(full_path)
+        css.process()
+        return send_file(css.data(), mimetype="text/css")
     return send_from_directory(serve_path, path)
 
 def scan_thumbnails(games):

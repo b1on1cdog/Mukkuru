@@ -9,3 +9,4 @@ mukkuru.cmd
 build/
 nuitka-crash-report.xml
 mukkuru.png
+core_api.js
