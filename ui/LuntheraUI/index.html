@@ -285,13 +285,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (gameLaunchers.length < userConfiguration["maxGamesInHomeScreen"]){
         blocksToAdd = userConfiguration["maxGamesInHomeScreen"] - gameLaunchers.length;
         while (blocksToAdd > 0) {
+            // This might be unnecesary
             blocksToAdd--;
             const block = document.createElement('button');
             block.className = 'gameLauncher-placeholder';
             block.disabled = true;
             gameList.appendChild(block);
-            backend_log("[debug] game limit exceeded, adding 'more' button");
-        }    
+        }
     }
 
     document.querySelectorAll(".gameLauncher-title").forEach(el => {
@@ -533,7 +533,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="background-layer" id="bg"></div>
             <div class="userList">
                 <a href="#" class="userList-user" title="User">
-                    <img class="userList-icon" src="./assets/avatar.jpg" alt="User Picture">
+                    <img class="userList-icon" src="./assets/avatar" alt="User Picture">
                 </a>
             </div>
             <div class="statusBar">
@@ -575,6 +575,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 </button>
             </div>
         </main>
+        <div class="contextualMenu" id="gameContextMenu" style="display:none">
+            <ul>
+                <li onclick="doAction1()">Mark game as favorite</li>
+                <li onclick="doAction2()">Blacklist game</li>
+                <li onclick="doAction3()">Uninstall game</li>
+            </ul>
+        <div class="contextualMenu" id="powerDownContextMenu" style="display:none">
+            <ul>
+                <li onclick="doAction1()">Exit Mukkuru</li>
+                <li onclick="doAction2()">Shutdown device</li>
+                <li onclick="doAction3()">Restart device</li>
+            </ul>
+        </div>
         <footer class="homeFooter pending">
             <div class="controllerState">
                 <div class="controllerState-type">

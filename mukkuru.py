@@ -10,7 +10,6 @@ import math
 import re
 import base64
 import threading
-import struct
 import time
 # Debug only
 import sys
@@ -20,45 +19,24 @@ import socket
 import platform
 import distro
 import psutil
-import requests
 
 from waitress import serve
 from flask import Flask, request
 from flask import send_from_directory, send_file
-from fuzzywuzzy import fuzz
-from fuzzywuzzy import process
 
 import grid_db
-import binvdf
+from steam_parser import get_non_steam_games, get_steam_games, get_steam_env
+from steam_parser import read_steam_username, download_steam_avatar
 
 from mukkuru_pyside6 import Frontend
 from css_preprocessor import CssPreprocessor
 #from mukkuru_pywebview import Frontend
-
-if platform.system() == "Windows":
-    import winreg
 
 app = Flask(__name__)
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.CRITICAL)
 
 mukkuru_env = {}
-hardcoded_exclusions = ["Proton Experimental",
-                        "Steamworks Common Redistributables",
-                        "Steam Linux Runtime 1.0 (scout)",
-                        "Steam Linux Runtime 2.0 (soldier)",
-                        "Steam Linux Runtime 3.0 (sniper)",
-                        "Proton 9.0",
-                        "Proton 8.0",
-                        "Proton 7.0",
-                        "Proton 5.0",
-                        "Proton 4.2",
-                        "Proton 3.7",
-                        "Proton 3.16",
-                        "Proton 3.0",
-                        "Proton Hotfix"]
-
-AVATAR_DOWNLOAD_URL = "https://api.panyolsoft.com/steam/avatar/[USERNAME]"
 
 def app_version():
     ''' generate 5 MD5 digits to use as build number '''
@@ -68,86 +46,8 @@ def app_version():
         for chunk in iter(lambda: f.read(4096), b''):
             hasher.update(chunk)
     full_md5 = hasher.hexdigest()
-    return "Mukkuru v0.2.11 build-"+full_md5[-5:]
+    return "Mukkuru v0.2.13 build-"+full_md5[-5:]
 
-def read_binary_vdf(vdf_path):
-    """Read binary VDF file using a Python implementation"""
-    try:
-        with open(vdf_path, 'rb') as f:
-            return parse_binary_vdf(f)
-    except (FileNotFoundError, PermissionError, struct.error, ValueError, IndexError) as e:
-        print(f"Error reading binary VDF: {e}")
-        return "{}"
-def read_registry_value(root, reg_key, reg_value):
-    ''' [Windows only] read key from System Registry'''
-    if platform.system() == 'Windows':
-        if 'winreg' in sys.modules:
-            hroot = winreg.HKEY_LOCAL_MACHINE
-            if root == 1:
-                hroot = winreg.HKEY_CURRENT_USER
-            elif root == 2:
-                hroot = winreg.HKEY_CURRENT_CONFIG
-            elif root == 3:
-                hroot = winreg.HKEY_CLASSES_ROOT
-            key = winreg.OpenKey(hroot, reg_key)
-            ret, _ = winreg.QueryValueEx(key, reg_value)
-            return ret
-        else:
-            print("platform specific module not imported: winreg")
-            return None
-    else:
-        print('Unsupported function called')
-        return None
-
-def parse_binary_vdf(file_obj):
-    """Parse binary VDF file"""
-    result = {}
-    while True:
-        key = read_string(file_obj)
-        if not key:
-            break
-        value_type = file_obj.read(1)[0]
-        if value_type == 0x00:  # End of file
-            break
-        if value_type == 0x01:  # String
-            result[key] = read_string(file_obj)
-        elif value_type == 0x02:  # Int32
-            result[key] = struct.unpack('<i', file_obj.read(4))[0]
-        elif value_type == 0x08:  # Dictionary
-            result[key] = parse_binary_vdf(file_obj)
-        else:
-            raise ValueError(f"Unknown value type: {value_type}")
-    return result
-
-def read_string(file_obj):
-    """Read null-terminated string from file"""
-    chars = []
-    while True:
-        c = file_obj.read(1)
-        if not c or c == b'\x00':
-            break
-        chars.append(c)
-    return b''.join(chars).decode('utf-8')
-
-def get_steam_libraries(vdf_path):
-    """Get Steam library paths from libraryfolders.vdf"""
-    try:
-        with open(vdf_path, 'r', encoding='utf-8') as f:
-            data = parse_text_vdf(f.read())
-    except (FileNotFoundError, PermissionError, struct.error, ValueError, IndexError) as e:
-        print(f"Error reading libraryfolders.vdf: {e}")
-        return []
-    library_folders = data.get("libraryfolders", {})
-    paths = []
-    for key, val in library_folders.items():
-        if key.isdigit():  # Library folders have numerical keys
-            if isinstance(val, dict):
-                folder_path = val.get("path", "")
-                if folder_path:
-                    paths.append(os.path.join(folder_path, "steamapps"))
-    # Include main Steam folder
-    paths.append(os.path.join(mukkuru_env["steam"]["path"], "steamapps"))
-    return paths
 
 def get_egs_games():
     ''' [Windows only] get games from epic games launcher '''
@@ -181,96 +81,9 @@ def get_egs_games():
                 print(f"Exception occured: {e}")
     return games
 
-def parse_text_vdf(vdf_text):
-    """Simple text VDF parser (simplified version)"""
-    # This is a simplified version - for full parsing you might want to use a proper VDF parser
-    lines = vdf_text.split('\n')
-    stack = []
-    current = {}
-    result = current
-    key = None# Prevent crash
-    for line in lines:
-        line = line.strip()
-        if not line or line.startswith('//'):
-            continue
-        if line == '{':
-            new_dict = {}
-            stack.append((current, key))
-            current[key] = new_dict
-            current = new_dict
-        elif line == '}':
-            if stack:
-                current, key = stack.pop()
-        else:
-            parts = line.split('"')
-            if len(parts) >= 3:
-                key = parts[1]
-                value = parts[3] if len(parts) >= 4 else ""
-                current[key] = value
-    return result
-
-def parse_acf(acf_path):
-    """Parse an ACF file to get AppID and game name"""
-    try:
-        with open(acf_path, 'r', encoding='utf-8') as f:
-            data = parse_text_vdf(f.read())
-    except (FileNotFoundError, PermissionError, struct.error, ValueError, IndexError) as e:
-        print(f"Error reading ACF file {acf_path}: {e}")
-        return "", ""
-    app_state = data.get("AppState", {})
-    app_id = app_state.get("appid", "")
-    name = app_state.get("name", "")
-    return app_id, name
-
-def get_non_steam_games(shortcuts_pattern):
-    """Get Non-Steam games from shortcuts.vdf files"""
-    games = {}
-    # Find all shortcuts.vdf files
-    shortcuts_files = glob.glob(shortcuts_pattern)
-    for file in shortcuts_files:
-        try:
-            # Read and parse the binary VDF file
-            data = binvdf.parseshortcut(file)
-            # Extract the "shortcuts" section
-            shortcuts = data.get("shortcuts", {})
-            # Iterate over each shortcut, 'key' discarded with _
-            for _, shortcut in shortcuts.items():
-                if not isinstance(shortcut, dict):
-                    continue
-                app_name = shortcut.get("AppName", "")
-                if app_name in hardcoded_exclusions:
-                    continue
-
-                app_exe = shortcut.get("Exe", "")
-
-                if "moondeckrun" in app_exe:
-                    continue
-
-                app_dir = shortcut.get("StartDir", "")
-                app_options = shortcut.get("LaunchOptions", "")
-
-                app_id = str(int(shortcut.get("appid", 0))) if shortcut.get("appid") else ""
-                icon = shortcut.get("icon", "")
-
-
-                if app_name and app_id:
-                    games[app_id] = {
-                        "AppName": app_name,
-                        "icon": icon,
-                        "Exe": app_exe,
-                        "StartDir": app_dir,
-                        "LaunchOptions": app_options,
-                        "Hero": os.path.join(mukkuru_env["steam"]["gridPath"], app_id+"_hero.jpg"),
-                        "Logo": os.path.join(mukkuru_env["steam"]["gridPath"], app_id+"_logo.png"),
-                        "Cover": os.path.join(mukkuru_env["steam"]["gridPath"], app_id+"p.jpg"),
-                        "Source" : "non-steam"
-                    }
-        except (FileNotFoundError, PermissionError, struct.error, ValueError, IndexError) as e:
-            print(f"Error processing {file}: {e}")
-    return games
-
 def library_scan(options):
     '''
+    Scan library for games
     1 - Steam
     2 - Non-Steam
     4 - EGS
@@ -279,41 +92,19 @@ def library_scan(options):
     option_nonsteam = 1 << 1  # 0010 = 2
     option_egs = 1 << 2  # 0100 = 4
 
-    # Get Steam library paths
-    if options & option_steam:
-        libraries = get_steam_libraries(mukkuru_env["steam"]["libraryFile"])
-    else:
-        libraries = {}
+    steam = get_steam_env()
 
     games = {}
-    library_cache = os.path.join(mukkuru_env["steam"]["path"], "appcache", "librarycache")
-    # Scan Steam games
-    for lib in libraries:
-        for acf_file in Path(lib).glob("appmanifest_*.acf"):
-            app_id, name = parse_acf(str(acf_file))
-            if name in hardcoded_exclusions:
-                continue
-            if app_id:
-                games[app_id] = {
-                    "AppName": name,
-                    "icon": os.path.join(library_cache, f"{app_id}_icon.jpg"),
-                    "Exe": os.path.join(mukkuru_env["steam"]["launchPath"]),
-                    "LaunchOptions": f'steam://rungameid/{app_id}',
-                    "Hero": os.path.join(library_cache, f"{app_id}", "library_hero.jpg"),
-                    "Logo": os.path.join(library_cache, f"{app_id}", "logo.png"),
-                    "Source" : "steam",
-                }
+    if options & option_steam:
+        steam_games = get_steam_games(steam)
+        games.update(steam_games)
     # Scan Non-Steam games
     if options & option_nonsteam:
-        non_steam_games = get_non_steam_games(mukkuru_env["steam"]["shortcuts"])
+        non_steam_games = get_non_steam_games(steam)
         games.update(non_steam_games)
     if options & option_egs:
         egs_games = get_egs_games()
         games.update(egs_games)
-    if Path(mukkuru_env["steam"]["shortcuts"]).is_file():
-        print(f'Using { mukkuru_env["steam"]["shortcuts"] }\n')
-    else:
-        print(f'Unable to find: {mukkuru_env["steam"]["shortcuts"]}\n')
     return games
 
 def get_cpu_name():
@@ -527,61 +318,13 @@ def launch_app(app_id):
     update_config(user_config)
     return "200"
 
-def read_steam_username():
-    ''' get username from steam files '''
-    with open(mukkuru_env["steam"]["config.vdf"], "r", encoding="utf-8") as file:
-        content = file.read()
-        # Regex to match the structure under "Accounts"
-        matches = re.findall(r'"Accounts"\s*{\s*"(.*?)"', content)
-        if matches:
-            return matches[0]  # Return the first found username
-        print("No usernames found under 'Accounts'.")
-        return None
-
-def download_steam_avatar():
-    ''' (if not exists) downloads steam avatar picture '''
-    steam_username = read_steam_username()
-    if steam_username is None:
-        print("Unable to query avatar picture")
-        return
-    avatar_path = os.path.join(mukkuru_env["artwork"], "Avatar", steam_username+".jpg")
-    if Path(avatar_path).is_file():
-        print("Avatar image exists, skipping...")
-        return
-    r=requests.get(AVATAR_DOWNLOAD_URL.replace("[USERNAME]", steam_username), timeout=20)
-    avatar_url = r.text
-    if "http" in avatar_url:
-        print("downloading steam user avatar image...")
-        grid_db.download_file(avatar_url, avatar_path)
-    else:
-        print(f"Invalid avatar url: {avatar_url}")
-
-def number_aware_scorer(s1, s2):
-    '''give bad score to filenames with wrong number, to prevent game sequels confusions'''
-    base_score = fuzz.token_set_ratio(s1, s2)  # Start with standard fuzzy score
-    # Extract all numbers from both strings
-    nums1 = set(re.findall(r'\d+', s1))
-    nums2 = set(re.findall(r'\d+', s2))
-    # Penalize if numbers don't match exactly
-    if nums1 != nums2:
-        base_score = max(base_score - 50, 0)  # Heavy penalty for number mismatches
-    return base_score
-
-def find_strict_number_match(game_title, image_files, threshold=80):
-    ''' calculate a score for the game title, discard if under threshold '''
-    match, score = process.extractOne(game_title, image_files, scorer=number_aware_scorer)
-    # Reject if score is below threshold
-    if score >= threshold:
-        return match
-    return None
-
 def copy_file(source, destination):
     ''' copy a file from "source" to "destination" '''
     with open(source, 'rb') as src, open(destination,'wb') as dst:
         dst.write(src.read())
 
 
-def fetch_artwork(game_title, app_id, platform_name, force_online = False):
+def fetch_artwork(game_title, app_id, platform_name):
     '''get apps artwork'''
     square_thumbnail_dir = os.path.join(mukkuru_env["root"], "thumbnails")
     square_fetch_dir = os.path.join(mukkuru_env["artwork"],"Square")
@@ -590,14 +333,7 @@ def fetch_artwork(game_title, app_id, platform_name, force_online = False):
     if not Path(square_thumbnail_dir).is_dir():
         os.mkdir(square_thumbnail_dir)
 
-    if force_online is False:
-        image_files = glob.glob(os.path.join(square_fetch_dir, '*.jpg'))
-        if len(image_files) == 0:
-            match = None
-        else:
-            match =find_strict_number_match(grid_db.sanitize_filename_ascii(game_title),image_files)
-    else:
-        match = None
+    match = None
     if match is None:
         game_identifier = grid_db.GameIdentifier(game_title, app_id, platform_name)
         if game_identifier.platform != "non-steam":
@@ -653,7 +389,7 @@ def clear_possible_mismatches(games):
                     copy_file(src_image, thumbnail_path)
                 else:
                     game_source = games[app_id]["Source"]
-                    fetch_artwork(app_name, app_id, game_source, force_online=True)
+                    fetch_artwork(app_name, app_id, game_source)
     #if len(file_hashes) > 0:
     #    for k in app_hashes:
     return
@@ -665,13 +401,14 @@ def favicon():
 @app.route('/store/<storefront>')
 def open_store(storefront):
     ''' Launch the desired game storefront '''
+    steam = get_steam_env()
     if storefront == "steam":
-        subprocess.run(f'"{mukkuru_env["steam"]["launchPath"]}" steam://open/bigpicture',
+        subprocess.run(f'"{steam["launchPath"]}" steam://open/bigpicture',
                    stderr=subprocess.DEVNULL,
                    stdout=subprocess.DEVNULL,
                    env=os.environ.copy(), shell=True, check=False)
         time.sleep(3)
-        subprocess.run(f'"{mukkuru_env["steam"]["launchPath"]}" steam://store',
+        subprocess.run(f'"{steam["launchPath"]}" steam://store',
                    stderr=subprocess.DEVNULL,
                    stdout=subprocess.DEVNULL,
                    env=os.environ.copy(), shell=True, check=False)
@@ -842,7 +579,8 @@ def log_message(message):
 @app.route('/username')
 def get_user():
     '''Get username'''
-    username = read_steam_username()
+    steam = get_steam_env()
+    username = read_steam_username(steam["config.vdf"])
     if username is None:
         return os.environ.get('USER', os.environ.get('USERNAME'))
     return username
@@ -857,10 +595,13 @@ def static_file(path):
     ''' serve asset '''
     user_config = get_config(True)
     serve_path = f'{os.getcwd()}/ui/{user_config["theme"]}/'
-    if path == "assets/avatar.jpg":
+    if path == "assets/avatar":
         avatar_file = os.path.join(mukkuru_env["artwork"], "Avatar", f"{get_user()}.jpg")
+        avatar_png = os.path.join(mukkuru_env["artwork"], "Avatar", f"{get_user()}.png")
         if Path(avatar_file).is_file():
             return send_from_directory(mukkuru_env["artwork"], f"Avatar/{get_user()}.jpg")
+        elif Path(avatar_png).is_file():
+            return send_from_directory(mukkuru_env["artwork"], f"Avatar/{get_user()}.png")
     if path.startswith("assets/audio/"):
         audio_file = path.replace("assets/audio/", "")
         new_path = f'assets/audio/{user_config["uiSounds"]}/{audio_file}'
@@ -897,55 +638,38 @@ def start_server():
 
 def main():
     ''' start of app execution '''
-    mukkuru_env["steam"] = {}
     system = platform.system()
+    print(f"Running on {system}")
     if system == 'Windows':
-        print("Running on Windows")
-        # common_sdir = os.path.join("C:\\", "Program Files (x86)", "Steam")
-        # User can alter ProgramFiles dir to a different folder
-        program_files = os.environ.get("ProgramFiles(x86)") or os.environ.get("ProgramFiles")
-        mukkuru_env["steam"]["path"] = os.path.join(program_files, "Steam")
-        if not Path(mukkuru_env["steam"]["path"]).is_dir():
-            print("Steam not in common path, reading registry as a failover...")
-            vsk = r"SOFTWARE\WOW6432Node\Valve\Steam"
-            mukkuru_env["steam"]["path"] = read_registry_value(0, vsk, "InstallPath")
-        mukkuru_env["steam"]["shortcuts"] = os.path.join(mukkuru_env["steam"]["path"],
-                                                         "userdata", "*", "config", "shortcuts.vdf")
-        mukkuru_env["steam"]["libraryFile"] = os.path.join(mukkuru_env["steam"]["path"],
-                                                           "steamapps", "libraryfolders.vdf")
-
-        find_stuser = mukkuru_env["steam"]["shortcuts"].split('*')[0]
-        steam_id = os.listdir(find_stuser)[0]
-        mukkuru_env["steam"]["shortcuts"] = mukkuru_env["steam"]["shortcuts"].replace("*",
-                                                                                      steam_id, 1)
-        mukkuru_env["steam"]["launchPath"] = os.path.join(mukkuru_env["steam"]["path"], "Steam.exe")
         mukkuru_env["root"] = os.path.join(os.environ.get('APPDATA'), "Mukkuru")
     elif system == 'Linux':
-        print("Running in Linux")
-        # To-do: determine different steam installs
-        mukkuru_env["steam"]["launchPath"] = "/usr/bin/steam"
-        mukkuru_env["steam"]["path"] = os.path.expanduser("~/.local/share/Steam")
-        mukkuru_env["steam"]["libraryFile"] = os.path.join(mukkuru_env["steam"]["path"],
-                                                           "steamapps", "libraryfolders.vdf")
-        mukkuru_env["steam"]["shortcuts"] = os.path.join(mukkuru_env["steam"]["path"],
-                                                         "userdata", "*", "config", "shortcuts.vdf")
         mukkuru_env["root"] = os.path.join(os.path.expanduser("~"), ".config", "Mukkuru")
     elif system == 'Darwin':
         print('MacOS support is not yet implemented')
+        mukkuru_env["root"] = os.path.join(os.path.expanduser("~"), ".config", "Mukkuru")
     else:
-        print(f"Running in unsupported OS: {os.name}")
-    if not os.path.isdir(mukkuru_env["root"]):
-        os.mkdir(mukkuru_env["root"])
+        print("Running in unsupported OS")
     mukkuru_env["library.json"] = os.path.join(mukkuru_env["root"], "library.json")
     mukkuru_env["config.json"] = os.path.join(mukkuru_env["root"], "config.json")
     mukkuru_env["artwork"] = os.path.join(mukkuru_env["root"], "artwork")
-    if not os.path.isdir(mukkuru_env["artwork"]):
-        os.mkdir(mukkuru_env["artwork"])
-        os.mkdir(os.path.join(mukkuru_env["artwork"], "Square")  )
-        os.mkdir(os.path.join(mukkuru_env["artwork"], "Logo") )
-        os.mkdir(os.path.join(mukkuru_env["artwork"], "Heroes") )
-        os.mkdir(os.path.join(mukkuru_env["artwork"], "Grid") )
-        os.mkdir(os.path.join(mukkuru_env["artwork"], "Avatar") )
+
+    needed_dirs = [
+        mukkuru_env["root"],
+        mukkuru_env["artwork"],
+        os.path.join(mukkuru_env["artwork"], "Square"),
+        os.path.join(mukkuru_env["artwork"], "Logo"),
+        os.path.join(mukkuru_env["artwork"], "Heroes"),
+        os.path.join(mukkuru_env["artwork"], "Grid"),
+        os.path.join(mukkuru_env["artwork"], "Avatar"),
+        os.path.join(mukkuru_env["root"], "logo"),
+        os.path.join(mukkuru_env["root"], "thumbnails"),
+        os.path.join(mukkuru_env["root"], "hero"),
+    ]
+
+    for needed_dir in needed_dirs:
+        if not os.path.isdir(needed_dir):
+            os.mkdir(needed_dir)
+
     user_config = get_config(True)
     if not Path(mukkuru_env["library.json"]).is_file():
         print("No library.json")
@@ -955,11 +679,7 @@ def main():
     if user_config["startupGameScan"] is True:
         print("[debug] startupGameScan: True, starting library scan")
         threading.Thread(target=scan_games).start()
-    mukkuru_env["steam"]["gridPath"] = mukkuru_env["steam"]["shortcuts"].replace("shortcuts.vdf",
-                                                                                 "grid", 1)
-    mukkuru_env["steam"]["config.vdf"] = os.path.join(mukkuru_env["steam"]["path"],
-                                                      "config", "config.vdf")
-    download_steam_avatar()
+    download_steam_avatar(mukkuru_env["artwork"])
     if threading.current_thread() is threading.main_thread():
         threading.Thread(target=start_server).start()
         #This might cause a race condition if your computer is slower than a snail

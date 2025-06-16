@@ -55,7 +55,7 @@
 
 @keyframes gradient-rotate {
     /* Not a CSS function, preprocessor will handle this*/
-    Mukkuru::BackgroundLinearGradientRotation(3.56 $# 0.5 $# rgba(104, 42, 155, 1) 0%, rgb(241, 191, 235) 50%, rgb(159, 231, 229) 100%);
+    /*Mukkuru::BackgroundLinearGradientRotation(3.56 $# 0.5 $# rgba(104, 42, 155, 1) 0%, rgb(241, 191, 235) 50%, rgb(159, 231, 229) 100%);*/
 }
 
 .homeFooter {

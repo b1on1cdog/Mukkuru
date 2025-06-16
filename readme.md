@@ -3,153 +3,49 @@
 Cross-Platform customizable game launcher written in Python, optimized for GamePads.<br/>
 This is still in early stages and is not yet suitable for final use.<br/>
 
+# License
+Mukkuru is [licensed under MIT](license.md)<br/>
+See [third-party.md](third-party.md) for third-party files license terms.<br/>
+
 # Current features
-- Switch-like theme<br/>
-- PS5-like theme<br/>
+- SW,SW2, PS5 like themes<br/>
 - Dark mode<br/>
 - Scan games from Steam Library<br/>
 - Scan games from Epic Games Library<br/>
-- Automatically download boxarts from SteamGridDB (when available)<br/>
-- Linux and Windows Support<br/>
+- Automatically download boxarts from SteamGridDB<br/>
+- Linux, Windows and MacOS Support<br/>
 - Strict static analysis compliance<br/>
 
-# Planed features (To-do list)
+# To-do list
+- Add contextual menus</br>
 - Add ability to download games</br>
 - Add joystick buttons<br/>
 - Better settings toggle positioning<br/>
-- Allow user to use his own SteamGrid api key <br/>
+- Allow user to use their own SteamGrid api key to bypass my middle api<br/>
 - Add scanning animation <br/>
 - Order recent played items in main screen<br/>
 - Switch-Like contextual menus (when pressing options and some footer items) <br/>
 - Allow to add games as favorite <br/>
 - CSS Loader<br/>
 - Chosing custom themes from settings<br/>
+- Fix settings toggle alignment <br/>
+- Additional webui to manipulate Mukkuru config from another device <br/>
+    - Drag and drop wallpaper change <br/>
+    - Drag and drop video playback <br/>
+    - Menu to organize games, mark as favorite, blacklist, etc <br/>
+    - Must also support plugins <br/>
+    - Must use chunk splitting to prevent browser upload filesize limit <br/>
+    - (Optional) chunk checksum validation to prevent file corruption in upload <br/>
 - Plugin support, with a plugin storefront<br/>
     - The first plugin might be one to patch VNs<br/>
-    - Higurashi one will use HTTP request to interact with installer<br/>
-- MacOS support<br/>
+- Heroic Support<br/>
 - User friendly installer<br/>
 
 # Known issues
 - A too small window might cause view issues<br/>
 - A too big window might cause keyguide to display incorrectly in app launcher<br/>
 # Changelog
------------------
-# 0.2.12
-- SW2 list style <br/>
-- [fix] opening store used to open settings instead <br/>
-- [fix] sound effects label off bounds <br/>
-- Added WIP CSS Preprocessor <br/>
-# 0.2.11
-- Renamed default ui <br/>
-- Updated SGDB Token <br/>
-- Added code to download hero and logo from SteamGridDB<br/>
-- Games with missing asset in steamGridDB will now avoid retry in future scans<br/>
-- Fixed Settings not hightlighting White when dark mode was disabled<br/>
-- Improved navigation logic<br/>
-# 0.2.10
-- Added PS5-like list style <br/>
-- Added PS5 Sound effects <br/>
-- Solved crash when a translation was not available <br/>
-- Added waitress as dependency <br/>
-- Improved loading speed <br/>
-- Fixed some images failling to load<br/>
-- Thumbnails are now loaded from mukkuru config folder <br/>
-# 0.2.9
-- Avatar image is now downloaded from Steam API<br/>
-- Selected theme/library source is now highlighted in a different font color<br/>
-- Added Epic games as library source (Windows only)<br/>
-- Library sources can now be set from Settings <br/>
-- Solved left arrow exception in settings<br/>
-- Simplified some code<br/>
-# 0.2.8
-- Removed some unused debugging logs<br/>
-- Minor bugfixes<br/>
-- Improved network detection accuracy<br/>
-- Numeric options can now be altered from Settings UI<br/>
-# 0.2.7
-- Renamed 'backend.py' to 'mukkuru.py', webview is now launched from backend and not viceversa <br/>
-- Optional experimental pywebview file, as an alternative to pyside6<br/>
-- Solved last W0603 violation <br/>
-- Fullscreen now works without rebooting app <br/>
-- Noticeable webview code refactoring <br/>
-# 0.2.6
-- More robust Windows Steam Path detection<br/>
-- Store button now opens Steam storefront in bigpicture mode <br/>
-- Added ethernet icon if device does not use wireless <br/>
-- Battery icon now reacts to device battery percentage <br/>
-- Battery icon is now not visible if device has no battery <br/>
-# 0.2.5
-- Using a private api instead of SteamGridDB one, to prevent API key misuse<br/>
-- Added vanish effect when entering all-software menu <br/>
-- Added sound effect when pressing all-software button <br/>
-# 0.2.4
-- Expanded exclusions <br/>
-- Fixed crash when searching a game title <br/>
-# 0.2.3
-- Disabled resource logs <br/>
-- Fixed bug that made non-steam games artwork fetching fail<br/>
-- Last played game will now be first one in homescreen <br/>
-- Corrected Crash when a game title didn't match <br/>
-- Changed storage calculation dir from / to /home in Linux <br/>
-- Steam Deck GPU is now abbreviated <br/>
-# 0.2.2
-- Fixed crash when some directories didn't exists<br/>
-- Improved game artwork fetching accuracy<br/>
-- If an artwork is duplicated, the one that does not exactly match game title will be removed<br/>
-# 0.2.1
-- Fixed items in applist overlapping keyGuide<br/>
-- Fixed extraneous gap between apps in smaller resolutions<br/>
-- Fixed applist names being cut<br/>
-# 0.2.0
-- All-software menu apps now have visible title<br/>
-- All-software menu apps are now launchable<br/>
-- All-software button now has visible title<br/>
-- Fixed variable mismatch that made apps not to launch<br/>
-# 0.1.9
-- Added all-software menu<br/>
-- Footer is now fixed to screen<br/>
-- Fluent scrolling effect (all-software menu)<br/>
-# 0.1.8
-- Language can now be switched from Settings<br/>
-- Localization now does not require app restart<br/>
-- Improved localization logic<br/>
-- Fixed issue where 12-Hour suffix was not added if minutes were under 10<br/>
-# 0.1.7
-- Added localization<br/>
-- Rendering is now temporarily locked until everything is ready to display<br/>
-- Fix time bug at 12:00AM in 12-Hour time<br/>
-# 0.1.6
-- Added 12-Hour time<br/>
-- App version now only needs to be changed in a single place<br/>
-- Added Fullscreen toggle<br/>
-# 0.1.5
-- Added option to scan for games at Mukkuru startup<br/>
-- Game library can now be accesed during a scan<br/>
-- Huge Backend code re-structuration (Addresing W0603, E0602, C0301, C0303)<br/>
-- Added Backwards config.json compatibility<br/>
-- Added a timeout of 20 seconds to network requests (W3101)<br/>
-# 0.1.4
-- Removed context menu<br/>
-- Added fluent transitions <br/>
-- Settings code re-structuration<br/>
-- Fixed game library race condition<br/>
-# 0.1.3
-- Dark mode can now be toggled from settings<br/>
-- Dark mode now applies to settings<br/>
-- Added "about" tab, it will show system information<br/>
-- Solved FOUC during page transitions <br/>
-# 0.1.2
-- Implemented dark mode<br/>
-- Fixed bug that broke game launching in Windows<br/>
-- Fixed sounds were not playing at app launch<br/>
-- Fixed small lines in launcher borders<br/>
-# 0.1.1
-- Changed mukkuru config folder<br/>
-- Added SteamGridDB API, boxarts are now downloaded automatically (when available)<br/>
-- Solved multiple bugs<br/>
-- Added exclusion array to hide Proton, Steamworks and Linux runtime from showing as games<br/>
-
+[Read changelog.md](changelog.md)
 # Donations
 ---------------
 Donations could help me spending more time in these projects<br/>

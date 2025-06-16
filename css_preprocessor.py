@@ -7,7 +7,8 @@ class CssPreprocessor:
     """ Main class """
     def __init__(self, path):
         ''' Receives the CSS string and returns CSS buffer'''
-        self.prefix = "Mukkuru::"
+        self.prefix = "/*Mukkuru::"
+        self.suffix = ");*/"
         self.functions = ["BackgroundLinearGradientRotation"]
         if Path(path).is_file():
             with open(path, 'r', encoding='utf-8') as css_file:
@@ -20,17 +21,18 @@ class CssPreprocessor:
         ''' Replace sytax '''
         for function in self.functions:
             prefix = self.prefix + function + "("
-            pattern = re.compile(rf'{re.escape(prefix)}.*?\);')
+            pattern = re.compile(rf'{re.escape(prefix)}.*?{re.escape(self.suffix)}')
             for match in pattern.findall(self.css):
+                print(f"m: {match}")
                 command = match.replace(prefix, "")
-                command = command.replace(");", "")
+                command = command.replace(self.suffix, "")
                 args = command.split("$#")
                 if function == "BackgroundLinearGradientRotation":
                     rotation = float(args[0])
                     interval = float(args[1])
                     parameter = args[2]
                     replacement = self.lenion_one(rotation, interval, parameter)
-                    print(f"lenion_one{replacement}")
+                    #print(f"lenion_one{replacement}")
                     self.css = self.css.replace(match, replacement)
 
     def lenion_one(self, rotation, interval, parameter):
