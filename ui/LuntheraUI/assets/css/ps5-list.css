@@ -1,3 +1,7 @@
+html {
+    --select-light: #ffffffec;
+    --select-dark: #b7b7b7;
+}
 .gameLauncher {
     height: 140px;
     width: 140px;
@@ -174,6 +178,40 @@
     margin-left: 16px;
 }
 
+.appList {
+  grid-template-columns: repeat(5, minmax(10%, 1fr));
+  gap: 20px;
+}
+
+.appLauncher, .appLauncher-thumbnail {
+  border-radius: 3px;
+}
+
+.appLauncher:focus .appLauncher-thumbnail {
+  inset: 0;
+  -webkit-mask-image:
+    radial-gradient(circle at top left, rgba(0, 0, 0, 1) 60%, rgba(0, 0, 0, 0) 90%),
+    radial-gradient(circle at top right, rgba(0, 0, 0, 1) 60%, rgba(0, 0, 0, 0) 90%);
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-composite: destination-in;
+  mask-composite: intersect;
+}
+.appLauncher-title::before {
+  all: unset;
+}
+.appLauncher-title {
+  all: unset;
+  display:none;
+  position: absolute;
+  color: var(--accent-color);
+  bottom: 0;
+  text-align: left;
+  font-size: 15px;
+}
+.appLauncher:focus .appLauncher-title {
+  display: block;
+}
 /*
 
 @keyframes borderShine {

@@ -301,15 +301,14 @@ button {
     grid-template-columns: repeat(6, minmax(10%, 1fr));/*190px*/
     grid-template-rows: repeat(3, max-content);
     padding: 40px 50px 60px 50px;
-    gap: 6px;
+    gap: 10px;
     overflow: hidden;
 }
 
 .appLauncher {
-    aspect-ratio: 1; /* modern way to make squares */
+    aspect-ratio: 1;
     height: auto;
     width: 100%;
-    box-shadow: 0 2px 2px rgba(0, 0, 0, .1);
     outline: none;
     position: relative;
 }

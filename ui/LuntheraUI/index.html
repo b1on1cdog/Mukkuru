@@ -16,35 +16,6 @@ if (localStorage.getItem("darkMode") == "true" || localStorage.getItem("listStyl
     applyDarkMode();
 }
 
-/*
-gameLauncher
-height: 140px
-width: 140px
-border-radius: 11%
-
-gameLauncher-thumbnail
-border-radius: 11%
-
-gameLauncher: focus
-height: 246px
-width: 246px
-
-.gameLauncher-title {
-    position: absolute;
-    bottom: 20%;
-    left: 110%;
-    font-size: 18px;
-    color: var(--accent-color);
-    user-select: none;
-    opacity: 0;
-    overflow: hidden; 
-    white-space: nowrap;
-    display: inline-block;
-}
-
-
-*/
-
 let currentRow = 1;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -98,6 +69,13 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementsByClassName("controllerState-type")[0].getElementsByTagName("svg")[0].getElementsByTagName("path")[0].style.fill = lightColor;
         document.getElementsByClassName("wifiState-icon")[0].getElementsByTagName("path")[0].style.fill = lightColor;
         document.querySelectorAll(".keyGuide-icon").forEach((element) => element.getElementsByTagName("path")[0].style.fill = lightColor);
+        if (listStyle == "PS5") {
+            document.documentElement.style.setProperty("--accent-color", "#fff")
+        }
+
+    } else if (listStyle == "PS5") {
+        //document.documentElement.style.setProperty("--accent-color", "#4e0915");
+        document.documentElement.style.setProperty("--accent-color", "#2E2E2E");
     }
 
         
@@ -276,6 +254,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    utilityButtons.forEach(item => {
+        item.addEventListener('focus', () => {
+            item.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+            if (userConfiguration["listStyle"] == "PS5" && !userConfiguration["darkMode"]) {
+                bg = document.getElementById("bg");
+                bg.style.backgroundImage = "unset";
+                bg.style.backgroundRepeat = "no-repeat";
+                bg.style.backgroundSize = "cover"; // or 'contain' if needed
+                bg.style.backgroundPosition = "center";
+                homeMenu.style.backgroundColor = "none";
+            }
+        });
+    });
+
+
+    utilityButtons
     backend_log("[debug] Skipped " + gamesSkipped + " games due to user settings");
                 
     if (gameLaunchers.length > 0){
@@ -358,12 +353,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             case 'ArrowDown':
+                jumpFactor = (listStyle == "PS5")?5:6;
+
                 if (currentRow == 2) {
                     playSound("border");
-                } else if (currentRow == 3 && currentIndex + 6 < navigatingRow[currentRow].length) {
-                    currentIndex = currentIndex + 6;
+                } else if (currentRow == 3 && currentIndex + jumpFactor < navigatingRow[currentRow].length) {
+                    currentIndex = currentIndex + jumpFactor;
                     playSound("select");
-                } else if (currentRow == 3 && currentIndex + 6 >= navigatingRow[currentRow].length) {
+                } else if (currentRow == 3 && currentIndex + jumpFactor >= navigatingRow[currentRow].length) {
                     currentIndex = navigatingRow[currentRow].length-1;
                     playSound("border");
                 } else {
@@ -380,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentRow == 0) {
                     playSound("border");
                 } else if (currentRow == 3 && currentIndex > 5) {
-                    currentIndex = currentIndex - 6;
+                    currentIndex = currentIndex - jumpFactor;
                     playSound("select");
                 } else if (currentRow == 3 && currentIndex < 6) {
                     currentIndex = 0;

@@ -46,7 +46,7 @@ def app_version():
         for chunk in iter(lambda: f.read(4096), b''):
             hasher.update(chunk)
     full_md5 = hasher.hexdigest()
-    return "Mukkuru v0.2.13 build-"+full_md5[-5:]
+    return "Mukkuru v0.2.14 build-"+full_md5[-5:]
 
 
 def get_egs_games():

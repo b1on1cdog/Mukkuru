@@ -1,5 +1,9 @@
 # Changelog
 -----------------
+# 0.2.14
+- SW2 style now applies to applist<br/>
+- PS5 style now applies to applist</br>
+- PS5 style visibility is improved in light mode</br>
 # 0.2.13
 - CSS preprocessor functions are now commented to prevent css code warnings<br/>
 - Added MacOS steam support <br/>
