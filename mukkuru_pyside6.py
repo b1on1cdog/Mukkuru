@@ -65,7 +65,8 @@ class Frontend(QObject):
         self.web.load(QUrl("http://localhost:49347/frontend/index.html"))
         self.web.show()
         # Execute the app
-        self.app.setWindowIcon(QIcon("ui/mukkuru.ico"))
+        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui", "mukkuru.ico")
+        self.app.setWindowIcon(QIcon(icon_path))
         self.app.exec()
         self.close()
         sys.exit()

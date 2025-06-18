@@ -3,6 +3,8 @@ __pycache__
 artwork/Square/*
 ui/SwitchUI/thumbnails/*
 mukkuru.build/
+mukkuru_release*
+mukkuru-*-*
 mukkuru.exe
 mukkuru.cmd
 *.ps1
@@ -10,3 +12,4 @@ build/
 nuitka-crash-report.xml
 mukkuru.png
 core_api.js
+.venv

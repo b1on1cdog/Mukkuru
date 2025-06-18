@@ -209,6 +209,7 @@ function changeLockedValue(position) {
 }
 
 document.addEventListener('keydown', (e) => {
+    e.preventDefault();
     if (homeMenu.style.opacity < 1) {
             return;
     }

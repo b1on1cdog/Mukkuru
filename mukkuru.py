@@ -28,9 +28,14 @@ import grid_db
 from steam_parser import get_non_steam_games, get_steam_games, get_steam_env
 from steam_parser import read_steam_username, download_steam_avatar
 
-from mukkuru_pyside6 import Frontend
 from css_preprocessor import CssPreprocessor
-#from mukkuru_pywebview import Frontend
+
+USE_PYWEBVIEW = False
+
+if USE_PYWEBVIEW:
+    from mukkuru_pywebview import Frontend
+else:
+    from mukkuru_pyside6 import Frontend
 
 app = Flask(__name__)
 log = logging.getLogger('werkzeug')
@@ -38,16 +43,25 @@ log.setLevel(logging.CRITICAL)
 
 mukkuru_env = {}
 
-def app_version():
-    ''' generate 5 MD5 digits to use as build number '''
-    path = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(__file__)
-    hasher = hashlib.md5()
-    with open(path, 'rb') as f:
-        for chunk in iter(lambda: f.read(4096), b''):
-            hasher.update(chunk)
-    full_md5 = hasher.hexdigest()
-    return "Mukkuru v0.2.14 build-"+full_md5[-5:]
+COMPILER_FLAG = False
+APP_VERSION = "0.2.14"
+BUILD_VERSION = None
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
+def app_version():
+    ''' generate 6 MD5 digits to use as build number '''
+    if COMPILER_FLAG is False:
+        print("Calculating build version at runtime....")
+        path = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(__file__)
+        hasher = hashlib.md5()
+        with open(path, 'rb') as f:
+            for chunk in iter(lambda: f.read(4096), b''):
+                hasher.update(chunk)
+        full_md5 = hasher.hexdigest()
+        build_version = full_md5[-6:]
+    else:
+        build_version = BUILD_VERSION
+    return f"Mukkuru v{APP_VERSION} build-{build_version}"
 
 def get_egs_games():
     ''' [Windows only] get games from epic games launcher '''
@@ -205,10 +219,29 @@ def has_internet(host="8.8.8.8", port=53, timeout=0.3):
     except TimeoutError:
         return False
 
+def get_current_interface():
+    ''' determine current network interface using a dummy socket'''
+    # Step 1: Create a dummy socket connection to a public IP (Google DNS)
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))  # doesn't actually send data
+            local_ip = s.getsockname()[0]
+    except (TimeoutError) as e:
+        print(f"Could not determine local IP: {e}")
+        return None
+
+    # Step 2: Match local IP to a network interface
+    interfaces = psutil.net_if_addrs()
+    for iface, addrs in interfaces.items():
+        for addr in addrs:
+            if addr.family == socket.AF_INET and addr.address == local_ip:
+                return iface
+
+    return None
+
 def is_using_wireless():
     ''' return whether a Wireless connection is being used '''
-    interfaces = get_active_net_interfaces()
-    interface = interfaces[0]
+    interface = get_current_interface()
     system = platform.system()
 
     if system == "Darwin":
@@ -364,10 +397,7 @@ def clear_possible_mismatches(games):
     ''' clear artwork duplicates '''
     print("start artwork cleanup....")
     file_hashes = {}
-    #square_path = os.path.join(mukkuru_env["artwork"],"Square")
-    user_config = get_config(True)
-    square_path = f'ui/{user_config["theme"]}/thumbnails/'
-    user_config = get_config(True)
+    square_path = os.path.join(mukkuru_env["artwork"],"Square")
     #app_hashes = {}
     files = glob.glob(os.path.join(square_path, '*.jpg'))
     for file in files:
@@ -397,7 +427,7 @@ def clear_possible_mismatches(games):
 @app.route('/favicon.ico')
 def favicon():
     ''' favicon image '''
-    return send_from_directory(f'{os.getcwd()}/ui/', 'favicon.ico')
+    return send_from_directory(os.path.join(APP_DIR, "ui"), 'mukkuru.ico')
 @app.route('/store/<storefront>')
 def open_store(storefront):
     ''' Launch the desired game storefront '''
@@ -445,7 +475,7 @@ def scan_artwork(games = None):
     config["heroBlacklist"] = blacklist2
     config["logoBlacklist"] = blacklist3
     update_config(config)
-    clear_possible_mismatches(games)
+    #clear_possible_mismatches(games)
     scan_thumbnails(games)
     return "200"
 @app.route('/localization')
@@ -453,7 +483,7 @@ def localize():
     ''' get a json with current selected language strings'''
     user_config = get_config(True)
     language = user_config["language"]
-    with open(Path(f'ui/{user_config["theme"]}/translations.json'), encoding='utf-8') as f:
+    with open(Path(f'{APP_DIR}/ui/{user_config["theme"]}/translations.json'),encoding='utf-8') as f:
         localization = json.load(f)
         if language in localization:
             localization = localization[language]
@@ -594,7 +624,7 @@ def main_web():
 def static_file(path):
     ''' serve asset '''
     user_config = get_config(True)
-    serve_path = f'{os.getcwd()}/ui/{user_config["theme"]}/'
+    serve_path = os.path.join(APP_DIR, "ui", user_config["theme"])
     if path == "assets/avatar":
         avatar_file = os.path.join(mukkuru_env["artwork"], "Avatar", f"{get_user()}.jpg")
         avatar_png = os.path.join(mukkuru_env["artwork"], "Avatar", f"{get_user()}.png")
@@ -633,19 +663,22 @@ def is_fullscreen():
 
 def start_server():
     ''' init server '''
-    serve(app, host="localhost", threads=6, port=49347)
+    try:
+        serve(app, host="localhost", threads=6, port=49347)
+    except ConnectionResetError:
+        quit_app()
     #app.run(host='localhost', port=49347, debug=True, use_reloader=False)
 
 def main():
     ''' start of app execution '''
     system = platform.system()
     print(f"Running on {system}")
+    print(f'Using { "webview" if USE_PYWEBVIEW else "QT" } for rendering')
     if system == 'Windows':
         mukkuru_env["root"] = os.path.join(os.environ.get('APPDATA'), "Mukkuru")
     elif system == 'Linux':
         mukkuru_env["root"] = os.path.join(os.path.expanduser("~"), ".config", "Mukkuru")
     elif system == 'Darwin':
-        print('MacOS support is not yet implemented')
         mukkuru_env["root"] = os.path.join(os.path.expanduser("~"), ".config", "Mukkuru")
     else:
         print("Running in unsupported OS")

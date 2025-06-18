@@ -39,8 +39,9 @@
     border-radius: 12px;
     z-index: -5;
     position: absolute;
-    background: linear-gradient(90deg,rgba(104, 42, 155, 1) 0%, rgb(241, 191, 235) 50%, rgb(159, 231, 229) 100%);
-    animation: gradient-rotate 4s linear infinite;
+    /* background gradient must have same colors and same rotation degrees as the end of animation, to prevent bounce effect*/
+    background: linear-gradient(359deg, rgba(143, 242, 241, 1) 0%, rgba(105, 76, 252, 1) 35%, rgba(255, 204, 204, 1) 80%, rgba(115, 115, 250, 1) 100%);
+    animation: gradient-rotate 8s linear infinite;
 }
 .appLauncher::before {
     top: 48%;
@@ -59,7 +60,8 @@
 
 @keyframes gradient-rotate {
     /* Not a CSS function, preprocessor will handle this*/
-    /*Mukkuru::BackgroundLinearGradientRotation(3.56 $# 0.5 $# rgba(104, 42, 155, 1) 0%, rgb(241, 191, 235) 50%, rgb(159, 231, 229) 100%);*/
+    /* Mukkuru::BackgroundLinearGradientRotation(0.5 $# rgba(104, 42, 155, 1) 0%, rgb(241, 191, 235) 50%, rgb(159, 231, 229) 100%);*/
+    /*Mukkuru::BackgroundLinearGradientRotation(0.2 $# rgba(143, 242, 241, 1) 0%, rgba(105, 76, 252, 1) 35%, rgba(255, 204, 204, 1) 80%, rgba(115, 115, 250, 1) 100%);*/
 }
 
 .homeFooter {

@@ -11,7 +11,7 @@ html {
 .background-layer {
   position: fixed;
   inset: 0;
-   -webkit-mask-image: radial-gradient(circle at top left, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 100%),
+  mask-image: radial-gradient(circle at top left, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 100%),
                       radial-gradient(circle at top right, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 100%),
                       radial-gradient(circle at bottom left, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 100%),
                       radial-gradient(circle at bottom right, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 100%);
@@ -189,12 +189,11 @@ html {
 
 .appLauncher:focus .appLauncher-thumbnail {
   inset: 0;
-  -webkit-mask-image:
+  mask-image:
     radial-gradient(circle at top left, rgba(0, 0, 0, 1) 60%, rgba(0, 0, 0, 0) 90%),
     radial-gradient(circle at top right, rgba(0, 0, 0, 1) 60%, rgba(0, 0, 0, 0) 90%);
-  -webkit-mask-size: 100% 100%;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-composite: destination-in;
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
   mask-composite: intersect;
 }
 .appLauncher-title::before {
@@ -212,6 +211,11 @@ html {
 .appLauncher:focus .appLauncher-title {
   display: block;
 }
+.gameLauncher-placeholder {
+  all: unset;
+  display: none;
+}
+
 /*
 
 @keyframes borderShine {

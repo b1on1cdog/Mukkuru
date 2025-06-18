@@ -28,16 +28,15 @@ class CssPreprocessor:
                 command = command.replace(self.suffix, "")
                 args = command.split("$#")
                 if function == "BackgroundLinearGradientRotation":
-                    rotation = float(args[0])
-                    interval = float(args[1])
-                    parameter = args[2]
-                    replacement = self.lenion_one(rotation, interval, parameter)
+                    interval = float(args[0])
+                    parameter = args[1]
+                    replacement = self.lenion_one(interval, parameter)
                     #print(f"lenion_one{replacement}")
                     self.css = self.css.replace(match, replacement)
 
-    def lenion_one(self, rotation, interval, parameter):
+    def lenion_one(self, interval, parameter):
         ''' Produce snippet for  BackgroundLinearGradientRotation'''
-        n = 0.0
+        n = 0.1
         content = ""
         line = '''
     %i% {
@@ -45,9 +44,9 @@ class CssPreprocessor:
     }
 '''
         while n <= 100.0:
-            s = "{:.1f}".format(n)
+            s = f"{n:.1f}"
             c = line.replace('%i', s)
-            c = c.replace('%n', str( int(n*rotation) ) )
+            c = c.replace('%n', f"{( (n/100)*357 ):.2f}")
             c = c.replace('%p', parameter)
             content += "\n"+ c
             n += interval

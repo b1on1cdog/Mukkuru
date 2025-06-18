@@ -16,15 +16,21 @@ See [third-party.md](third-party.md) for third-party files license terms.<br/>
 - Linux, Windows and MacOS Support<br/>
 - Strict static analysis compliance<br/>
 
+# Release scope
+Release assemblies will only cover:<br/>
+- Windows AMD64<br/>
+- Linux AMD64<br/>
+- MacOS ARM64<br/>
+Architectures not listed will need to run the source code directly and might require modifications.</br>
+
 # To-do list
-- Add contextual menus</br>
+- Switch-Like contextual menus (when pressing options and some footer items) <br/>
 - Add ability to download games</br>
 - Add joystick buttons<br/>
 - Better settings toggle positioning<br/>
 - Allow user to use their own SteamGrid api key to bypass my middle api<br/>
 - Add scanning animation <br/>
 - Order recent played items in main screen<br/>
-- Switch-Like contextual menus (when pressing options and some footer items) <br/>
 - Allow to add games as favorite <br/>
 - CSS Loader<br/>
 - Chosing custom themes from settings<br/>
@@ -44,6 +50,7 @@ See [third-party.md](third-party.md) for third-party files license terms.<br/>
 # Known issues
 - A too small window might cause view issues<br/>
 - A too big window might cause keyguide to display incorrectly in app launcher<br/>
+- In some OS, Wi-Fi can be mistaken with Ethernet <br/>
 # Changelog
 [Read changelog.md](changelog.md)
 # Donations

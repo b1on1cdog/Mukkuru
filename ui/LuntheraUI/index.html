@@ -12,7 +12,7 @@
 const cssOverride = document.createElement('style');
 
 //at this point we do not have access to userConfiguration, so we are using localStorage
-if (localStorage.getItem("darkMode") == "true" || localStorage.getItem("listStyle ") == "PS5" ) {
+if (localStorage.getItem("darkMode") == "true") {
     applyDarkMode();
 }
 
@@ -139,68 +139,65 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     gameArray.forEach((item) => {
-
-    const AppID = item[0];
-    box_src = './thumbnails/'+AppID+'.jpg';
+        const AppID = item[0];
+        box_src = './thumbnails/'+AppID+'.jpg';
 
         if (item[1]["Thumbnail"]) {
 
+        } else if (userConfiguration["skipNoArt"] == true){
+            gamesSkipped++;
+            return;
         } else {
-            if (userConfiguration["skipNoArt"] == true){
-                gamesSkipped++;
-                return;
-            } else {
-                box_src = "./assets/vector/missing.svg";
-            }
+            box_src = "./assets/vector/missing.svg";
+        }
+
+        if (userConfiguration["blacklist"].AppID != undefined){
+            gamesSkipped++;
+            return;
+        }
+
+        const button = document.createElement('button');
+        button.className = 'gameLauncher';
+        button.id = AppID; // Set your unique ID here
+
+        const title = document.createElement('div');
+        title.className = 'gameLauncher-title';
+        title.textContent = item[1]["AppName"];
+        title.dataset.text = title.textContent;
+
+        const thumbnail = document.createElement('img');
+        thumbnail.className = 'gameLauncher-thumbnail';
+        thumbnail.src = box_src;
+        thumbnail.alt = item[1]["AppName"];
+
+
+        button.appendChild(title);
+        button.appendChild(thumbnail);
+        if (userConfiguration["listStyle"] == "PS5") {
+            const glass = document.createElement('div');
+            glass.className = 'glass-effect';
+            button.appendChild(glass);
+        }
+
+        if (gameLimit > gamesAdded){
+            gameList.appendChild(button);
+            gamesAdded++;
         }
     
-    if (userConfiguration["blacklist"].AppID != undefined){
-        gamesSkipped++;
-        return;
-    }
-
-    const button = document.createElement('button');
-    button.className = 'gameLauncher';
-    button.id = AppID; // Set your unique ID here
-
-    const title = document.createElement('div');
-    title.className = 'gameLauncher-title';
-    title.textContent = item[1]["AppName"];
-    title.dataset.text = title.textContent;
-
-    const thumbnail = document.createElement('img');
-    thumbnail.className = 'gameLauncher-thumbnail';
-    thumbnail.src = box_src;
-    thumbnail.alt = item[1]["AppName"];
-
-
-    button.appendChild(title);
-    button.appendChild(thumbnail);
-    if (userConfiguration["listStyle"] == "PS5") {
-        const glass = document.createElement('div');
-        glass.className = 'glass-effect';
-        button.appendChild(glass);
-    }
-
-    if (gameLimit > gamesAdded){
-        gameList.appendChild(button);
-        gamesAdded++;
-    }
-    
-    const app = document.createElement('button');
-    app.className = 'appLauncher';
-    app.id = "app_" + AppID;
-    const appTitle = document.createElement('div');
-    appTitle.className = "appLauncher-title";
-    appTitle.textContent = item[1]["AppName"]
-    appTitle.dataset.text = appTitle.textContent;
-    const appImage = document.createElement('img');
-    appImage.className = 'appLauncher-thumbnail';
-    appImage.src = box_src;
-    appImage.alt = item[1]["AppName"];
-    app.appendChild(appTitle);
-    app.appendChild(appImage);
-    appList.appendChild(app);
+        const app = document.createElement('button');
+        app.className = 'appLauncher';
+        app.id = "app_" + AppID;
+        const appTitle = document.createElement('div');
+        appTitle.className = "appLauncher-title";
+        appTitle.textContent = item[1]["AppName"]
+        appTitle.dataset.text = appTitle.textContent;
+        const appImage = document.createElement('img');
+        appImage.className = 'appLauncher-thumbnail';
+        appImage.src = box_src;
+        appImage.alt = item[1]["AppName"];
+        app.appendChild(appTitle);
+        app.appendChild(appImage);
+        appList.appendChild(app);
     });
 
     if (gamesAdded >= gameLimit) {
@@ -229,12 +226,26 @@ document.addEventListener('DOMContentLoaded', () => {
         gameList.appendChild(moreButton);
     }
     
+    gameLaunchers = document.querySelectorAll('.gameLauncher, .gameLauncher-more');
+    appLaunchers = document.querySelectorAll('.appLauncher');
+
+    document.querySelectorAll('.gameLauncher-placeholder').forEach(e => e.remove());
+    
+    if (gameLaunchers.length < userConfiguration["maxGamesInHomeScreen"]){
+        blocksToAdd = userConfiguration["maxGamesInHomeScreen"] - gameLaunchers.length;
+        while (blocksToAdd > 0) {
+            // This might be unnecesary
+            blocksToAdd--;
+            const block = document.createElement('button');
+            block.className = 'gameLauncher-placeholder';
+            block.disabled = true;
+            gameList.appendChild(block);
+        }
+    }
+    
     const spacer = document.createElement('div');
     spacer.style.minWidth = "300px";
     gameList.appendChild(spacer);
-
-    gameLaunchers = document.querySelectorAll('.gameLauncher, .gameLauncher-more');
-    appLaunchers = document.querySelectorAll('.appLauncher');
 
     appLaunchers.forEach(item => {
         item.addEventListener('focus', () => {
@@ -246,7 +257,11 @@ document.addEventListener('DOMContentLoaded', () => {
             item.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
             if (userConfiguration["listStyle"] == "PS5") {
                 bg = document.getElementById("bg");
-                bg.style.backgroundImage = "url('hero/" + item.id+ ".png')";
+                if (!item.classList.contains("gameLauncher-more")) {
+                    bg.style.backgroundImage = "url('hero/" + item.id+ ".png')";
+                } else{
+                    bg.style.backgroundImage = "none";
+                }
                 bg.style.backgroundRepeat = "no-repeat";
                 bg.style.backgroundSize = "cover"; // or 'contain' if needed
                 bg.style.backgroundPosition = "center";
@@ -269,25 +284,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-
-    utilityButtons
     backend_log("[debug] Skipped " + gamesSkipped + " games due to user settings");
                 
     if (gameLaunchers.length > 0){
     gameLaunchers[0].focus(); // Focus the first game by default
-    document.querySelectorAll('.gameLauncher-placeholder').forEach(e => e.remove());
-    
-    if (gameLaunchers.length < userConfiguration["maxGamesInHomeScreen"]){
-        blocksToAdd = userConfiguration["maxGamesInHomeScreen"] - gameLaunchers.length;
-        while (blocksToAdd > 0) {
-            // This might be unnecesary
-            blocksToAdd--;
-            const block = document.createElement('button');
-            block.className = 'gameLauncher-placeholder';
-            block.disabled = true;
-            gameList.appendChild(block);
-        }
-    }
 
     document.querySelectorAll(".gameLauncher-title").forEach(el => {
     if (el.textContent.length > 25) {//32
