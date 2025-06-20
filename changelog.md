@@ -2,7 +2,7 @@
 -----------------
 # 0.2.15
 - Addded function to list themes<br/>
-- [source] Separated hardware/network info functions to a (different file)[hardware_if.py] <br/>
+- [source] Separated hardware/network info functions to a [different file](hardware_if.py)<br/>
 - Some functions results are now cached<br/>
 - Core number to use in waitress can now be set from config.json<br/>
 - backend_log will now append to a log file<br/>
