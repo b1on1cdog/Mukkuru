@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="notranslate" translate="no">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Mukkuru</title>
     <link rel="stylesheet" href="./assets/css/style.css">
@@ -10,15 +11,20 @@
     <script src="localization.js"></script>
     <script>
 const cssOverride = document.createElement('style');
-
 //at this point we do not have access to userConfiguration, so we are using localStorage
 if (localStorage.getItem("darkMode") == "true") {
     applyDarkMode();
 }
 
+function measure_time(name, begin, end = performance.now()) {
+    time_used = end - begin;
+    backend_log(name + " " + time_used + " ms");
+}
+
 let currentRow = 1;
 
 document.addEventListener('DOMContentLoaded', () => {
+    const start_load = performance.now();
     /*Load games*/
     const gameList = document.querySelector('.gameList');
     const appList = document.querySelector('.appList');
@@ -33,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return response.json();
     }).then(function(data) {
         userConfiguration = data;
+        measure_time("config loading time", start_load)
 
         if (userConfiguration != null && userConfiguration != undefined && Object.keys(userConfiguration).length > 0) {
             localStorage.setItem("userConfiguration", JSON.stringify(data));
@@ -61,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementsByClassName("homeMenu")[0].style.setProperty("--bg-color", darkColor);
         document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "#4E4E4E"); // this one must be slightly different to background 
 
-        document.querySelectorAll(".footerButton-icon").forEach((element) => { 
+        document.querySelectorAll(".footerButton-icon").forEach((element) => {
             if (element instanceof SVGElement) {
                 element.getElementsByTagName("path")[0].style.fill = lightColor;
             }
@@ -115,6 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
     just yet
     */
     (async () => {
+    library_start = performance.now();
     //gameArr = Object.entries(data);
     gameArr = Object.entries(data);
     const favoriteGames = new Set(userConfiguration.favorite);
@@ -125,6 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
     gamesSkipped = 0;
     gamesAdded = 0;
     await isConfigReady;
+
     gameLimit = userConfiguration["maxGamesInHomeScreen"];
 
     //make last played game displayed first
@@ -170,7 +179,6 @@ document.addEventListener('DOMContentLoaded', () => {
         thumbnail.src = box_src;
         thumbnail.alt = item[1]["AppName"];
 
-
         button.appendChild(title);
         button.appendChild(thumbnail);
         if (userConfiguration["listStyle"] == "PS5") {
@@ -183,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gameList.appendChild(button);
             gamesAdded++;
         }
-    
+       // (async () => {
         const app = document.createElement('button');
         app.className = 'appLauncher';
         app.id = "app_" + AppID;
@@ -198,6 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
         app.appendChild(appTitle);
         app.appendChild(appImage);
         appList.appendChild(app);
+      //  });
     });
 
     if (gamesAdded >= gameLimit) {
@@ -252,34 +261,34 @@ document.addEventListener('DOMContentLoaded', () => {
             item.scrollIntoView({ behavior: "instant", block: "center" });
         });
     });
+
+    displayHero = (userConfiguration["listStyle"] == "PS5");
+    if (displayHero) {
+        bg = document.getElementById("bg");
+        bg.style.backgroundRepeat = "no-repeat";
+        bg.style.backgroundSize = "cover";
+        bg.style.backgroundPosition = "center";
+        homeMenu.style.backgroundColor = "none";
+    }
+
     gameLaunchers.forEach(item => {
         item.addEventListener('focus', () => {
             item.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-            if (userConfiguration["listStyle"] == "PS5") {
-                bg = document.getElementById("bg");
+            if (displayHero) {//start displayHero
                 if (!item.classList.contains("gameLauncher-more")) {
                     bg.style.backgroundImage = "url('hero/" + item.id+ ".png')";
                 } else{
                     bg.style.backgroundImage = "none";
                 }
-                bg.style.backgroundRepeat = "no-repeat";
-                bg.style.backgroundSize = "cover"; // or 'contain' if needed
-                bg.style.backgroundPosition = "center";
-                homeMenu.style.backgroundColor = "none";
-            }
+            }//end displayHero
         });
     });
 
     utilityButtons.forEach(item => {
         item.addEventListener('focus', () => {
             item.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-            if (userConfiguration["listStyle"] == "PS5" && !userConfiguration["darkMode"]) {
-                bg = document.getElementById("bg");
+            if (displayHero && !userConfiguration["darkMode"]) {
                 bg.style.backgroundImage = "unset";
-                bg.style.backgroundRepeat = "no-repeat";
-                bg.style.backgroundSize = "cover"; // or 'contain' if needed
-                bg.style.backgroundPosition = "center";
-                homeMenu.style.backgroundColor = "none";
             }
         });
     });
@@ -297,12 +306,14 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         backend_log(`[debug] no games -> arr-length ${gameArray.length}, gameLimit ${gameLimit}, gamesAdded ${gamesAdded}, userConfiguration ${userConfiguration}`);
     }
+
+    measure_time("library loading time", library_start)
 })();//END IIFE
     }).catch(function(err) {
         backend_log('[error] Fetch Error :'+ err);
     });
 
-    const utilityButtons = Array.from(document.querySelectorAll('.footerNavigation button'))
+    const utilityButtons = Array.from(document.querySelectorAll('.footerNavigation button'));
     const profileRow = document.querySelectorAll('.userList-user');
     let currentIndex = 0;
 
@@ -315,6 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.addEventListener('keydown', (e) => {
+        //ensureFullscreen(!userConfiguration["fullScreen"]);
         if (homeMenu.style.opacity < 1) {
             return;
         }
@@ -397,10 +409,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     playSound("run");
                     setTimeout(function () {
                     currentRow = 3;
-                    document.getElementsByClassName("gameList")[0].style.display = "none";
+                    gameList.style.display = "none";
                     document.getElementsByClassName("homeHeader")[0].style.display = "none";
                     document.getElementsByClassName("footerNavigation")[0].style.display = "none";
-                    document.getElementsByClassName("appList")[0].style.display = "grid";
+                    appList.style.display = "grid";
                     currentIndex = 0;
                     }, 300);
                     blink(homeMenu);
@@ -477,6 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
             default:
                 return;
         }
+
         if (currentRow != 2 && userConfiguration["listStyle"] == "PS5") {
             showBottomBar(false);
         } else if (currentRow != 3) {
@@ -608,4 +621,5 @@ document.addEventListener('DOMContentLoaded', () => {
         </footer>
     </div>
 </body>
+    
 </html>

@@ -1,4 +1,4 @@
-
+/*
 (function(document) {
     var config = {
         kitId: 'ozw8epo',
@@ -46,7 +46,7 @@
     // Insert Typekit script before the first script element
     firstScript.parentNode.insertBefore(typekitScript, firstScript);
 })(document);
-
+*/
 const backendURL = "http://localhost:49347";
 
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -157,6 +157,7 @@ function booleanTgl(statement){
 }
 
 function backend_log(message){
+  console.log(message);
   fetch(backendURL+ "/log/"+btoa(message)).then(function(response) {
     return response.text();
 });

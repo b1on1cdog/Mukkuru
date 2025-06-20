@@ -1,17 +1,26 @@
 # Changelog
 -----------------
+# 0.2.15
+- Addded function to list themes<br/>
+- [source] Separated hardware/network info functions to a (different file)[hardware_if.py] <br/>
+- Some functions results are now cached<br/>
+- Core number to use in waitress can now be set from config.json<br/>
+- backend_log will now append to a log file<br/>
+- Changes to compiler.py, added args --docker, --clean, --wipe and --run<br/>
+- Added FlaskUI as an optional view<br/>
+- Minor UI Changes<br/>
 # 0.2.14
 - SW2 style now applies to applist<br/>
 - Improved SW2 selector animation<br/>
-- PS5 style now applies to applist</br>
-- PS5 style visibility is improved in light mode</br>
-- [fix] PS5 placeholders are now invisible </br>
-- [fix] spacer is now added after placeholders</br>
-- [fix] improved network interface detection </br>
-- [fix] solved MacOS annoying "boop" when navigating in settings </br>
-- [source] enhanced compile.py, now it handles venv and dependencies automatically</br>
-- App now uses a static build version when compiled</br>
-- Now using executable directory instead of working directory </br>
+- PS5 style now applies to applist<br/>
+- PS5 style visibility is improved in light mode<br/>
+- [fix] PS5 placeholders are now invisible <br/>
+- [fix] spacer is now added after placeholders<br/>
+- [fix] improved network interface detection <br/>
+- [fix] solved MacOS annoying "boop" when navigating in settings <br/>
+- [source] enhanced compile.py, now it handles venv and dependencies automatically<br/>
+- App now uses a static build version when compiled<br/>
+- Now using executable directory instead of working directory <br/>
 # 0.2.13
 - CSS preprocessor functions are now commented to prevent css code warnings<br/>
 - Added MacOS steam support <br/>

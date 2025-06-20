@@ -5,9 +5,8 @@ import os
 import glob
 import json
 from pathlib import Path
+from functools import lru_cache
 import subprocess
-import math
-import re
 import base64
 import threading
 import time
@@ -15,9 +14,7 @@ import time
 import sys
 import hashlib
 import logging
-import socket
 import platform
-import distro
 import psutil
 
 from waitress import serve
@@ -29,11 +26,15 @@ from steam_parser import get_non_steam_games, get_steam_games, get_steam_env
 from steam_parser import read_steam_username, download_steam_avatar
 
 from css_preprocessor import CssPreprocessor
+import hardware_if
+FRONTEND_MODE = "PYWEBVIEW"
 
-USE_PYWEBVIEW = False
-
-if USE_PYWEBVIEW:
+if FRONTEND_MODE == "PYWEBVIEW":
     from mukkuru_pywebview import Frontend
+elif FRONTEND_MODE == "FLASKUI":
+    from flaskwebgui import FlaskUI as Frontend, close_application
+    # Darwin, Windows, Linux: Chrome, Brave, Edge
+    # Linux: Chromium
 else:
     from mukkuru_pyside6 import Frontend
 
@@ -44,10 +45,12 @@ log.setLevel(logging.CRITICAL)
 mukkuru_env = {}
 
 COMPILER_FLAG = False
-APP_VERSION = "0.2.14"
+APP_VERSION = "0.2.15"
 BUILD_VERSION = None
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
+APP_PORT = 49347
 
+@lru_cache(maxsize=1)
 def app_version():
     ''' generate 6 MD5 digits to use as build number '''
     if COMPILER_FLAG is False:
@@ -121,164 +124,49 @@ def library_scan(options):
         games.update(egs_games)
     return games
 
-def get_cpu_name():
-    ''' get cpu name as string '''
-    system = platform.system()
+def has_required_keys(json_data, required):
+    ''' Returns whether json has required keys '''
+    return set(required.keys()).issubset(json_data)
 
-    if system == "Windows":
-        try:
-            output = subprocess.check_output(["wmic", "cpu", "get", "Name"], shell=True)
-            lines = output.decode().splitlines()
-            # Remove empty lines and strip whitespace
-            lines = [line.strip() for line in lines if line.strip()]
-            if len(lines) > 1:
-                return lines[1]
-        except (subprocess.CalledProcessError, IndexError, UnicodeDecodeError):
-            pass
-        return platform.processor()
-    if system == "Darwin":  # macOS
-        try:
-            return subprocess.check_output(["sysctl",
-                                            "-n", "machdep.cpu.brand_string"]).decode().strip()
-        except (subprocess.CalledProcessError, IndexError, UnicodeDecodeError):
-            return platform.processor()
-
-    if system == "Linux":
-        try:
-            with open("/proc/cpuinfo", encoding='utf-8') as f:
-                for line in f:
-                    if "model name" in line:
-                        return line.split(":")[1].strip()
-        except (FileNotFoundError, PermissionError, IndexError):
-            pass
-        return platform.processor()
-    return "Unknown CPU"
-
-
-def get_gpu_name():
-    ''' get GPU name '''
-    system = platform.system()
-
-    if system == "Windows":
-        try:
-            output = subprocess.check_output(
-                ["wmic", "path", "win32_VideoController", "get", "name"],
-                shell=True
-            )
-            lines = output.decode().splitlines()
-            lines = [line.strip() for line in lines if line.strip()]
-            return lines[1] if len(lines) > 1 else "Unknown GPU"
-        except (subprocess.CalledProcessError, IndexError, UnicodeDecodeError, PermissionError):
-            return "Unknown GPU"
-
-    elif system == "Linux":
-        try:
-            output = subprocess.check_output(
-                ["lspci"], stderr=subprocess.DEVNULL
-            ).decode()
-            gpus = []
-            for line in output.splitlines():
-                if "VGA compatible controller" in line or "3D controller" in line:
-                    gpus.append(line)
-            return gpus[0].split(":")[-1].strip() if gpus else "Unknown GPU"
-        except (PermissionError, IndexError, subprocess.CalledProcessError):
-            return "Unknown GPU"
-
-    elif system == "Darwin":  # macOS
-        try:
-            output = subprocess.check_output(
-                ["system_profiler", "SPDisplaysDataType"]
-            ).decode()
-            for line in output.splitlines():
-                line = line.strip()
-                if line.startswith("Chipset Model:"):
-                    return line.split(":", 1)[1].strip()
-            return "Unknown GPU"
-        except (IndexError, UnicodeDecodeError, PermissionError):
-            return "Unknown GPU"
-
-    return "Unknown GPU"
-
-def get_active_net_interfaces():
-    ''' get net interfaces as an array'''
-    stats = psutil.net_if_stats()
-    addrs = psutil.net_if_addrs()
-
-    active = []
-    for iface, info in stats.items():
-        if info.isup and iface in addrs:
-            active.append(iface)
-    return active
-
-def has_internet(host="8.8.8.8", port=53, timeout=0.3):
-    ''' Ping servers to determine whether device has access to net '''
+def is_valid_json(filepath, template = None):
+    ''' Returns True if JSON is valid, otherwise returns False '''
     try:
-        socket.setdefaulttimeout(timeout)
-        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            if template is not None:
+                return has_required_keys(data, required=template)
         return True
-    except TimeoutError:
+    except (json.JSONDecodeError, OSError):
         return False
 
-def get_current_interface():
-    ''' determine current network interface using a dummy socket'''
-    # Step 1: Create a dummy socket connection to a public IP (Google DNS)
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.connect(("8.8.8.8", 80))  # doesn't actually send data
-            local_ip = s.getsockname()[0]
-    except (TimeoutError) as e:
-        print(f"Could not determine local IP: {e}")
-        return None
-
-    # Step 2: Match local IP to a network interface
-    interfaces = psutil.net_if_addrs()
-    for iface, addrs in interfaces.items():
-        for addr in addrs:
-            if addr.family == socket.AF_INET and addr.address == local_ip:
-                return iface
-
-    return None
-
-def is_using_wireless():
-    ''' return whether a Wireless connection is being used '''
-    interface = get_current_interface()
-    system = platform.system()
-
-    if system == "Darwin":
-        try:
-            hwports = subprocess.check_output(["networksetup", "-listallhardwareports"]).decode()
-            blocks = hwports.strip().split("Hardware Port:")
-            for block in blocks:
-                if "Wi-Fi" in block or "AirPort" in block:
-                    match = re.search(r"Device: (\w+)", block)
-                    if match and match.group(1) == interface:
-                        return True
-            return False
-        except (IndexError, PermissionError):
-            return False
-    if system == "Linux":
-        return os.path.isdir(f"/sys/class/net/{interface}/wireless")
-    if system == "Windows":
-        try:
-            output = subprocess.check_output("netsh wlan show interfaces",
-                                             shell=True).decode(errors="ignore")
-            return interface.lower() in output.lower()
-        except (IndexError, subprocess.CalledProcessError, PermissionError):
-            return False
-
-def wireless_signal():
-    '''Get the signal of Wi-Fi'''
-    return 100
+def get_themes(raw = False):
+    ''' Return a list of themes '''
+    themes_dir = os.path.join(mukkuru_env["root"], "themes")
+    theme_manifests = []
+    themes = []
+    required = {
+        "name" : "",
+        "author" : "",
+        "theme_version" : "",
+        "markup_files" : [],
+        "style_overwrite" : False,
+        "banner" : ""
+    }
+    for theme_dir in os.listdir(themes_dir):
+        theme_manifest = os.path.join(themes_dir, theme_dir, "manifest.json")
+        if Path(theme_manifest).is_file() and is_valid_json(theme_manifest, template=required):
+            theme_manifests.append(theme_manifest)
+    for theme_manifest in theme_manifests:
+        with open(theme_manifest, 'r', encoding='utf-8') as f:
+            themes.append(json.load(f))
+    if raw is True:
+        return themes
+    return json.dumps(themes)
 
 @app.route("/hardware/network")
 def connection_status():
     ''' returns a json with connection status'''
-    status = {}
-    status["wifi"] = is_using_wireless()
-    status["internet"] = has_internet() or has_internet()
-    if status["internet"] is False:
-        status["internet"] = has_internet(host="8.8.4.4") or has_internet(host="1.1.1.1")
-    status["signal"] = wireless_signal()
+    status = hardware_if.connection_status()
     return json.dumps(status)
 @app.route("/hardware/battery")
 def battery_info():
@@ -289,51 +177,15 @@ def battery_info():
 @app.route("/hardware")
 def harware_info():
     ''' get hardware info as a json '''
-    memory_info = psutil.virtual_memory()
-    platform_info = platform.uname()
-
-    hardware_info = {}
-
-    hardware_info["total_ram"] = round(memory_info.total/(1024*1024*1024),1)
-    hardware_info["used_ram"] = round(memory_info.used/(1024*1024*1024),1)
-
-    hardware_info["computer_name"] = platform_info.node
-    hardware_info["arch"] = platform_info.machine
-    hardware_info["os"] = platform_info.system
-
-    hardware_info["distro"] = hardware_info["os"]
-
-    if hardware_info["os"] == "Linux":
-        hardware_info["distro"] = distro.name(pretty=True)
-    elif hardware_info["os"] == "Windows":
-        try:
-            output = subprocess.check_output(['wmic', 'os', 'get', 'Caption'], shell=True)
-            lines = output.decode().splitlines()
-            # to-do: fix possible empty reply if lines[2] returns nothing
-            hardware_info["distro"] = lines[2].strip() if len(lines) > 1 else "Microsoft Windows"
-        except subprocess.CalledProcessError:
-            hardware_info["distro"] = "Windows"
-
-    disk_info = psutil.disk_usage('/')
-    if hardware_info["os"] == "Linux":
-        disk_info = psutil.disk_usage('/home')
-    hardware_info["disk_total"] = math.ceil(disk_info.total/(1000*1000*1000))
-    hardware_info["disk_used"] = round(disk_info.used/(1000*1000*1000),1)
-    hardware_info["disk_free"] = round(disk_info.free/(1000*1000*1000),1)
-    hardware_info["cpu"] = get_cpu_name()
-    gpu = get_gpu_name()
-    if "Custom GPU 0405" in gpu:
-        gpu = "AMD Custom GPU 0405"
-
-    gpu = gpu.replace("Advanced Micro Devices, Inc. ", "")
-    gpu = gpu.replace("[AMD/ATI] ", "")
-    hardware_info["gpu"] = gpu
+    hardware_info = hardware_if.get_info()
     hardware_info["app_version"] = app_version()
     return json.dumps(hardware_info)
 
 @app.route('/app/exit')
 def quit_app():
     ''' exit mukkuru '''
+    if FRONTEND_MODE == "FLASKUI":
+        close_application() # pylint: disable=E0606, E0601
     os._exit(0)
 
 @app.route('/library/launch/<app_id>')
@@ -347,8 +199,9 @@ def launch_app(app_id):
                    stdout=subprocess.DEVNULL,
                    env=os.environ.copy(), shell=True, check=False)
     user_config = get_config(True)
-    user_config["lastPlayed"] = app_id
-    update_config(user_config)
+    if user_config["lastPlayed"] != app_id:
+        user_config["lastPlayed"] = app_id
+        update_config(user_config)
     return "200"
 
 def copy_file(source, destination):
@@ -478,19 +331,28 @@ def scan_artwork(games = None):
     #clear_possible_mismatches(games)
     scan_thumbnails(games)
     return "200"
-@app.route('/localization')
-def localize():
-    ''' get a json with current selected language strings'''
+
+@lru_cache(maxsize=1)
+def get_localization(raw = False):
+    ''' Returns a localization dictionary '''
     user_config = get_config(True)
     language = user_config["language"]
-    with open(Path(f'{APP_DIR}/ui/{user_config["theme"]}/translations.json'),encoding='utf-8') as f:
+    loc_path = f'{APP_DIR}/ui/{user_config["interface"]}/translations.json'
+    with open(Path(loc_path),encoding='utf-8') as f:
         localization = json.load(f)
         if language in localization:
             localization = localization[language]
             localization["available"] = True
             return localization
     localization = {"available" : False}
+    if raw is True:
+        return localization
     return json.dumps(localization)
+
+@app.route('/localization')
+def localize():
+    ''' get a json with current selected language strings'''
+    return get_localization()
 
 #This one must receive POST data
 @app.route('/library/add')
@@ -515,14 +377,15 @@ def get_games(raw = False):
     if raw is False:
         return json.dumps(games)
     return games
-@app.route('/config/get')
+
+@lru_cache(maxsize=2)
 def get_config(raw = False):
     ''' get user configuration'''
     user_config = {
             "loop" : False,
             "skipNoArt" : False,
             "maxGamesInHomeScreen" : 12,
-            "theme" : "LuntheraUI",
+            "interface" : "LuntheraUI",
             "librarySource" : 3, #0
             "darkMode" : False,
             "startupGameScan" : False,
@@ -533,7 +396,8 @@ def get_config(raw = False):
             "favorite" : [],
             "lastPlayed" : "",
             "showKeyGuide" : True,
-            "listStyle" : "Switch",
+            "theme" : "Switch",
+            "cores" : 6,
             "alwaysShowBottomBar" : True,
             "uiSounds" : "Switch",
             "boxartBlacklist" : [],
@@ -557,6 +421,11 @@ def get_config(raw = False):
         return json.dumps(user_config)
     return user_config
 
+@app.route('/config/get')
+def get_user_configuration():
+    ''' get_config() http controller, returns a json '''
+    return get_config()
+
 @app.route('/config/set', methods = ['GET', 'POST', 'DELETE'])
 def set_config():
     '''update user configuration from request'''        
@@ -574,6 +443,8 @@ def set_config():
 
 def update_config(user_config):
     ''' update user configuration '''
+    # clear cached config as the value was updated
+    get_config.cache_clear()
     with open(mukkuru_env['config.json'] , 'w', encoding='utf-8') as f:
         json.dump(user_config, f)
 
@@ -602,7 +473,10 @@ def scan_games():
 @app.route('/log/<message>')
 def log_message(message):
     ''' prints frontend messages in backend, useful for debugging '''
-    print(f'[frontend] { base64.b64decode(message).decode("utf-8") }')
+    msg = base64.b64decode(message).decode("utf-8")
+    print(f'[frontend] { msg }')
+    with open(mukkuru_env["log"], 'a', encoding='utf-8') as f:
+        f.write(f"{msg}\n")
     return "200"
 
 # To-do: allow custom specified username from userConfiguration
@@ -620,11 +494,16 @@ def main_web():
     ''' homePage '''
     return static_file("index.html")
 
+@app.route('/')
+def main_uri():
+    ''' redirect to homepage '''
+    return app.redirect(location=f'http://localhost:{APP_PORT}/frontend/')
+
 @app.route('/frontend/<path:path>')
 def static_file(path):
     ''' serve asset '''
     user_config = get_config(True)
-    serve_path = os.path.join(APP_DIR, "ui", user_config["theme"])
+    serve_path = os.path.join(APP_DIR, "ui", user_config["interface"])
     if path == "assets/avatar":
         avatar_file = os.path.join(mukkuru_env["artwork"], "Avatar", f"{get_user()}.jpg")
         avatar_png = os.path.join(mukkuru_env["artwork"], "Avatar", f"{get_user()}.png")
@@ -661,19 +540,29 @@ def is_fullscreen():
     user_config = get_config(True)
     return user_config["fullScreen"]
 
+def kwserver(**server_kwargs):
+    ''' start server using kwargs '''
+    try:
+        server = server_kwargs.pop("app", None)
+        cores = get_config(True)["cores"]
+        serve(server, host="localhost", threads=cores, port=APP_PORT)
+    except ConnectionResetError:
+        quit_app()
+
 def start_server():
     ''' init server '''
     try:
-        serve(app, host="localhost", threads=6, port=49347)
+        cores = get_config(True)["cores"]
+        serve(app, host="localhost", threads=cores, port=APP_PORT)
     except ConnectionResetError:
         quit_app()
-    #app.run(host='localhost', port=49347, debug=True, use_reloader=False)
+    #app.run(host='localhost', port=APP_PORT, debug=True, use_reloader=False)
 
 def main():
     ''' start of app execution '''
     system = platform.system()
     print(f"Running on {system}")
-    print(f'Using { "webview" if USE_PYWEBVIEW else "QT" } for rendering')
+    print(f'Using { FRONTEND_MODE } for rendering')
     if system == 'Windows':
         mukkuru_env["root"] = os.path.join(os.environ.get('APPDATA'), "Mukkuru")
     elif system == 'Linux':
@@ -685,6 +574,7 @@ def main():
     mukkuru_env["library.json"] = os.path.join(mukkuru_env["root"], "library.json")
     mukkuru_env["config.json"] = os.path.join(mukkuru_env["root"], "config.json")
     mukkuru_env["artwork"] = os.path.join(mukkuru_env["root"], "artwork")
+    mukkuru_env["log"] = os.path.join(mukkuru_env["root"], "mukkuru.log")
 
     needed_dirs = [
         mukkuru_env["root"],
@@ -697,6 +587,7 @@ def main():
         os.path.join(mukkuru_env["root"], "logo"),
         os.path.join(mukkuru_env["root"], "thumbnails"),
         os.path.join(mukkuru_env["root"], "hero"),
+        os.path.join(mukkuru_env["root"], "themes"),
     ]
 
     for needed_dir in needed_dirs:
@@ -714,10 +605,27 @@ def main():
         threading.Thread(target=scan_games).start()
     download_steam_avatar(mukkuru_env["artwork"])
     if threading.current_thread() is threading.main_thread():
-        threading.Thread(target=start_server).start()
-        #This might cause a race condition if your computer is slower than a snail
-        time.sleep(2)
-        Frontend(is_fullscreen(), app_version()).start()
+        if "flaskwebgui" in sys.modules:
+            window_width = None
+            window_height = None
+            if not is_fullscreen():
+                window_width = 1280
+                window_height = 800
+            Frontend(server=kwserver, server_kwargs={
+            "app": app,
+            "port": APP_PORT,
+            "threaded": True,
+            },
+            on_shutdown=quit_app,
+            fullscreen=is_fullscreen(),
+            width=window_width,
+            height=window_height
+            ).run()
+        else:
+            threading.Thread(target=start_server).start()
+            time.sleep(2)
+            Frontend(is_fullscreen(), app_version()).start()
+
     else:
         start_server()
 if __name__ == "__main__":

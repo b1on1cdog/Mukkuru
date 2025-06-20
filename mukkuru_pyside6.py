@@ -9,7 +9,7 @@ import threading
 import requests
 from PySide6.QtWidgets import QApplication # pylint: disable=E0611
 from PySide6.QtWebEngineWidgets import QWebEngineView # pylint: disable=E0611
-from PySide6.QtCore import QUrl, Qt, QTimer, QObject# pylint: disable=E0611
+from PySide6.QtCore import QUrl, Qt, QObject, QTimer# pylint: disable=E0611
 from PySide6.QtWebEngineCore import QWebEngineSettings # pylint: disable=E0611
 from PySide6.QtGui import QIcon # pylint: disable=E0611
 
