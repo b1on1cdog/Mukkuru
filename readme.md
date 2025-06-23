@@ -4,8 +4,8 @@ Cross-Platform customizable game launcher written in Python, optimized for GameP
 This is still in early stages and is not yet suitable for final use.<br/>
 
 # License
-Mukkuru is [licensed under MIT](license.md)<br/>
-See [third-party.md](third-party.md) for third-party files license terms.<br/>
+Mukkuru is [licensed under MIT](LICENSE)<br/>
+See [third-party.md](docs/third-party.md) for third-party files license terms.<br/>
 
 # Current features
 - SW, SW2, PS5 like themes<br/>
@@ -15,6 +15,7 @@ See [third-party.md](third-party.md) for third-party files license terms.<br/>
 - Automatically download boxarts from SteamGridDB<br/>
 - Linux, Windows and MacOS Support<br/>
 - Strict static analysis compliance<br/>
+- Plug and play compile environment<br/>
 
 # Release scope
 Release static builds with priority support:<br/>
@@ -22,28 +23,22 @@ Release static builds with priority support:<br/>
 - Linux x86_64<br/>
 - MacOS ARM64<br/>
 Architectures not listed might need to run the source code directly and might require modifications.</br>
-
-Release static builds with low priority:<br/>
-- MacOS x86_64<br/>
-- Linux ARM64<br/>
-- Windows ARM64<br/>
-These ones will not receive static builds often and might not have full compatibility<br/>
+Some others are going to receive occasional uploads</br>
 
 # Changelog
-[Read changelog.md](changelog.md)
+[Read changelog.md](docs/changelog.md)
 
 # To-do list
+- Chosing custom themes from settings (working on it)<br/>
 - Switch-Like contextual menus (when pressing options and some footer items) <br/>
+- Heroic Support<br/>
 - Add ability to download games</br>
 - Add joystick buttons customization<br/>
 - Better settings toggle positioning<br/>
-- Log to file <br/>
 - Allow user to use their own SteamGrid api key to bypass my middle api<br/>
 - Add scanning animation <br/>
 - Order recent played items in main screen<br/>
 - Allow to add games as favorite <br/>
-- CSS Loader<br/>
-- Chosing custom themes from settings<br/>
 - Additional webui to manipulate Mukkuru config from another device <br/>
     - Drag and drop wallpaper change <br/>
     - Drag and drop video playback <br/>
@@ -53,8 +48,8 @@ These ones will not receive static builds often and might not have full compatib
     - (Optional) chunk checksum validation to prevent file corruption in upload <br/>
 - Plugin support, with a plugin storefront<br/>
     - The first plugin might be one to patch VNs<br/>
-- Heroic Support<br/>
 - Game provider install helper (Steam, Heroic, etc)<br/>
+- Support for linux box86 in arm64<br/>
 - User friendly installer<br/>
 
 # Known issues

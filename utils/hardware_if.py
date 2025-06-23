@@ -1,3 +1,5 @@
+# Copyright (c) 2025 b1on1cdog
+# Licensed under the MIT License
 ''' Contains functions regarding hardware information, written by b1on1cdog '''
 import socket
 import platform
@@ -213,3 +215,7 @@ def is_using_wireless():
 def wireless_signal():
     '''Get the signal of Wi-Fi'''
     return 100
+
+def get_battery():
+    ''' returns battery'''
+    return psutil.sensors_battery()

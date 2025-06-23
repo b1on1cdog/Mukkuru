@@ -1,3 +1,5 @@
+# Copyright (c) 2025 b1on1cdog
+# Licensed under the MIT License
 ''' compile script for Mukkuru, written by b1on1cdog '''
 import sys
 import platform
@@ -8,6 +10,7 @@ import shutil
 from pathlib import Path
 import argparse
 import re
+import zipfile
 system = platform.system()
 
 parser = argparse.ArgumentParser()
@@ -15,17 +18,22 @@ parser.add_argument("--docker", action="store_true")
 parser.add_argument("--clean", action="store_true")
 parser.add_argument("--wipe", action="store_true")
 parser.add_argument("--run", action="store_true")
+parser.add_argument("--wef", action="store_true")
+parser.add_argument("--add", nargs='+')
+parser.add_argument("--debug", action="store_true")
 
 args = parser.parse_args()
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
+
+USE_WEF = args.wef
 
 def unix_path(path):
     ''' return a path with unix separator '''
     return str(path).replace('\\', '/')
 
 docker = {
-    "ubuntu-x86_64" : f'run --rm -v {unix_path(APP_DIR)}:/app -w /app ubuntu-python python3',
+    "debian-x86_64" : f'run --rm -v {unix_path(APP_DIR)}:/app -w /app debian-python python3',
 }
 
 def invoke(script_args, python_executable = sys.executable):
@@ -43,19 +51,37 @@ def cleanup():
     except FileNotFoundError:
         return
 
+def wipe():
+    ''' delete residual files, venv, and produced assemblies '''
+    cleanup()
+    try:
+        shutil.rmtree(VENV)
+        os.remove(os.path.join(OUTPUT_DIR, OUTPUT_FILE))
+    except FileNotFoundError:
+        return
+
+def zip_dir_contents(src_dir, zip_path):
+    ''' zip the content of a directory without including directory itself '''
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for root, _, files in os.walk(src_dir):
+            for file in files:
+                full_path = os.path.join(root, file)
+                rel_path = os.path.relpath(full_path, src_dir)
+                zf.write(full_path, rel_path)
+
 requirements = ["flask", "waitress",
                 "requests", "pillow",
                 "distro", "psutil",
-                "nuitka"]
+                "nuitka", "imageio"]
 
-#if system == "Darwin":
-requirements = requirements + ["imageio", "pywebview"]
+requirements = requirements + ["setuptools"]
 
-#if system == "Linux":
-#    requirements = requirements + ["pyside6"]
+if system == "Linux":
+    requirements = requirements + ["patchelf"]
+    USE_WEF = True
 
-#if system == "Windows":
-#    requirements = requirements + ["setuptools", "pywebview"]
+if USE_WEF is False:
+    requirements = requirements + ["pywebview"]
 
 AARCH = {'x86_64': 'x86_64',
          'AMD64': 'x86_64',
@@ -65,12 +91,12 @@ SRC_OUT = f"mukkuru-{system.lower()}-{AARCH}.py"
 OUTPUT_DIR = "build"
 OUTPUT_FILE = f"mukkuru-{system.lower()}-{AARCH}"
 ICON_PATH = os.path.join("ui", "mukkuru.ico")
-PNG_PATH = os.path.join("mukkuru.png")
+PNG_PATH = os.path.join("ui", "mukkuru.png")
 VENV = os.path.join(".venv", f"{system.lower()}-{AARCH}")
 SRC_CONTENT = None
 
-with open(SRC_FILE, 'r', encoding='utf-8') as file:
-    SRC_CONTENT = file.read()
+with open(SRC_FILE, 'r', encoding='utf-8') as sr_file:
+    SRC_CONTENT = sr_file.read()
 
 if SRC_CONTENT is None:
     print("unable to read main file, exiting....")
@@ -88,15 +114,25 @@ if system == "Windows":
 UI_SOURCE = os.path.join("ui")
 # CONSTANTS END
 
-def create_venv(python_executable = sys.executable):
+def create_venv(python_executable = sys.executable, update = False):
     ''' Create a virtual environment '''
-    invoke(["-m", "venv", VENV])
+    if not update:
+        invoke(["-m", "venv", VENV])
+    # if a crash happen here files won't be cleaned
     result = invoke(["-m", "pip", "install"] + requirements, python_executable)
     if result.returncode != 0:
-        shutil.rmtree(VENV)
+        if not update:
+            shutil.rmtree(VENV)
         print(f"failed to install deps {result}")
         exit(-1)
     #invoke(["-m", "pip", "install", "-r", "requirements.txt"], python_executable)
+
+def add_package(packages, python_executable = sys.executable):
+    ''' install package with pip '''
+    result = invoke(["-m", "pip", "install"] + packages, python_executable)
+    if result.returncode != 0:
+        print(f"failed to install dep {result}")
+        exit(-1)
 
 def build_version():
     ''' generate 6 MD5 digits to use as build number '''
@@ -116,6 +152,8 @@ def patch_source_code(mukkuru_src):
         frontend = "PYWEBVIEW"
     if "flaskwebui" in requirements:
         frontend = "FLASKUI"
+    if USE_WEF:
+        frontend = "WEF"
     if frontend != "Default":
         mukkuru_src = re.sub(r'(FRONTEND_MODE\s*=\s*)["\'].*?["\']', fr'\1"{frontend}"',mukkuru_src)
     with open(SRC_OUT, "w", encoding='utf-8') as f:
@@ -142,18 +180,34 @@ def certifi_patch():
 
 # FUNCTIONS END
 
+if args.docker:
+    arguments = sys.argv
+    if len(arguments) == 2:
+        arguments = []
+    else:
+        arguments = arguments[2:]
+    COMPILE_SCRIPT = f"/app/{os.path.basename(__file__)}"
+    for container, command in docker.items():
+        if container.endswith(AARCH):
+            invoke(command.split() + [ COMPILE_SCRIPT ] + arguments ,"docker")
+        else:
+            print(f"skipping {container} due to incompatible arch")
+    exit(0)
+
+
+if args.add:
+    if Path(venv_python).is_file():
+        add_package(args.add, venv_python)
+    else:
+        print("You must create a venv first")
+    exit(0)
+
 if args.clean:
     cleanup()
     exit(0)
 
 if args.wipe:
-    cleanup()
-    shutil.rmtree(VENV)
-    os.remove(os.path.join(OUTPUT_DIR, OUTPUT_FILE))
-    exit(0)
-
-if args.docker:
-    invoke(docker["ubuntu-x86_64"].split() + [ f"/app/{os.path.basename(__file__)}"] ,"docker")
+    wipe()
     exit(0)
 
 print(f"using {sys.executable}, compiling {OUTPUT_FILE}")
@@ -165,25 +219,25 @@ if not Path(VENV).is_dir():
     create_venv(venv_python)
 
 compiler_flags = [ "-m", "nuitka"]
-compiler_flags.append("--follow-imports")
+#compiler_flags.append("--follow-imports")
 if system == "Windows":
     compiler_flags.append(f"--windows-icon-from-ico={ICON_PATH}")
-    compiler_flags.append("--windows-console-mode=disable")
+    if not args.debug:
+        compiler_flags.append("--windows-console-mode=disable")
 if system == "Darwin":
     compiler_flags.append("--macos-create-app-bundle")
     compiler_flags.append(f"--macos-app-icon={PNG_PATH}")
+elif args.debug:
+    compiler_flags.append("--standalone")
+    compiler_flags.append("--debug")
+    compiler_flags.append("--experimental=allow-c-warnings")
+    os.environ["CFLAGS"] = "-Wall -Wextra -g -Wno-unused-but-set-variable"
 else:
     compiler_flags.append("--onefile")
 
-if "pyside6" in requirements:
-    compiler_flags.append("--enable-plugin=pyside6")
-
-#if system == "Windows" and "pywebview" in requirements:
-#    compiler_flags.append("--include-package-data=pywebview")
-
 if system == "Linux":
     compiler_flags.append(f"--linux-icon={ICON_PATH}")
-
+compiler_flags.append("--enable-plugin=tk-inter")
 compiler_flags.append(f"--include-data-dir={UI_SOURCE}={UI_SOURCE}")
 compiler_flags.append(SRC_OUT)
 compiler_flags.append(f"--output-filename={OUTPUT_FILE}")
@@ -203,23 +257,3 @@ else:
 os.remove(SRC_OUT)
 
 # end compile.py
-linux_packages = [
-    "libglib2.0-0",
-    "libx11-6"
-    "libxcb1",
-    "libxcomposite1"
-    "libxrender1",
-    "libxi6",
-    "libdbus-1-3",
-    "libfontconfig1",
-    "libfreetype6",
-    "libxext6",
-    "libxfixes3",
-    "libxcb-render0",
-    "libxcb-shape0",
-    "libxcb-xfixes0",
-    "libxcb1-dev",
-    "libglu1-mesa",
-    "libegl1",
-    "libopengl0"
-]

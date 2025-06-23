@@ -1,4 +1,7 @@
+# Copyright (c) 2025 b1on1cdog
+# Licensed under the MIT License
 ''' Using PyWebView for webview '''
+
 import threading
 import platform
 import time
@@ -8,7 +11,7 @@ import webview
 
 class Frontend:
     ''' Frontend class '''
-    def __init__(self, fullscreen, app_version):
+    def __init__(self, fullscreen, app_version, environ = None):
         self.window = webview.create_window(
             app_version,
             "http://localhost:49347/frontend/",
@@ -17,14 +20,22 @@ class Frontend:
         self.fullscreen_state = fullscreen
         self.user_config = None
         self.window.events.closing += self.close
+        self.environ = environ
 
     def start(self):
         ''' start frontend '''
         threading.Thread(target=self.observer).start()
-        if platform.system() == "Windows":
+        web_gui = None
+        #if self.environ is not None and "gui" in self.environ:
+        #    web_gui = self.environ["gui"]
+        #    wef_dir = os.path.join(self.environ["root"], "wef_bundle")
+        #    sys.path.insert(0, wef_dir)
+        #    import_wef(wef_dir)
+        if platform.system() == "Windows" and web_gui is None:
             webview.start(icon="ui/mukkuru.ico", user_agent="Mukkuru/Frontend", gui='edgechromium')
         else:
-            webview.start(icon="ui/mukkuru.ico", user_agent="Mukkuru/Frontend")
+            print(f"Creating weview with : {web_gui}")
+            webview.start(icon="ui/mukkuru.ico", user_agent="Mukkuru/Frontend", gui=web_gui)
     def close(self):
         ''' close mukkuru server '''
         requests.get("http://localhost:49347/app/exit", timeout=1)

@@ -1,8 +1,16 @@
 # Changelog
 -----------------
+# 0.2.16
+- [source] files are now organized in folders<br/>
+- [source] get_battery() was moved to hardware_if<br/>
+- Added tkinter for basic ui when main ui is not available <br/>
+- Replaced PySide6 wef_bundle (to reduce app size, and make ui easily swappable)<br/>
+- Updated third-party.md<br/>
+- Fixed shortcut parsing bug in Linux<br/>
+- First public update<br/>
 # 0.2.15
-- Addded function to list themes<br/>
-- [source] Separated hardware/network info functions to a [different file](hardware_if.py)<br/>
+- Added function to list themes<br/>
+- [source] Separated hardware/network info functions to a [different file](/utils/hardware_if.py)<br/>
 - Some functions results are now cached<br/>
 - Core number to use in waitress can now be set from config.json<br/>
 - backend_log will now append to a log file<br/>
@@ -29,7 +37,7 @@
 - Avatar image is now accepted as both .png and .jpg <br/>
 - Avatar image will now be copied from Steam cache when API is not available <br/>
 - [source] Changelog is now in a separate file [changelog.md](changelog.md) <br/>
-- [source] Steam functions are now in a [different module](steam_parser.py) <br/>
+- [source] Steam functions are now in a [different module](/utils/steam.py) <br/>
 - [source] Added [third-party.md](third-party.md) <br/>
 # 0.2.12
 - SW2 list style <br/>

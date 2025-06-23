@@ -1,4 +1,6 @@
-''' re is imported for filename sanitization '''
+# Copyright (c) 2025 b1on1cdog
+# Licensed under the MIT License
+''' Download art from steamgriddb '''
 import os
 import re
 import unicodedata

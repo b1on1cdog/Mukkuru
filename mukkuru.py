@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+# Copyright (c) 2025 b1on1cdog
+# Licensed under the MIT License
 """ Mukkuru, cross-platform game launcher """
-# -*- coding: utf-8 -*-
 import os
 import glob
 import json
@@ -10,33 +10,36 @@ import subprocess
 import base64
 import threading
 import time
-# Debug only
+
 import sys
 import hashlib
 import logging
 import platform
-import psutil
 
 from waitress import serve
 from flask import Flask, request
 from flask import send_from_directory, send_file
 
-import grid_db
-from steam_parser import get_non_steam_games, get_steam_games, get_steam_env
-from steam_parser import read_steam_username, download_steam_avatar
+from library import grid_db
+from library.steam import get_non_steam_games, get_steam_games, get_steam_env
+from library.steam import read_steam_username, download_steam_avatar
 
-from css_preprocessor import CssPreprocessor
-import hardware_if
+from utils import hardware_if
+from utils.css_preprocessor import CssPreprocessor
+
 FRONTEND_MODE = "PYWEBVIEW"
 
 if FRONTEND_MODE == "PYWEBVIEW":
-    from mukkuru_pywebview import Frontend
+    from view.pywebview import Frontend
+elif FRONTEND_MODE == "WEF":
+    from view.wef_view import Frontend
 elif FRONTEND_MODE == "FLASKUI":
     from flaskwebgui import FlaskUI as Frontend, close_application
     # Darwin, Windows, Linux: Chrome, Brave, Edge
     # Linux: Chromium
 else:
-    from mukkuru_pyside6 import Frontend
+    print("FATAL: Unknown webview, unable to produce interface")
+    os._exit(0)
 
 app = Flask(__name__)
 log = logging.getLogger('werkzeug')
@@ -45,7 +48,7 @@ log.setLevel(logging.CRITICAL)
 mukkuru_env = {}
 
 COMPILER_FLAG = False
-APP_VERSION = "0.2.15"
+APP_VERSION = "0.2.16"
 BUILD_VERSION = None
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
@@ -171,7 +174,7 @@ def connection_status():
 @app.route("/hardware/battery")
 def battery_info():
     ''' Return a JSON containing battery details '''
-    response = json.dumps(psutil.sensors_battery())
+    response = json.dumps(hardware_if.get_battery())
     return response
 
 @app.route("/hardware")
@@ -448,10 +451,10 @@ def update_config(user_config):
     with open(mukkuru_env['config.json'] , 'w', encoding='utf-8') as f:
         json.dump(user_config, f)
 
-@app.route('/ping')
+@app.route('/alive')
 def ping_request():
-    '''reply with "pong", its purpose is making sure backend is running'''
-    return "pong"
+    '''reply with "ok", its purpose is making sure backend is running'''
+    return "ok", 200
 
 @app.route('/library/scan')
 def scan_games():
@@ -558,6 +561,7 @@ def start_server():
         quit_app()
     #app.run(host='localhost', port=APP_PORT, debug=True, use_reloader=False)
 
+
 def main():
     ''' start of app execution '''
     system = platform.system()
@@ -575,6 +579,7 @@ def main():
     mukkuru_env["config.json"] = os.path.join(mukkuru_env["root"], "config.json")
     mukkuru_env["artwork"] = os.path.join(mukkuru_env["root"], "artwork")
     mukkuru_env["log"] = os.path.join(mukkuru_env["root"], "mukkuru.log")
+    mukkuru_env["app_path"] = APP_DIR
 
     needed_dirs = [
         mukkuru_env["root"],
@@ -624,7 +629,7 @@ def main():
         else:
             threading.Thread(target=start_server).start()
             time.sleep(2)
-            Frontend(is_fullscreen(), app_version()).start()
+            Frontend(is_fullscreen(), app_version(), mukkuru_env).start()
 
     else:
         start_server()

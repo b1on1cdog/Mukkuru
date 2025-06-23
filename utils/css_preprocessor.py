@@ -1,3 +1,5 @@
+# Copyright (c) 2025 b1on1cdog
+# Licensed under the MIT License
 ''' Preprocess CSS for logic purposes '''
 from pathlib import Path
 from io import BytesIO
