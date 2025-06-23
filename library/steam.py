@@ -120,6 +120,8 @@ def parse_text_vdf(vdf_text):
 def get_non_steam_games(steam_env):
     """Get Non-Steam games from shortcuts.vdf files"""
     games = {}
+    if steam_env is None:
+        return games
     # Find all shortcuts.vdf files
     shortcuts_pattern = steam_env["shortcuts"]
     shortcuts_files = glob.glob(shortcuts_pattern)
@@ -188,6 +190,8 @@ def get_steam_libraries(vdf_path, steam_env):
 def get_steam_games(steam):
     """ Get steam games """
     games = {}
+    if steam is None:
+        return games
     steam_library_file = steam["libraryFile"]
     steam_path = steam["path"]
     steam_launch_path = steam["launchPath"]
@@ -252,6 +256,8 @@ def get_steam_avatar_from_cache(artwork_dir, steam_username):
 def download_steam_avatar(artwork_dir):
     ''' (if not exists) downloads steam avatar picture '''
     steam = get_steam_env()
+    if steam is None:
+        return None
     steam_config = steam["config.vdf"]
     steam_username = read_steam_username(steam_config)
     if steam_username is None:
@@ -297,48 +303,52 @@ def map_shortcuts_path(shortcut_path):
     find_stuser = shortcut_path.split('*')[0]
     st_user = None
     # This will prevent annoying .DS_Store from breaking the path detection
-    for file in os.listdir(find_stuser):
-        if file.isdigit() and file != "0":
-            st_user = file
-            break
+    try:
+        for file in os.listdir(find_stuser):
+            if file.isdigit() and file != "0":
+                st_user = file
+                break
+    except FileNotFoundError:
+        return None
     return shortcut_path.replace("*", st_user, 1)
 
 
 def get_steam_env():
     ''' Get steam paths depending on platform '''
     system = platform.system()
-    steam_env = {}
+    steam = {}
     if system == "Windows":
         program_files = os.environ.get("ProgramFiles(x86)") or os.environ.get("ProgramFiles")
-        steam_env["path"] = os.path.join(program_files, "Steam")
-        if not Path(steam_env["path"]).is_dir():
+        steam["path"] = os.path.join(program_files, "Steam")
+        if not Path(steam["path"]).is_dir():
             print("Steam not in common path, reading registry as a failover...")
             vsk = r"SOFTWARE\WOW6432Node\Valve\Steam"
-            steam_env["path"] = read_registry_value(0, vsk, "InstallPath")
-        steam_env["libraryFile"] = os.path.join(steam_env["path"],
+            steam["path"] = read_registry_value(0, vsk, "InstallPath")
+        steam["libraryFile"] = os.path.join(steam["path"],
                                                            "steamapps", "libraryfolders.vdf")
-        shortcut_path = os.path.join(steam_env["path"],"userdata", "*", "config", "shortcuts.vdf")
-        steam_env["shortcuts"] = map_shortcuts_path(shortcut_path)
-        steam_env["launchPath"] = os.path.join(steam_env["path"], "Steam.exe")
+        shortcut_path = os.path.join(steam["path"],"userdata", "*", "config", "shortcuts.vdf")
+        steam["shortcuts"] = map_shortcuts_path(shortcut_path)
+        steam["launchPath"] = os.path.join(steam["path"], "Steam.exe")
     if system == "Linux":
         # To-do: determine different steam installs
-        steam_env["launchPath"] = "/usr/bin/steam"
-        steam_env["path"] = os.path.expanduser("~/.local/share/Steam")
-        steam_env["libraryFile"] = os.path.join(steam_env["path"],
-                                                           "steamapps", "libraryfolders.vdf")
-        shortcut_path = os.path.join(steam_env["path"], "userdata", "*", "config", "shortcuts.vdf")
-        steam_env["shortcuts"] = map_shortcuts_path(shortcut_path)
+        steam["launchPath"] = "/usr/bin/steam"
+        steam["path"] = os.path.expanduser("~/.local/share/Steam")
+        steam["libraryFile"] = os.path.join(steam["path"],"steamapps", "libraryfolders.vdf")
+        shortcut_path = os.path.join(steam["path"], "userdata", "*", "config", "shortcuts.vdf")
+        steam["shortcuts"] = map_shortcuts_path(shortcut_path)
     if system == "Darwin":
-        steam_env["launchPath"] = "/Applications/Steam.app/Contents/MacOS/steam_osx"
-        steam_env["path"] = os.path.expanduser("~/Library/Application Support/Steam")
-        steam_env["libraryFile"] = os.path.join(steam_env["path"],
+        steam["launchPath"] = "/Applications/Steam.app/Contents/MacOS/steam_osx"
+        steam["path"] = os.path.expanduser("~/Library/Application Support/Steam")
+        steam["libraryFile"] = os.path.join(steam["path"],
                                                            "steamapps", "libraryfolders.vdf")
-        shortcut_path = os.path.join(steam_env["path"], "userdata", "*", "config", "shortcuts.vdf")
-        steam_env["shortcuts"] = map_shortcuts_path(shortcut_path)
-    steam_env["gridPath"] = steam_env["shortcuts"].replace("shortcuts.vdf",
+        shortcut_path = os.path.join(steam["path"], "userdata", "*", "config", "shortcuts.vdf")
+        steam["shortcuts"] = map_shortcuts_path(shortcut_path)
+    if not Path(steam["libraryFile"]).is_file():
+        print("Steam is not available")
+        return None
+    steam["gridPath"] = steam["shortcuts"].replace("shortcuts.vdf",
                                                            "grid", 1)
-    steam_env["config.vdf"] = os.path.join(steam_env["path"],
-                                                      "config", "config.vdf")
-    if not Path(steam_env["shortcuts"]).is_file():
-        print(f'Unable to find: {steam_env["shortcuts"]}\n')
-    return steam_env
+    steam["config.vdf"] = os.path.join(steam["path"], "config", "config.vdf")
+    if not Path(steam["shortcuts"]).is_file():
+        print(f'Unable to find: {steam["shortcuts"]}\n')
+    return steam

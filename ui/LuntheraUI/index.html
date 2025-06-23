@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
             backend_log(`[debug] config init failed ${userConfiguration} ${userConfiguration.length}`);
         }
 
-        listStyle = userConfiguration["listStyle"];
+        listStyle = userConfiguration["theme"];
         if (userConfiguration["darkMode"] == true) {
         
         /*
@@ -181,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         button.appendChild(title);
         button.appendChild(thumbnail);
-        if (userConfiguration["listStyle"] == "PS5") {
+        if (userConfiguration["theme"] == "PS5") {
             const glass = document.createElement('div');
             glass.className = 'glass-effect';
             button.appendChild(glass);
@@ -217,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const thumbnail = document.createElement('img');
         thumbnail.className = 'gameLauncher-icon';
-        if (userConfiguration["listStyle"] == "PS5" || userConfiguration["listStyle"] == "Switch 2") {
+        if (userConfiguration["theme"] == "PS5" || userConfiguration["theme"] == "Switch 2") {
             thumbnail.src = "assets/img/all-software-2.png";
         } else {
             thumbnail.src = "assets/img/all-software.png";
@@ -262,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    displayHero = (userConfiguration["listStyle"] == "PS5");
+    displayHero = (userConfiguration["theme"] == "PS5");
     if (displayHero) {
         bg = document.getElementById("bg");
         bg.style.backgroundRepeat = "no-repeat";
@@ -490,13 +490,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
         }
 
-        if (currentRow != 2 && userConfiguration["listStyle"] == "PS5") {
+        if (currentRow != 2 && userConfiguration["theme"] == "PS5") {
             showBottomBar(false);
         } else if (currentRow != 3) {
             showBottomBar(true);
         }
 
-        if (currentRow == 1 && userConfiguration["listStyle"] == "Switch"){
+        if (currentRow == 1 && userConfiguration["theme"] == "Switch"){
         let launchers = (currentRow == 1)?gameLaunchers:appLaunchers;
         let titleDOM = (currentRow == 1)?".gameLauncher-title":".appLauncher-title";
 

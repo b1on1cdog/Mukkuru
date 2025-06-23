@@ -4,7 +4,6 @@
 import os
 import stat
 from pathlib import Path
-import atexit
 
 import platform
 import subprocess
@@ -44,11 +43,11 @@ class Frontend():
             pick_wef(self.wef, self.wef_ready)
         else:
             complain()
-    def close(self):
-        ''' closes ui'''
-        print("closing UI...")
-        if self.proc is not None and self.proc.poll() is None:
-            self.proc.terminate()
+    #def close(self):
+    #    ''' closes ui'''
+    ##    print("closing UI...")
+     #   if self.proc is not None and self.proc.poll() is None:
+     #       self.proc.terminate()
     def start(self):
         ''' show webview '''
         if self.ready is False:
@@ -73,5 +72,4 @@ class Frontend():
             current_permissions = os.stat(self.exec).st_mode
             os.chmod(self.exec, current_permissions | stat.S_IXUSR)
         self.ready = False
-        self.proc = subprocess.Popen(proc_flags)
-        atexit.register(self.close)
+        return subprocess.run(proc_flags, check=False)

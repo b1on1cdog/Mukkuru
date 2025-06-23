@@ -48,7 +48,7 @@ log.setLevel(logging.CRITICAL)
 mukkuru_env = {}
 
 COMPILER_FLAG = False
-APP_VERSION = "0.2.16"
+APP_VERSION = "0.2.16.1"
 BUILD_VERSION = None
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
@@ -115,13 +115,14 @@ def library_scan(options):
     steam = get_steam_env()
 
     games = {}
-    if options & option_steam:
-        steam_games = get_steam_games(steam)
-        games.update(steam_games)
-    # Scan Non-Steam games
-    if options & option_nonsteam:
-        non_steam_games = get_non_steam_games(steam)
-        games.update(non_steam_games)
+    if steam is not None:
+        if options & option_steam:
+            steam_games = get_steam_games(steam)
+            games.update(steam_games)
+        # Scan Non-Steam games
+        if steam["shortcuts"] is not None and (options & option_nonsteam):
+            non_steam_games = get_non_steam_games(steam)
+            games.update(non_steam_games)
     if options & option_egs:
         egs_games = get_egs_games()
         games.update(egs_games)
@@ -486,10 +487,14 @@ def log_message(message):
 @app.route('/username')
 def get_user():
     '''Get username'''
+    failover_user = os.environ.get('USER', os.environ.get('USERNAME'))
     steam = get_steam_env()
+    if steam is None:
+        return failover_user
+
     username = read_steam_username(steam["config.vdf"])
     if username is None:
-        return os.environ.get('USER', os.environ.get('USERNAME'))
+        return failover_user
     return username
 
 @app.route('/frontend/')

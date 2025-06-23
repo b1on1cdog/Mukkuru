@@ -11,6 +11,7 @@ from pathlib import Path
 import argparse
 import re
 import zipfile
+import json
 system = platform.system()
 
 parser = argparse.ArgumentParser()
@@ -23,6 +24,13 @@ parser.add_argument("--add", nargs='+')
 parser.add_argument("--debug", action="store_true")
 
 args = parser.parse_args()
+compiler_config = {}
+
+# to prevent contributors from commiting their env changes to github
+# project, they will ideally do those changes in compiler.json
+if Path("compiler.json").is_file():
+    with open('compiler.json', encoding='utf-8') as conf:
+        compiler_config = json.load(conf)
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -35,6 +43,11 @@ def unix_path(path):
 docker = {
     "debian-x86_64" : f'run --rm -v {unix_path(APP_DIR)}:/app -w /app debian-python python3',
 }
+
+if "docker" in compiler_config:
+    docker = compiler_config["docker"]
+    for key, value in docker.items():
+        docker[key] = value.replace("[APP_DIR]", unix_path(APP_DIR))
 
 def invoke(script_args, python_executable = sys.executable):
     ''' Use subprocess to run python '''
@@ -230,8 +243,8 @@ if system == "Darwin":
 elif args.debug:
     compiler_flags.append("--standalone")
     compiler_flags.append("--debug")
-    compiler_flags.append("--experimental=allow-c-warnings")
-    os.environ["CFLAGS"] = "-Wall -Wextra -g -Wno-unused-but-set-variable"
+    #compiler_flags.append("--experimental=allow-c-warnings")
+    #os.environ["CFLAGS"] = "-Wall -Wextra -g -Wno-unused-but-set-variable"
 else:
     compiler_flags.append("--onefile")
 
