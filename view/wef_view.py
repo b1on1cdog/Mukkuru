@@ -56,7 +56,7 @@ class Frontend():
         url = 'http://localhost:49347'
         proc_flags.append(self.exec) # executable
         proc_flags.extend(["--title", self.title])
-        proc_flags.extend(["--url", url])
+        proc_flags.extend(["--url", url+'/frontend/'])
         if self.fullscreen:
             proc_flags.extend(["--fullscreen"])
         os.environ["BACKEND_PATH"] = self.environ["app_path"]

@@ -7,15 +7,18 @@ import re
 
 class CssPreprocessor:
     """ Main class """
-    def __init__(self, path):
+    def __init__(self, path = None, data = None):
         ''' Receives the CSS string and returns CSS buffer'''
         self.prefix = "/*Mukkuru::"
         self.suffix = ");*/"
         self.functions = ["BackgroundLinearGradientRotation"]
-        if Path(path).is_file():
+        if path is not None and Path(path).is_file():
             with open(path, 'r', encoding='utf-8') as css_file:
                 self.css = css_file.read()
                 print(f"Processing CSS {path}...")
+        elif data is not None:
+            self.css = data
+            print("Processing CSS data...")
         else:
             self.css = None
             print(f"Unable to process CSS {path}...")

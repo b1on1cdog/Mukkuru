@@ -155,6 +155,7 @@ def has_internet(host="8.8.8.8", port=53, timeout=0.3):
     except TimeoutError:
         return False
 
+# this is causing segmentation fault in linux
 def get_current_interface():
     ''' determine current network interface using a dummy socket'''
     # Step 1: Create a dummy socket connection to a public IP (Google DNS)
@@ -178,7 +179,10 @@ def get_current_interface():
 def connection_status():
     ''' returns a json with connection status'''
     status = {}
-    status["wifi"] = is_using_wireless()
+    if system == "Linux": # temporal fix
+        status["wifi"] = True
+    else:
+        status["wifi"] = is_using_wireless()
     status["internet"] = has_internet() or has_internet()
     if status["internet"] is False:
         status["internet"] = has_internet(host="8.8.4.4") or has_internet(host="1.1.1.1")
@@ -189,7 +193,6 @@ def connection_status():
 def is_using_wireless():
     ''' return whether a Wireless connection is being used '''
     interface = get_current_interface()
-
     if system == "Darwin":
         try:
             hwports = subprocess.check_output(["networksetup", "-listallhardwareports"]).decode()

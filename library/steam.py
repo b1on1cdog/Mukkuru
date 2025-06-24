@@ -8,6 +8,7 @@ import re
 import platform
 import sys
 from pathlib import Path
+from functools import lru_cache
 # third-party imports
 import requests
 from library import binary_vdf_parser
@@ -216,6 +217,7 @@ def get_steam_games(steam):
                 }
     return games
 
+@lru_cache(maxsize=1)
 def read_steam_username(steam_config):
     ''' get username from steam files '''
     with open(steam_config, "r", encoding="utf-8") as file:
@@ -312,7 +314,16 @@ def map_shortcuts_path(shortcut_path):
         return None
     return shortcut_path.replace("*", st_user, 1)
 
+def find_path(paths):
+    ''' return which path exists of all the candidates '''
+    for path in paths:
+        if "~" in path:
+            path = os.path.expanduser(path)
+        if Path(path).exists():
+            return path
+    return None
 
+@lru_cache(maxsize=1)
 def get_steam_env():
     ''' Get steam paths depending on platform '''
     system = platform.system()
@@ -330,12 +341,22 @@ def get_steam_env():
         steam["shortcuts"] = map_shortcuts_path(shortcut_path)
         steam["launchPath"] = os.path.join(steam["path"], "Steam.exe")
     if system == "Linux":
-        # To-do: determine different steam installs
-        steam["launchPath"] = "/usr/bin/steam"
-        steam["path"] = os.path.expanduser("~/.local/share/Steam")
+        launch_paths = [
+            "/usr/bin/steam",
+            "/snap/bin/steam"
+        ]
+        main_paths = [
+            "~/.local/share/Steam",
+            "~/.var/app/com.valvesoftware.Steam/.local/share/Steam",
+            "~/snap/steam/common/.steam/steam/steamapps/"
+        ]
+        steam["launchPath"] = find_path(launch_paths)
+        steam["path"] = find_path(main_paths)
         steam["libraryFile"] = os.path.join(steam["path"],"steamapps", "libraryfolders.vdf")
         shortcut_path = os.path.join(steam["path"], "userdata", "*", "config", "shortcuts.vdf")
         steam["shortcuts"] = map_shortcuts_path(shortcut_path)
+        if steam["launchPath"] is None and steam["path"] == os.path.expanduser(main_paths[1]):
+            steam["launchPath"] = "flatpak run com.valvesoftware.Steam"
     if system == "Darwin":
         steam["launchPath"] = "/Applications/Steam.app/Contents/MacOS/steam_osx"
         steam["path"] = os.path.expanduser("~/Library/Application Support/Steam")
@@ -346,8 +367,7 @@ def get_steam_env():
     if not Path(steam["libraryFile"]).is_file():
         print("Steam is not available")
         return None
-    steam["gridPath"] = steam["shortcuts"].replace("shortcuts.vdf",
-                                                           "grid", 1)
+    steam["gridPath"] = steam["shortcuts"].replace("shortcuts.vdf", "grid", 1)
     steam["config.vdf"] = os.path.join(steam["path"], "config", "config.vdf")
     if not Path(steam["shortcuts"]).is_file():
         print(f'Unable to find: {steam["shortcuts"]}\n')

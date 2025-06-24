@@ -48,7 +48,7 @@ log.setLevel(logging.CRITICAL)
 mukkuru_env = {}
 
 COMPILER_FLAG = False
-APP_VERSION = "0.2.16.1"
+APP_VERSION = "0.2.16.3"
 BUILD_VERSION = None
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
@@ -147,7 +147,7 @@ def get_themes(raw = False):
     ''' Return a list of themes '''
     themes_dir = os.path.join(mukkuru_env["root"], "themes")
     theme_manifests = []
-    themes = []
+    themes = {}
     required = {
         "name" : "",
         "author" : "",
@@ -162,13 +162,55 @@ def get_themes(raw = False):
             theme_manifests.append(theme_manifest)
     for theme_manifest in theme_manifests:
         with open(theme_manifest, 'r', encoding='utf-8') as f:
-            themes.append(json.load(f))
+            #themes.append(json.load(f))
+            manifest = json.load(f)
+            themes[manifest["name"]] = manifest
     if raw is True:
         return themes
     return json.dumps(themes)
 
+#@lru_cache(maxsize=1)
+def get_theme(selected = None):
+    ''' Return css of selected theme '''
+    builtin_themes = ["Switch", "Switch 2", "PS5"]
+    config = get_config(True)
+    if selected is None:
+        selected = config["theme"]
+
+    sys_themes_dir = os.path.join(f'{APP_DIR}/ui/{config["interface"]}', "assets", "css")
+    default_theme_dir = os.path.join(sys_themes_dir, "style.css")
+    default_css = Path(default_theme_dir).read_text(encoding='utf-8')
+    # Not a user theme
+    if selected in builtin_themes:
+        print(f"using built-in theme {selected}")
+        css = default_css
+        if selected == "PS5":
+            css = css + Path(os.path.join(sys_themes_dir, "ps5.css")).read_text(encoding='utf-8')
+        elif selected == "Switch 2":
+            css = css + Path(os.path.join(sys_themes_dir, "sw2.css")).read_text(encoding='utf-8')
+        return css
+    print(f"loading user theme {selected}")
+    themes_dir = os.path.join(mukkuru_env["root"], "themes")
+    themes = get_themes(True)
+    theme = themes[selected]
+    css = ""
+    if theme["style_overwrite"] is False:
+        css = default_css
+
+    for markup in theme["markup_files"]:
+        markup_path = os.path.join(themes_dir, markup)
+        if Path(markup_path).is_file():
+            css = css + Path(markup_path).read_text(encoding='utf-8')
+        else:
+            print(f"Skipping {markup} markup since it does not exists")
+    if css == '':
+        print("Unable to load theme, returning default")
+        css = default_css
+    return css
+
+
 @app.route("/hardware/network")
-def connection_status():
+def connection_status():#segmentation fault
     ''' returns a json with connection status'''
     status = hardware_if.connection_status()
     return json.dumps(status)
@@ -408,6 +450,7 @@ def get_config(raw = False):
             "logoBlacklist" : [],
             "heroBlacklist" : [],
         }
+
     while "config.json" not in mukkuru_env:
         time.sleep(0.1)
 
@@ -507,6 +550,7 @@ def main_uri():
     ''' redirect to homepage '''
     return app.redirect(location=f'http://localhost:{APP_PORT}/frontend/')
 
+#segmentation fault in linux
 @app.route('/frontend/<path:path>')
 def static_file(path):
     ''' serve asset '''
@@ -525,9 +569,10 @@ def static_file(path):
         return send_from_directory(serve_path, new_path)
     if path.startswith("thumbnails/") or path.startswith("hero/"):
         return send_from_directory(mukkuru_env["root"], path, mimetype='image/jpeg')
-    if path.endswith(".css"):
+    if path.endswith("theme.css"):
         full_path = os.path.join(serve_path, path)
-        css = CssPreprocessor(full_path)
+        theme = get_theme(user_config["theme"])
+        css = CssPreprocessor(full_path, data=theme)
         css.process()
         return send_file(css.data(), mimetype="text/css")
     return send_from_directory(serve_path, path)

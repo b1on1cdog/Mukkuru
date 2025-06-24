@@ -6,7 +6,7 @@
     <meta name="google" content="notranslate" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Mukkuru</title>
-    <link rel="stylesheet" href="./assets/css/style.css">
+    <link rel="stylesheet" href="./assets/css/theme.css">
     <script src="mukkuru.js"></script>
     <script src="localization.js"></script>
     <script>
@@ -85,7 +85,13 @@ document.addEventListener('DOMContentLoaded', () => {
         document.documentElement.style.setProperty("--accent-color", "#2E2E2E");
     }
 
-        
+    if (listStyle == "PS5") {
+        showBottomBar(false)
+        document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "rgba(0, 0, 0, 0)");
+    } else if (listStyle == "Switch 2") {
+        document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "rgba(0, 0, 0, 0)");
+    }
+    /*
         if (listStyle != "Switch") {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
@@ -104,6 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             document.head.appendChild(link);
         }
+            */
 
     clockUpdate(userConfiguration["12H"]);
     setInterval(() => {
@@ -273,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     gameLaunchers.forEach(item => {
         item.addEventListener('focus', () => {
-            item.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+            item.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
             if (displayHero) {//start displayHero
                 if (!item.classList.contains("gameLauncher-more")) {
                     bg.style.backgroundImage = "url('hero/" + item.id+ ".png')";
