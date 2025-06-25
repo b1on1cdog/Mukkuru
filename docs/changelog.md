@@ -1,5 +1,9 @@
 # Changelog
 -----------------
+# 0.2.18
+-Settings items now scroll<br/>
+-Settings toggles are now aligned<br/>
+-Settings items now handle better scaling<br/>
 # 0.2.17
 -Added ability to load user themes<br/>
 -Frontend changes to allow setting some changes from css<br/>

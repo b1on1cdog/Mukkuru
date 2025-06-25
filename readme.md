@@ -34,7 +34,6 @@ Some others are going to receive occasional uploads</br>
 - Heroic Support<br/>
 - Add ability to download games</br>
 - Add joystick buttons customization<br/>
-- Better settings toggle positioning<br/>
 - Allow user to use their own SteamGrid api key to bypass my middle api<br/>
 - Add scanning animation <br/>
 - Order recent played items in main screen<br/>

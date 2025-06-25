@@ -82,7 +82,7 @@ function addUserThemes(){
             theme = value;
             backend_log("adding "+key +" to themes list");
             const themeOption = document.createElement('div');
-            themeOption.className = 'menu-option';
+            themeOption.className = 'menu-option nospace';
             themeOption.id = key;
             themeOption.dataset.key = "theme";
             themeOption.dataset.value = key;
@@ -109,6 +109,9 @@ function addUserThemes(){
             
             */
         });//
+        const spacer = document.createElement('div');
+        spacer.style.minHeight = "300px";
+        themeTab.appendChild(spacer)
         refreshOptions();
     });
 }
@@ -155,6 +158,8 @@ fetch(backendURL+"/config/get").then(function(response) {
         showKeyGuide(userConfiguration["showKeyGuide"]);
         refreshOptions();
         addUserThemes();
+        menuItems[0].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
+        tabOptions[0][0].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
         allowRendering();
         setTimeout(function() { checkSelectedTheme(userConfiguration["theme"]); }, 300);
 });    
@@ -404,6 +409,8 @@ document.addEventListener('keydown', (e) => {
                 //menuItems[selectedTab].classList.remove("selected");
                 selectedTab--;
                 menuItems[selectedTab].className = "menu-tab selected";
+                menuItems[selectedTab].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
+
                 //menuItems[selectedTab].classList.add("selected");
                 selectedOption = 0;
             } else {
@@ -416,6 +423,7 @@ document.addEventListener('keydown', (e) => {
                 tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = "";
                 //tabOptions[selectedTab][selectedOption].className = "menu-option";
                 tabOptions[selectedTab][selectedOption].classList.remove("selected");
+                tabOptions[selectedTab][selectedOption].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
                 selectedOption--;
                 //tabOptions[selectedTab][selectedOption].className = "menu-option selected";
                 tabOptions[selectedTab][selectedOption].classList.add("selected");
@@ -438,6 +446,7 @@ document.addEventListener('keydown', (e) => {
                 selectedTab++;
                 //menuItems[selectedTab].classList.add("selected");
                 menuItems[selectedTab].className = "menu-tab selected";
+                menuItems[selectedTab].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
                 selectedOption = 0;
             } else {
                 if (selectedOption+1 == tabOptions[selectedTab].length)
@@ -451,6 +460,7 @@ document.addEventListener('keydown', (e) => {
                     tabOptions[selectedTab][selectedOption].classList.remove("selected");
                     selectedOption++;
                     tabOptions[selectedTab][selectedOption].classList.add("selected");
+                    tabOptions[selectedTab][selectedOption].scrollIntoView({ behavior: "instant", block: "center" });
                     //tabOptions[selectedTab][selectedOption].className = "menu-option selected";
                     tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = "none";
             }
@@ -481,9 +491,11 @@ document.addEventListener('keydown', (e) => {
                 <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M83.285,52.4V46.9H73.1a23.155,23.155,0,0,0-4.83-11.633l7.208-7.209-3.888-3.888-7.209,7.208a23.155,23.155,0,0,0-11.633-4.83V16.361h-5.5V26.544a23.155,23.155,0,0,0-11.633,4.83l-7.209-7.208L24.52,28.054l7.208,7.209A23.155,23.155,0,0,0,26.9,46.9H16.715v5.5H26.9a23.157,23.157,0,0,0,4.829,11.633L24.52,71.237l3.888,3.889,7.209-7.209a23.146,23.146,0,0,0,11.633,4.83V82.931h5.5V72.747a23.146,23.146,0,0,0,11.633-4.83l7.209,7.209,3.888-3.889-7.208-7.208A23.157,23.157,0,0,0,73.1,52.4ZM50,67.415A17.77,17.77,0,1,1,67.77,49.646,17.79,17.79,0,0,1,50,67.415Z" fill="#707676"/></svg>
                 <h2 id="settings-header">System Settings</h2>
             </div>
+            <div class="separator"></div>
         </div>
-        <div class="separator"></div>
+
         <main class="settings-body">
+            
             <div class="menu">
                 <div id="sourcesTab" data-loc="LibrarySources" data-trm="swapText" class="menu-tab">Sources</div>
                 <div id="libraryTab" class="menu-tab" data-loc="Library" data-trm="swapText">Library</div>
@@ -514,40 +526,40 @@ document.addEventListener('keydown', (e) => {
                     <div class="option-description" id="maxGamesInHomeScreen-desc" data-loc="id" data-trm="swapText">Number of games to show in Homescreen, additional ones can be accesed from "All Software" button</div>
 
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="startupGameScan" data-trm="swapTGL" data-loc="id">Scan games at startup [BTOGGLE]</div>
+                    <div class="menu-option" id="startupGameScan" data-trm="swapTGL" data-loc="id">Scan games at startup[BTOGGLE]</div>
                     <div class="option-separator"></div>
                     <div class="option-description" id="startupGameScan-desc" data-trm="swapTGL" data-loc="id">Scan games automatically everytime Mukkuru opens</div>
                 </div>
                 <div class="options" id="options-2" style="display:none;">
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="fullScreen" data-trm="swapTGL" data-loc="fullScreen">Use Fullscreen &nbsp;	&nbsp;	&nbsp; [BTOGGLE]</div>
+                    <div class="menu-option" id="fullScreen" data-trm="swapTGL" data-loc="fullScreen">Use Fullscreen [BTOGGLE]</div>
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="loop" data-trm="swapTGL" data-loc="loop">Cursor loop effect 	&nbsp;	&nbsp;	&nbsp; [BTOGGLE]</div>
+                    <div class="menu-option" id="loop" data-trm="swapTGL" data-loc="loop">Cursor loop effect [BTOGGLE]</div>
                     <div class="option-separator"></div>
                     <div class="option-description" id="loop-desc" data-trm="swapText" data-loc="loop-desc">Return cursor from the other side of the screen when navigating</div>
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="showKeyGuide" data-trm="swapTGL" data-loc="id">Show keyGuide bar &nbsp;	&nbsp;	&nbsp; [BTOGGLE]</div>
+                    <div class="menu-option" id="showKeyGuide" data-trm="swapTGL" data-loc="id">Show keyGuide bar [BTOGGLE]</div>
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="uiSounds" data-trm="swapTGL" data-loc="id">Sound effects &nbsp; &nbsp; [BLIST]</div>
+                    <div class="menu-option" id="uiSounds" data-trm="swapTGL" data-loc="id">Sound effects [BLIST]</div>
                     <div class="option-separator"></div>
                 </div>
-                <div class="options" id="options-3" style="display:none;">
+                <div class="options" id="options-3" style="display:none; ">
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="darkMode" data-trm="swapTGL" data-loc="id">Dark Mode &nbsp;&nbsp;&nbsp;&nbsp; [BTOGGLE]</div>
+                    <div class="menu-option" id="darkMode" data-trm="swapTGL" data-loc="id">Dark Mode &nbsp; [BTOGGLE]</div>
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="sw_theme" data-key="theme" data-value="Switch" style="display: flex; align-items: center;">
+                    <div class="menu-option nospace" id="sw_theme" data-key="theme" data-value="Switch" style="display: flex; align-items: center;">
                     <svg class="option-img" width="100" height="50" xmlns="http://www.w3.org/2000/svg">
                         <rect x="0" y="0" width="100" height="50" fill="white" stroke="black" stroke-width="2" rx="3" ry="3"></rect>
                     </svg>Switch
                     </div>
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="sw2_theme" data-key="theme" data-value="Switch 2" style="display: flex; align-items: center;">
+                    <div class="menu-option nospace" id="sw2_theme" data-key="theme" data-value="Switch 2" style="display: flex; align-items: center;">
                     <svg class="option-img" width="100" height="50" xmlns="http://www.w3.org/2000/svg">
                         <rect x="0" y="0" width="100" height="50" fill="purple" stroke="black" stroke-width="2" rx="3" ry="3"></rect>
                     </svg>Switch 2
                     </div>
                      <div class="option-separator"></div>
-                    <div class="menu-option" id="ps5_theme" data-key="theme" data-value="PS5" style="display: flex; align-items: center;">
+                    <div class="menu-option nospace" id="ps5_theme" data-key="theme" data-value="PS5" style="display: flex; align-items: center;">
                     <svg class="option-img" width="100" height="50" xmlns="http://www.w3.org/2000/svg">
                         <rect x="0" y="0" width="100" height="50" fill="black" stroke="black" stroke-width="2" rx="3" ry="3"></rect>
                     </svg>PS5
@@ -568,7 +580,7 @@ document.addEventListener('keydown', (e) => {
                 </div>
                 <div class="options" id="options-5" style="display:none;">
                     <div class="option-separator"></div>
-                    <div id="about-text" class="option-description" style="margin-left: 100px;font-size: 32px;color: rgba(30, 39, 50, 0.747)">
+                    <div id="about-text" class="option-description" style="margin-left: 100px;font-size: 28px;color: rgba(30, 39, 50, 0.747)">
                     <div id="hardwareInfo" data-trm="swapTGL" data-loc="hardwareInfo">Hardware Information</div>
                     <div>---------------</div>
                     <div id="computer_name" data-loc="Name" data-trm="patchHTML" data-patch="Name">Name: unknown</div>
