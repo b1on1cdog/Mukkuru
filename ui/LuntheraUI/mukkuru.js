@@ -194,8 +194,9 @@ function hardwareStatusUpdate(){
       if (battery == null) {
           document.getElementsByClassName("batteryState")[0].style.display = "none";
       } else {
-          document.getElementsByClassName("batteryLevel")[0].style.width = "" + (100-battery.percent);
+          document.getElementsByClassName("batteryLevel")[0].style.width = "" + (100-battery.percent) + "%";
       }
+      
     });
 
       fetch(backendURL+"/hardware/network").then(function(response) {

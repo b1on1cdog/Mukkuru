@@ -25,8 +25,7 @@
         "12H" : "Formato 12 horas",
         "maxGamesInHomeScreen" : "Juegos maximos a mostrar",
         "maxGamesInHomeScreen-desc": "Numero de juegos a mostrar en pantalla de inicio, los adicionales se acceden desde el boton \"Todo el software\"",
-        "lightMode" : "Blanco basico",
-        "darkMode" : "Negro basico",
+        "darkMode" : "Modo oscuro",
         "hardwareInfo" : "Informacion de hardware",
         "settingsFB" : "Ajustes",
         "storeFB" : "Tienda",
@@ -41,6 +40,11 @@
         "showKeyGuide" : "Mostrar guia de botones",
         "listStyle" : "Estilo de lista principal",
         "libraryStyle" : "Estilo de biblioteca",
-        "uiSounds" : "Efectos de sonido del sistema"
+        "uiSounds" : "Efectos de sonido del sistema",
+        "Advanced" : "Avanzado",
+        "clearArtBlacklist" : "Limpiar lista negra de arte",
+        "clear-blacklist-desc" : "Permite reintentar la descarga de artes marcadas como no disponibles",
+        "clearArt" : "Borrar arte descargado",
+        "clearData" : "Borrar datos de Mukkuru"
     }
 }

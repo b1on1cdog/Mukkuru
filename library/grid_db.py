@@ -105,7 +105,7 @@ def download_image(game_identifier, s_path, image_format):
     ''' find and download image from SteamGridDb '''  
     game_id = 0
     game_title = game_identifier.title
-    if game_identifier.app_id != 0 and game_identifier.platform != "non-steam":
+    if game_identifier.app_id != 0 and game_identifier.platform == "steam":
         game_id = get_id_from_platform(game_identifier.app_id, game_identifier.platform)
     else:
         game_id = get_game_id(game_title)

@@ -16,6 +16,16 @@
     z-index: 100;
 }
 
+.settings-container::before {
+    content: "";
+    position: absolute;
+    top: -100px;
+    left: 0;
+    right: 0;
+    height: 100px;
+    background: var(--bg-color); 
+    z-index: 50; 
+}
 
 .header {
     display: flex;
@@ -53,10 +63,12 @@
 }
 
 .settings-body {
-    padding-top: 100px;
+    padding-top: 20vh;
     display: flex;
     flex-direction: column;
     height: 100%; /* or set a specific height like 500px */
+    margin: 0;
+    overflow: hidden;
 }
 
 .menu {

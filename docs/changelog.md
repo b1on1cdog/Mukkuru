@@ -1,5 +1,15 @@
 # Changelog
 -----------------
+# 0.3.0
+- Heroic library support in Linux<br/>
+- Settings ui overflow fix<br/>
+- Added advanced tab in settings<br/>
+- compile.py now also supports pyinstaller<br/>
+- in hardware info GPU will now be hidden when not detected<br/>
+- Failover avatar image<br/>
+- fixed battery level indicator <br/>
+- game assets download are now multithreaded<br/>
+- Games without thumbnail are positioned later (unless favorite)<br/>
 # 0.2.18
 -Settings items now scroll<br/>
 -Settings toggles are now aligned<br/>

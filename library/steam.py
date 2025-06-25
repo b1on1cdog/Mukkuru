@@ -1,6 +1,6 @@
 # Copyright (c) 2025 b1on1cdog
 # Licensed under the MIT License
-''' Handles steam functions '''
+''' Steam library module '''
 import struct
 import glob
 import os

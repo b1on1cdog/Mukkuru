@@ -58,6 +58,21 @@ function updateLibraryOptions(){
   });
 }
 
+function clearArtBlacklist(){
+    userConfiguration["boxartBlacklist"] = [];
+    userConfiguration["heroBlacklist"] = [];
+    userConfiguration["logoBlacklist"] = [];
+}
+
+function deleteData(option){
+    fetch(backendURL+"/clear/"+option, {
+        method: "POST",
+        headers: {
+            "Content-type": "application/json; charset=UTF-8"
+        }
+    }).then((response) => { });
+}
+
 function checkSelectedTheme(theme){
     //elem.dataset.value
     themeTab = document.getElementById("options-3")
@@ -169,21 +184,30 @@ fetch(backendURL+"/hardware").then(function(response) {
         return response.json();
     }).then(function(data) {
         hardwareInformation = data
+        archInfo = document.getElementById("arch");
+        gpuInfo = document.getElementById("gpu_name");
+        cpuInfo = document.getElementById("cpu_name");
+        distroInfo = document.getElementById("distro");
+        versionInfo = document.getElementById("app_version");
         try {
         document.getElementById("total_ram").innerText = "RAM: " + hardwareInformation["total_ram"] + "GiB";
         patchHTML("storage", "unknown", hardwareInformation["disk_total"] + "Gb");
         patchHTML("computer_name", "unknown", hardwareInformation["computer_name"]);
-        document.getElementById("arch").innerText = "Arch: " + hardwareInformation["arch"];
+        archInfo.innerText = "Arch: " + hardwareInformation["arch"];
         cpu = hardwareInformation["cpu"];
         gpu = hardwareInformation["gpu"]
         cpu = cpu.replace(" Processor", "");
-
-        document.getElementById("cpu_name").innerText = "CPU: " + cpu;
-        document.getElementById("gpu_name").innerText = "GPU: " + gpu;
-        document.getElementById("distro").innerText = "OS: " + hardwareInformation["distro"];
-        document.getElementById("app_version").innerText = hardwareInformation["app_version"];
+        cpuInfo.innerText = "CPU: " + cpu;
+        gpuInfo.innerText = "GPU: " + gpu;
+        if (gpu.includes("Unknown")) {
+            gpuInfo.style.display = "none";
+        }
+        distroInfo.innerText = "OS: " + hardwareInformation["distro"];
+        versionInfo.innerText = hardwareInformation["app_version"];
         } catch (err) {
             backend_log(err);
+            gpuInfo.style.display = "none";
+            distroInfo.style.display = "none";
         }
     });
 
@@ -317,7 +341,21 @@ document.addEventListener('keydown', (e) => {
             playSound("enter-back");
             elem = tabOptions[selectedTab][selectedOption];
                 //elem = tabOptions[selectedTab][selectedOption];
-            if (elem.dataset.hasOwnProperty("key")) {
+            if (elem.dataset.hasOwnProperty("call")) {
+                    switch (elem.dataset.call) {
+                        case "deleteArt":
+                            deleteData("art");
+                            break;
+                        case "deleteData":
+                            deleteData("all");
+                            break;
+                        case "clearArtBlacklist":
+                            clearArtBlacklist();
+                            break;
+                        default:
+                            break;
+                    }
+                } else if (elem.dataset.hasOwnProperty("key")) {
                 if (elem.dataset.value == "true" || elem.dataset.value == "false") {
                     tstate = (elem.dataset.value == "true");
                     userConfiguration[elem.dataset.key] = tstate;
@@ -327,8 +365,7 @@ document.addEventListener('keydown', (e) => {
                 } else if (elem.dataset.hasOwnProperty("flip")) {
                     userConfiguration[elem.dataset.key] ^= SOURCE_OPTIONS[elem.dataset.flip];
                     updateLibraryOptions();
-                } else {
-                    //if e
+                }  else {
                     if (elem.dataset.key == "theme") {
                         checkSelectedTheme(elem.dataset.value)
                     }
@@ -351,7 +388,8 @@ document.addEventListener('keydown', (e) => {
                     changeLockedValue(0);
                 }
         }
-            
+
+            setTimeout(() => {
             fetch(backendURL+"/config/set", {
                     method: "POST",
                     body: JSON.stringify(userConfiguration),
@@ -366,8 +404,8 @@ document.addEventListener('keydown', (e) => {
                             backend_log("apply language....");
                         }
                     }
-
                 });
+                }, "50");
             
             break;
 
@@ -410,7 +448,6 @@ document.addEventListener('keydown', (e) => {
                 selectedTab--;
                 menuItems[selectedTab].className = "menu-tab selected";
                 menuItems[selectedTab].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
-
                 //menuItems[selectedTab].classList.add("selected");
                 selectedOption = 0;
             } else {
@@ -503,6 +540,8 @@ document.addEventListener('keydown', (e) => {
                 <div id="themesTab" class="menu-tab" data-loc="Themes" data-trm="swapText">Themes</div>
                 <div id="languageTab" class="menu-tab" data-loc="Language" data-trm="swapText">Language</div>
                 <div class="separator"></div>
+                <div id="advancedTab" class="menu-tab" data-loc="Advanced" data-trm="swapText">Advanced</div>
+                <div class="separator"></div>
                 <div id="aboutTab" class="menu-tab" data-loc="About" data-trm="swapText">About</div>
             </div>
 
@@ -580,12 +619,25 @@ document.addEventListener('keydown', (e) => {
                 </div>
                 <div class="options" id="options-5" style="display:none;">
                     <div class="option-separator"></div>
+                    <div class="menu-option" id="clearArtBlacklist" data-loc="clearArtBlacklist" data-trm="swapText" data-call="clearArtBlacklist">Clear art blacklist</div>
+                    <div class="option-separator"></div>
+                    <div class="option-description" id="clear-blacklist-desc" data-trm="swapText" data-loc="clear-blacklist-desc">Allows to retry download of arts marked as unavailable</div>
+
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="clearArt" data-loc="clearArt" data-trm="swapText" data-call="deleteArt">Clear downloaded art</div>
+                    <div class="option-separator"></div>
+
+                    <div class="menu-option" id="clearData" data-loc="clearData" data-trm="swapText" data-call="deleteData">Wipe Mukkuru data</div>
+                    <div class="option-separator"></div>
+                </div>
+                <div class="options" id="options-6" style="display:none;">
+                    <div class="option-separator"></div>
                     <div id="about-text" class="option-description" style="margin-left: 100px;font-size: 28px;color: rgba(30, 39, 50, 0.747)">
                     <div id="hardwareInfo" data-trm="swapTGL" data-loc="hardwareInfo">Hardware Information</div>
                     <div>---------------</div>
                     <div id="computer_name" data-loc="Name" data-trm="patchHTML" data-patch="Name">Name: unknown</div>
-                    <div id="cpu_name">CPU: unknown</div>
                     <div id="arch">Arch: unknown</div>
+                    <div id="cpu_name">CPU: unknown</div>
                     <div id="gpu_name">GPU: unknown</div>
                     <div id="total_ram">RAM: unknown</div>
                     <div id="storage" data-loc="storage" data-trm="patchHTML" data-patch="Storage">Storage: unknown</div>

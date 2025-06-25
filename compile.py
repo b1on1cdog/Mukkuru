@@ -22,6 +22,7 @@ parser.add_argument("--run", action="store_true")
 parser.add_argument("--wef", action="store_true")
 parser.add_argument("--add", nargs='+')
 parser.add_argument("--debug", action="store_true")
+parser.add_argument("--alt", action="store_true")
 
 args = parser.parse_args()
 compiler_config = {}
@@ -116,7 +117,7 @@ if SRC_CONTENT is None:
     exit(0)
 
 APP_VERSION = re.search(r'APP_VERSION\s*=\s*["\'](.*?)["\']', SRC_CONTENT).group(1)
-OUTPUT_FILE = f"{OUTPUT_FILE}-{APP_VERSION}"
+#OUTPUT_FILE = f"{OUTPUT_FILE}-{APP_VERSION}"
 
 venv_python = os.path.join(VENV, 'bin', 'python')
 
@@ -230,7 +231,20 @@ if not Path(".venv").is_dir():
 
 if not Path(VENV).is_dir():
     create_venv(venv_python)
-
+if args.alt:
+    add_package(["pyinstaller"], venv_python)
+    compiler_flags = ['-m', "PyInstaller"]
+    compiler_flags.append("--onefile")
+    compiler_flags.extend(["--add-data", f"{UI_SOURCE}:{UI_SOURCE}"])
+    compiler_flags.extend(["--distpath", os.path.join(OUTPUT_DIR, "pack")])
+    compiler_flags.extend(["-i", ICON_PATH])
+    if not args.debug:
+        compiler_flags.append("--noconsole")
+    compiler_flags.append(SRC_OUT)
+    patch_source_code(SRC_CONTENT)
+    invoke(compiler_flags, venv_python)
+    os.remove(SRC_OUT)
+    os._exit(0)
 compiler_flags = [ "-m", "nuitka"]
 #compiler_flags.append("--follow-imports")
 if system == "Windows":

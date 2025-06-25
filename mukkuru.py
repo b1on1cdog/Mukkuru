@@ -2,7 +2,7 @@
 # Licensed under the MIT License
 """ Mukkuru, cross-platform game launcher """
 import os
-import glob
+#import glob
 import json
 from pathlib import Path
 from functools import lru_cache
@@ -10,12 +10,15 @@ import subprocess
 import base64
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import sys
 import hashlib
 import logging
 import platform
+import shutil
 
+#import inspect
 from waitress import serve
 from flask import Flask, request
 from flask import send_from_directory, send_file
@@ -23,6 +26,8 @@ from flask import send_from_directory, send_file
 from library import grid_db
 from library.steam import get_non_steam_games, get_steam_games, get_steam_env
 from library.steam import read_steam_username, download_steam_avatar
+
+from library.egs import get_egs_games, read_heroic_username
 
 from utils import hardware_if
 from utils.css_preprocessor import CssPreprocessor
@@ -48,10 +53,19 @@ log.setLevel(logging.CRITICAL)
 mukkuru_env = {}
 
 COMPILER_FLAG = False
-APP_VERSION = "0.2.18.1"
+APP_VERSION = "0.3.0"
 BUILD_VERSION = None
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
+
+def log_calls(frame, event, _):
+    ''' logs function calls'''
+    if event == "call":
+        code = frame.f_code
+        func = code.co_name
+        module = frame.f_globals.get("__name__", "")
+        logging.info("→ %s.%s()", module, func)
+    return log_calls
 
 @lru_cache(maxsize=1)
 def app_version():
@@ -69,37 +83,6 @@ def app_version():
         build_version = BUILD_VERSION
     return f"Mukkuru v{APP_VERSION} build-{build_version}"
 
-def get_egs_games():
-    ''' [Windows only] get games from epic games launcher '''
-    #To-do: look for alternate ProgramData paths
-    manifest_dir = r"C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests"
-    if not os.path.exists(manifest_dir):
-        print(f"Manifest directory not found: {manifest_dir}")
-    games = {}
-    for filename in os.listdir(manifest_dir):
-        if filename.endswith(".item"):
-            filepath = os.path.join(manifest_dir, filename)
-            try:
-                with open(filepath, "r", encoding="utf-8") as f:
-                    manifest = json.load(f)
-                    app_name = manifest["DisplayName"]
-                    app_id = manifest["AppName"]
-                    game_dir = os.path.join(manifest["InstallLocation"],
-                                            manifest["LaunchExecutable"])
-                    if app_name and app_id:
-                        games[app_id] = {
-                            "AppName" : app_name,
-                            "catalogNamespace" : manifest["MainGameCatalogNamespace"],
-                            "catalogItemID" : manifest["MainGameCatalogItemId"],
-                            "LaunchOptions" : "",
-                            "Exe" : game_dir,
-                            "StartDir" : manifest["InstallLocation"],
-                            "Source" : "egs"
-                        }
-
-            except (PermissionError, IndexError, json.decoder.JSONDecodeError) as e:
-                print(f"Exception occured: {e}")
-    return games
 
 def library_scan(options):
     '''
@@ -240,7 +223,11 @@ def launch_app(app_id):
     games = get_games(True)
     game_path = games[app_id]["Exe"].strip('"')
     print(f'Launching game: {game_path} using {games[app_id]["LaunchOptions"]}')
-    subprocess.run(f'"{game_path}" {games[app_id]["LaunchOptions"]}',
+    if "flatpak" in game_path:
+        pass
+    else:
+        game_path = f'"{game_path}"'
+    subprocess.run(f'{game_path} {games[app_id]["LaunchOptions"]}',
                    stderr=subprocess.DEVNULL,
                    stdout=subprocess.DEVNULL,
                    env=os.environ.copy(), shell=True, check=False)
@@ -255,35 +242,6 @@ def copy_file(source, destination):
     with open(source, 'rb') as src, open(destination,'wb') as dst:
         dst.write(src.read())
 
-
-def fetch_artwork(game_title, app_id, platform_name):
-    '''get apps artwork'''
-    square_thumbnail_dir = os.path.join(mukkuru_env["root"], "thumbnails")
-    square_fetch_dir = os.path.join(mukkuru_env["artwork"],"Square")
-    if not Path(square_fetch_dir).is_dir():
-        os.mkdir(square_fetch_dir)
-    if not Path(square_thumbnail_dir).is_dir():
-        os.mkdir(square_thumbnail_dir)
-
-    match = None
-    if match is None:
-        game_identifier = grid_db.GameIdentifier(game_title, app_id, platform_name)
-        if game_identifier.platform != "non-steam":
-            output_file = output_file = os.path.join(square_thumbnail_dir, f'{app_id}.jpg')
-        else:
-            output_file = square_fetch_dir
-        filename = grid_db.download_image(game_identifier, output_file, "1:1")
-        if filename is not False:
-            if filename.endswith(".jpg"):
-                print(f'downloaded {game_title} artwork from api')
-                copy_file(filename, f'{square_thumbnail_dir}{app_id}.jpg')
-            else:
-                print(f'failed to download {game_title} artwork from api')
-        return None
-    #print(f'Found: {match} for {game_title}')
-    copy_file(match, f'{square_thumbnail_dir}{app_id}.jpg')
-    return match
-
 def sha256_hash_file(filepath, chunk_size=8192):
     ''' get sha256 of file, processed as chunks to prevent memory overuse '''
     sha256 = hashlib.sha256()
@@ -291,37 +249,6 @@ def sha256_hash_file(filepath, chunk_size=8192):
         for chunk in iter(lambda: f.read(chunk_size), b''):
             sha256.update(chunk)
     return sha256.hexdigest()
-
-def clear_possible_mismatches(games):
-    ''' clear artwork duplicates '''
-    print("start artwork cleanup....")
-    file_hashes = {}
-    square_path = os.path.join(mukkuru_env["artwork"],"Square")
-    #app_hashes = {}
-    files = glob.glob(os.path.join(square_path, '*.jpg'))
-    for file in files:
-        file_hash = sha256_hash_file(file)
-        file_hashes.setdefault(file_hash, []).append(file)
-    for _, v in file_hashes.items():
-        if len(v) > 1:
-            for x in v:
-                # Get appid
-                #app_hashes.setdefault(k, []).append(os.path.splitext(os.path.basename(x))[0])
-                app_id = os.path.splitext(os.path.basename(x))[0]
-                app_name = games[app_id]["AppName"]
-                src_image =  os.path.join(grid_db.sanitize_filename_ascii(app_name), ".jpg")
-                games[app_id]["Thumbnail"] = False
-                print(f"removing duplicated {x}")
-                os.remove(x) # delete duplicated thumbnail
-                if Path(src_image).is_file():
-                    thumbnail_path= os.path.join(mukkuru_env["root"], "thumbnails", f'{app_id}.jpg')
-                    copy_file(src_image, thumbnail_path)
-                else:
-                    game_source = games[app_id]["Source"]
-                    fetch_artwork(app_name, app_id, game_source)
-    #if len(file_hashes) > 0:
-    #    for k in app_hashes:
-    return
 
 @app.route('/favicon.ico')
 def favicon():
@@ -346,30 +273,57 @@ def open_store(storefront):
     else:
         print(f"unknown storefront {storefront}")
 
+def fetch_artwork(app_id, game, b1, b2, b3):
+    ''' handle artwork '''
+    thumbnail = os.path.join(mukkuru_env["root"], "thumbnails", f'{app_id}.jpg')
+    game_source = game["Source"]
+    game_identifier = grid_db.GameIdentifier(game["AppName"], app_id, game_source)
+    if not Path(thumbnail).is_file() and app_id not in b1:
+        if grid_db.download_image(game_identifier, thumbnail,"1:1") == "Missing":
+            b1.append(app_id)
+    hero = os.path.join(mukkuru_env["root"], "hero", f'{app_id}.png')
+    if not Path(hero).is_file() and app_id not in b2:
+        if grid_db.download_image(game_identifier, hero, "hero") == "Missing":
+            b2.append(app_id)
+    logo = os.path.join(mukkuru_env["root"], "logo", f'{app_id}.png')
+    if not Path(logo).is_file() and app_id not in b3:
+        if grid_db.download_image(game_identifier, logo,"logo") == "Missing":
+            b3.append(app_id)
+    result = {}
+    result["1"] = b1
+    result["2"] = b2
+    result["3"] = b3
+    return result
+
 @app.route('/library/artwork/scan')
 def scan_artwork(games = None):
     ''' scan for games artwork '''
+    print("scanning for new artwork..")
     config = get_config(True)
     blacklist1 = config["boxartBlacklist"]
     blacklist2 = config["heroBlacklist"]
     blacklist3 = config["logoBlacklist"]
     if games is None:
         games = get_games(True)
-    for k in games.keys():
-        thumbnail = os.path.join(mukkuru_env["root"], "thumbnails", f'{k}.jpg')
-        game_source = games[k]["Source"]
-        game_identifier = grid_db.GameIdentifier(games[k]["AppName"], k, game_source)
-        if not Path(thumbnail).is_file() and k not in blacklist1:
-            if grid_db.download_image(game_identifier, thumbnail,"1:1") == "Missing":
-                blacklist1.append(k)
-        hero = os.path.join(mukkuru_env["root"], "hero", f'{k}.png')
-        if not Path(hero).is_file() and k not in blacklist2:
-            if grid_db.download_image(game_identifier, hero, "hero") == "Missing":
-                blacklist2.append(k)
-        logo = os.path.join(mukkuru_env["root"], "logo", f'{k}.png')
-        if not Path(logo).is_file() and k not in blacklist3:
-            if grid_db.download_image(game_identifier, logo,"logo") == "Missing":
-                blacklist3.append(k)
+    results = {}
+    counter = 0
+    with ThreadPoolExecutor(max_workers=config["cores"]*2) as executor:
+        future_to_key = {
+            executor.submit(fetch_artwork, k, v, blacklist1, blacklist2, blacklist3): k
+            for k, v in games.items()
+        }
+        for future in as_completed(future_to_key):
+            k = future_to_key[future]
+            try:
+                results[k] = future.result()
+                blacklist1.extend(results[k]["0"])
+                blacklist2.extend(results[k]["1"])
+                blacklist3.extend(results[k]["2"])
+                counter = counter +1
+                if counter % 12 == 0:
+                    scan_thumbnails(games)
+            except (KeyError, OSError, IndexError, FileNotFoundError) as e:
+                results[k] = {"error": str(e)}
     config["boxartBlacklist"] = blacklist1
     config["heroBlacklist"] = blacklist2
     config["logoBlacklist"] = blacklist3
@@ -378,7 +332,6 @@ def scan_artwork(games = None):
     scan_thumbnails(games)
     return "200"
 
-@lru_cache(maxsize=1)
 def get_localization(raw = False):
     ''' Returns a localization dictionary '''
     user_config = get_config(True)
@@ -500,6 +453,50 @@ def set_config():
         return "500"
     return "400"
 
+def restart_app():
+    ''' restarts app '''
+    if COMPILER_FLAG:
+        os.execv(sys.argv[0], sys.argv)
+    else:
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+
+def terminate_wef():
+    ''' closes wef_bundle'''
+    wef_bundle = os.path.join(mukkuru_env["root"], "wef_bundle", "wef_bundle")
+    if platform.system() == "Windows":
+        wef_bundle = wef_bundle+".exe"
+    hardware_if.kill_executable_by_path(wef_bundle)
+
+@app.route('/clear/<selection>', methods = ['POST'])
+def delete_data(selection):
+    ''' deletes app data '''
+    print(f"deleting data {selection}")
+    tn_folder = os.path.join(mukkuru_env["root"], "thumbnails")
+    logo_folder = os.path.join(mukkuru_env["root"], "logo")
+    hero_folder = os.path.join(mukkuru_env["root"], "hero")
+    if selection == "art":
+        shutil.rmtree(tn_folder)
+        os.mkdir(tn_folder)
+        shutil.rmtree(logo_folder)
+        os.mkdir(logo_folder)
+        shutil.rmtree(hero_folder)
+        os.mkdir(hero_folder)
+    elif selection == "wef":
+        terminate_wef()
+        shutil.rmtree(os.path.join(mukkuru_env["root"], "wef_bundle"))
+    elif selection == "all":
+        if FRONTEND_MODE == "WEF":
+            terminate_wef()
+        try:
+            shutil.rmtree(mukkuru_env["root"])
+        except (OSError, FileNotFoundError, PermissionError):
+            pass
+        print("deleted Mukkuru data folder, quitting....")
+        quit_app()
+    else:
+        pass
+    return "200"
+
 def update_config(user_config):
     ''' update user configuration '''
     # clear cached config as the value was updated
@@ -519,7 +516,8 @@ def scan_games():
     options = user_config["librarySource"]
     games = library_scan(int(options))
     #game_library.update(games)
-    scan_artwork(games)
+    threading.Thread(target=scan_artwork, args=(games,)).start()
+    time.sleep(8)
     for k, _ in games.items(): #games.keys
         thumbnail_path = os.path.join(mukkuru_env["root"], "thumbnails", f'{k}.jpg')
         if not Path(thumbnail_path).is_file():
@@ -541,11 +539,18 @@ def log_message(message):
 # To-do: allow custom specified username from userConfiguration
 @app.route('/username')
 def get_user():
+    ''' Gets username '''
+    return get_username()
+
+@lru_cache(maxsize=1)
+def get_username():
     '''Get username'''
     failover_user = os.environ.get('USER', os.environ.get('USERNAME'))
     steam = get_steam_env()
     if steam is None:
-        return failover_user
+        heroic_user = read_heroic_username()
+        if heroic_user is None:
+            return failover_user
 
     username = read_steam_username(steam["config.vdf"])
     if username is None:
@@ -562,7 +567,6 @@ def main_uri():
     ''' redirect to homepage '''
     return app.redirect(location=f'http://localhost:{APP_PORT}/frontend/')
 
-#segmentation fault in linux
 @app.route('/frontend/<path:path>')
 def static_file(path):
     ''' serve asset '''
@@ -628,6 +632,11 @@ def start_server():
 
 def main():
     ''' start of app execution '''
+    #logging.basicConfig(level=logging.INFO, format='%(asctime)s  %(message)s')
+   # sys.setprofile(log_calls)
+    #threading.setprofile(log_calls)
+    #for k, v in os.environ.items():
+    #   print(f"{k}={v}")
     system = platform.system()
     print(f"Running on {system}")
     print(f'Using { FRONTEND_MODE } for rendering')

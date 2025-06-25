@@ -121,10 +121,13 @@ document.addEventListener('DOMContentLoaded', () => {
     //gameArr = Object.entries(data);
     gameArr = Object.entries(data);
     const favoriteGames = new Set(userConfiguration.favorite);
+
     gameArray = [
         ...gameArr.filter(([key]) => favoriteGames.has(key)),
-        ...gameArr.filter(([key]) => !favoriteGames.has(key))
+        ...gameArr.filter(([key, val]) => !favoriteGames.has(key) && val.Thumbnail === true),
+        ...gameArr.filter(([key, val]) => !favoriteGames.has(key) && val.Thumbnail !== true)
     ];
+    
     gamesSkipped = 0;
     gamesAdded = 0;
     await isConfigReady;

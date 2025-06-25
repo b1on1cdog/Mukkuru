@@ -18,6 +18,9 @@ function swapTGL(elementID, newText){
   if (element != undefined && element != null) {
       replaceText = element.innerHTML.split("<span")[0];
       resize = (21 / newText.length ) * 100;
+      if (resize > 130) {
+        resize = 120;
+      }
       element.innerHTML = element.innerHTML.replace(replaceText, newText);
       element.style.fontSize = resize + "%";
   }

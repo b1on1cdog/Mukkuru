@@ -179,10 +179,7 @@ def get_current_interface():
 def connection_status():
     ''' returns a json with connection status'''
     status = {}
-    if system == "Linux": # temporal fix
-        status["wifi"] = True
-    else:
-        status["wifi"] = is_using_wireless()
+    status["wifi"] = is_using_wireless()
     status["internet"] = has_internet() or has_internet()
     if status["internet"] is False:
         status["internet"] = has_internet(host="8.8.4.4") or has_internet(host="1.1.1.1")
@@ -221,4 +218,24 @@ def wireless_signal():
 
 def get_battery():
     ''' returns battery'''
-    return psutil.sensors_battery()
+    battery = psutil.sensors_battery()
+    if battery is None:
+        return None
+    return battery._asdict()
+
+def kill_executable_by_path(target_path):
+    """
+    Hard-kill every running process whose executable exactly matches `target_path`.
+    """
+    target_path = os.path.abspath(target_path)
+    killed = []
+
+    for proc in psutil.process_iter(['pid', 'exe']):
+        try:
+            if proc.info['exe'] and os.path.abspath(proc.info['exe']) == target_path:
+                proc.kill()
+                killed.append(proc.pid)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            # Skip processes that vanished or we can't touch
+            continue
+    return killed
