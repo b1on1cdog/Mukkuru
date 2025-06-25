@@ -48,7 +48,7 @@ log.setLevel(logging.CRITICAL)
 mukkuru_env = {}
 
 COMPILER_FLAG = False
-APP_VERSION = "0.2.18"
+APP_VERSION = "0.2.18.1"
 BUILD_VERSION = None
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
@@ -575,6 +575,8 @@ def static_file(path):
             return send_from_directory(mukkuru_env["artwork"], f"Avatar/{get_user()}.jpg")
         elif Path(avatar_png).is_file():
             return send_from_directory(mukkuru_env["artwork"], f"Avatar/{get_user()}.png")
+        else:
+            return send_from_directory(serve_path, os.path.join("assets","avatar_man.png"))
     if path.startswith("assets/audio/"):
         audio_file = path.replace("assets/audio/", "")
         new_path = f'assets/audio/{user_config["uiSounds"]}/{audio_file}'
