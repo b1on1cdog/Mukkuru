@@ -9,6 +9,7 @@ See [third-party.md](docs/third-party.md) for third-party files license terms.<b
 
 # Current features
 - SW, SW2, PS5 like themes<br/>
+- Import custom user themes<br/>
 - Dark mode<br/>
 - Scan games from Steam Library<br/>
 - Scan games from Epic Games Library<br/>
@@ -29,7 +30,6 @@ Some others are going to receive occasional uploads</br>
 [Read changelog.md](docs/changelog.md)
 
 # To-do list
-- Chosing custom themes from settings (working on it)<br/>
 - Switch-Like contextual menus (when pressing options and some footer items) <br/>
 - Heroic Support<br/>
 - Add ability to download games</br>
@@ -55,6 +55,7 @@ Some others are going to receive occasional uploads</br>
 # Known issues
 - A too small window might cause view issues<br/>
 - A too big window might cause keyguide to display incorrectly in app launcher<br/>
+- Settings do not display well in some devices <br/>
 
 # Contribution guidelines
 - **Linting** Use pylint and remove as many warnings as reasonably possible before submitting your code. <br/>

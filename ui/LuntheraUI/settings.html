@@ -18,8 +18,8 @@ if (localStorage.getItem("darkMode") == "true") {
 //To-do: simplify function
 function setDarkModeState(state){
     localStorage.setItem("darkMode", state);
-    document.getElementById(state?"darkMode":"lightMode").classList.add("checked");
-    document.getElementById(state?"lightMode":"darkMode").classList.remove("checked");
+   // document.getElementById(state?"darkMode":"lightMode").classList.add("checked");
+   // document.getElementById(state?"lightMode":"darkMode").classList.remove("checked");
     document.getElementsByClassName("homeMenu")[0].style.setProperty("--bg-color", state?darkColor:lightColor);
     document.getElementsByClassName("controllerState-type")[0].getElementsByTagName("svg")[0].getElementsByTagName("path")[0].style.fill = state?lightColor:darkColor;
     document.querySelectorAll(".keyGuide-icon").forEach((element) => element.getElementsByTagName("path")[0].style.fill = state?lightColor:darkColor);
@@ -39,6 +39,8 @@ const SOURCE_OPTIONS = {
   EGS:          1 << 2, // 4
 };
 
+let tabOptions = {};
+
 function getSelectedOptions(bitmask) {
   return Object.entries(SOURCE_OPTIONS)
     .filter(([_, value]) => bitmask & value)
@@ -54,6 +56,69 @@ function updateLibraryOptions(){
         document.getElementById(`sources-${index}`)?.classList.remove("checked");
     }
   });
+}
+
+function checkSelectedTheme(theme){
+    //elem.dataset.value
+    themeTab = document.getElementById("options-3")
+    themeOptions = themeTab.querySelectorAll(".menu-option")
+    themeOptions.forEach((item) => {
+        if (item.dataset.value == theme) {
+            item.classList.add("checked")
+        } else {
+            item.classList.remove("checked")
+        }
+    });
+}
+
+function addUserThemes(){
+    fetch(backendURL+"/themes/get").then(function(response) {
+        return response.json();
+    }).then(function(data) {
+        backend_log(JSON.stringify(data))
+        themeTab = document.getElementById("options-3")
+        //to-do: provide failover image as alt, to prevent empty image overlap
+        Object.entries(data).forEach(([key, value]) => {
+            theme = value;
+            backend_log("adding "+key +" to themes list");
+            const themeOption = document.createElement('div');
+            themeOption.className = 'menu-option';
+            themeOption.id = key;
+            themeOption.dataset.key = "theme";
+            themeOption.dataset.value = key;
+            themeOption.style.display = "flex";
+            themeOption.style.alignItems = "center";
+
+            const banner = document.createElement('img');
+            banner.className = 'option-img';
+            banner.src = "/theme/"+key+"/banner.png";
+            banner.alt = theme.name;
+            themeOption.appendChild(banner);
+            themeOption.appendChild(document.createTextNode(theme.name))
+            themeTab.appendChild(themeOption)
+            const separator = document.createElement('div');
+            separator.className = 'option-separator';
+            themeTab.appendChild(separator)
+            /*
+            <div class="menu-option" id="sw_theme" data-key="theme" data-value="Switch" style="display: flex; align-items: center;">
+                    <svg class="option-img" width="100" height="50" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="0" y="0" width="100" height="50" fill="white" stroke="black" stroke-width="2" rx="3" ry="3"></rect>
+                    </svg>Sample
+                    </div>
+            
+            
+            */
+        });//
+        refreshOptions();
+    });
+}
+
+function refreshOptions() {
+    document.querySelectorAll(".options").forEach((item, index) => {
+        options = item.querySelectorAll(".menu-option");
+        console.log("reading...");
+        tabOptions[index] = options;
+});
 }
 
 /*
@@ -88,7 +153,10 @@ fetch(backendURL+"/config/get").then(function(response) {
         }
         updateLibraryOptions();
         showKeyGuide(userConfiguration["showKeyGuide"]);
+        refreshOptions();
+        addUserThemes();
         allowRendering();
+        setTimeout(function() { checkSelectedTheme(userConfiguration["theme"]); }, 300);
 });    
 
 
@@ -122,7 +190,6 @@ lockedOption = false;
 let isTab = true;
 
 // Options optimization
-let tabOptions = {};
 
 const optionRangeMin = {
     "maxGamesInHomeScreen" : 6
@@ -137,11 +204,7 @@ const blistOptions = {
     "uiSounds" : ["Switch", "PS5"]
 }
 
-document.querySelectorAll(".options").forEach((item, index) => {
-    options = item.querySelectorAll(".menu-option");
-    console.log("reading...");
-    tabOptions[index] = options;
-});
+
 //
 
 function changeLockedValue(position) {
@@ -253,22 +316,30 @@ document.addEventListener('keydown', (e) => {
                 if (elem.dataset.value == "true" || elem.dataset.value == "false") {
                     tstate = (elem.dataset.value == "true");
                     userConfiguration[elem.dataset.key] = tstate;
-                    if (elem.dataset.key = "darkMode") {
-                        setDarkModeState(tstate);
-                    }
+                   // if (elem.dataset.key = "darkMode") {
+                   //     setDarkModeState(tstate);
+                   // }
                 } else if (elem.dataset.hasOwnProperty("flip")) {
                     userConfiguration[elem.dataset.key] ^= SOURCE_OPTIONS[elem.dataset.flip];
                     updateLibraryOptions();
                 } else {
+                    //if e
+                    if (elem.dataset.key == "theme") {
+                        checkSelectedTheme(elem.dataset.value)
+                    }
                     userConfiguration[elem.dataset.key] = elem.dataset.value;
                 }
                     
 
             } else {
-                let value = userConfiguration[tabOptions[selectedTab][selectedOption].id];
+                let elem_id = tabOptions[selectedTab][selectedOption].id
+                let value = userConfiguration[elem_id];
                 if (typeof value === 'boolean') {
                     tabOptions[selectedTab][selectedOption].innerHTML = (tabOptions[selectedTab][selectedOption].innerHTML).replace(booleanTgl(value), booleanTgl(!value));
-                    userConfiguration[tabOptions[selectedTab][selectedOption].id] = !value;
+                    userConfiguration[elem_id] = !value;
+                    if (elem_id == "darkMode") {
+                        setDarkModeState(!value)
+                    }
                 } else if (typeof value === 'number') {
                     changeLockedValue(0);
                 } else if (typeof value === 'string') {
@@ -457,26 +528,32 @@ document.addEventListener('keydown', (e) => {
                     <div class="option-separator"></div>
                     <div class="menu-option" id="showKeyGuide" data-trm="swapTGL" data-loc="id">Show keyGuide bar &nbsp;	&nbsp;	&nbsp; [BTOGGLE]</div>
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="theme" data-trm="swapTGL" data-loc="id">Main list style &nbsp;	&nbsp;	&nbsp; [BLIST]</div>
-                    <div class="option-separator"></div>
                     <div class="menu-option" id="uiSounds" data-trm="swapTGL" data-loc="id">Sound effects &nbsp; &nbsp; [BLIST]</div>
                     <div class="option-separator"></div>
                 </div>
                 <div class="options" id="options-3" style="display:none;">
                     <div class="option-separator"></div>
+                    <div class="menu-option" id="darkMode" data-trm="swapTGL" data-loc="id">Dark Mode &nbsp;&nbsp;&nbsp;&nbsp; [BTOGGLE]</div>
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="sw_theme" data-key="theme" data-value="Switch" style="display: flex; align-items: center;">
+                    <svg class="option-img" width="100" height="50" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="0" y="0" width="100" height="50" fill="white" stroke="black" stroke-width="2" rx="3" ry="3"></rect>
+                    </svg>Switch
+                    </div>
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="sw2_theme" data-key="theme" data-value="Switch 2" style="display: flex; align-items: center;">
+                    <svg class="option-img" width="100" height="50" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="0" y="0" width="100" height="50" fill="purple" stroke="black" stroke-width="2" rx="3" ry="3"></rect>
+                    </svg>Switch 2
+                    </div>
+                     <div class="option-separator"></div>
+                    <div class="menu-option" id="ps5_theme" data-key="theme" data-value="PS5" style="display: flex; align-items: center;">
+                    <svg class="option-img" width="100" height="50" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="0" y="0" width="100" height="50" fill="black" stroke="black" stroke-width="2" rx="3" ry="3"></rect>
+                    </svg>PS5
+                    </div>
+                    <div class="option-separator"></div>
 
-                    <div class="menu-option" id="lightMode"  data-loc="lightMode" data-trm="patchHTML" data-patch="Basic White" data-key="darkMode" data-value="false" style="display: flex; align-items: center;">
-                    <svg class="option-img" width="200" height="100" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="0" y="0" width="200" height="100" fill="white" stroke="black" stroke-width="2" rx="3" ry="3"></rect>
-                    </svg>Basic White
-                    </div>
-                    <div class="option-separator"></div>
-                    <div class="menu-option" id="darkMode" data-loc="darkMode" data-trm="patchHTML" data-patch="Basic Black" data-key="darkMode" data-value="true" style="display: flex; align-items: center;">
-                    <svg class="option-img" width="200" height="100" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="0" y="0" width="200" height="100" fill="black" stroke="black" stroke-width="2" rx="3" ry="3"></rect>
-                    </svg>Basic Black
-                    </div>
-                    <div class="option-separator"></div>
                 </div>
                 <div class="options" id="options-4" style="display:none;">
                     <div class="option-separator"></div>

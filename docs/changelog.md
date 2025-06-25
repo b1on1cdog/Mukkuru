@@ -1,5 +1,11 @@
 # Changelog
 -----------------
+# 0.2.17
+-Added ability to load user themes<br/>
+-Frontend changes to allow setting some changes from css<br/>
+-Temporal seg_fault linux fix <br/>
+-Steam is now optional<br/>
+-Linux shorcut path fix</br>
 # 0.2.16
 - [source] files are now organized in folders<br/>
 - [source] get_battery() was moved to hardware_if<br/>

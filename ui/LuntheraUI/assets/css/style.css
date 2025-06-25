@@ -1,3 +1,6 @@
+:root {
+    --dark-footer-button-bg: "#4E4E4E";
+}
 html {
     --bg-color: #EBEBEB;
     --bland-bg: #cccccc;

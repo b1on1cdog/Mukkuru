@@ -1,4 +1,7 @@
-
+:root {
+    --footer-button-bg: rgba(0, 0, 0, 0);
+    --dark-footer-button-bg: unset;
+}
 .footerNavigation {
     background-color: var(--select-border);
     border-radius: 100px;

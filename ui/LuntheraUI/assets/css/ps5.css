@@ -1,3 +1,11 @@
+:root {
+  --footer-button-bg: rgba(0, 0, 0, 0);
+  --dark-footer-button-bg: unset;
+  --hide-bottom-bar: 1;
+  --display-hero: 1;
+  --applist-columns: 5;
+}
+
 html {
     --select-light: #ffffffec;
     --select-dark: #b7b7b7;

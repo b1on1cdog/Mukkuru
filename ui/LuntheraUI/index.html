@@ -35,6 +35,19 @@ document.addEventListener('DOMContentLoaded', () => {
         Mukkuru should have it's own game source, since some users might want games outside
         from Steam or they might want to include/exclude some games from it
     */
+    const root = document.documentElement; // This is the <html> element
+    const styles = getComputedStyle(root);
+    const displayHero = styles.getPropertyValue('--display-hero').trim() == "1";
+    const hideBottomBar = styles.getPropertyValue('--hide-bottom-bar').trim() == "1";
+    const footerButtonBg = styles.getPropertyValue('--footer-button-bg').trim();
+    const darkFooterButtonBg = styles.getPropertyValue('--dark-footer-button-bg').trim();
+    listColumns = Number(styles.getPropertyValue('--applist-columns').trim());
+    const appListCols = (listColumns == 0 || isNaN(listColumns) )?6:listColumns;
+    backend_log("Using "+appListCols+" columns")
+    if (footerButtonBg != "") {
+        document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "rgba(0, 0, 0, 0)");
+    }
+
     fetch(backendURL+"/config/get").then(function(response) {
         return response.json();
     }).then(function(data) {
@@ -66,7 +79,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         document.documentElement.style.setProperty("--select-border", "#0b0b0b");
         document.getElementsByClassName("homeMenu")[0].style.setProperty("--bg-color", darkColor);
-        document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "#4E4E4E"); // this one must be slightly different to background 
+        if (darkFooterButtonBg != ""){
+            document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = darkFooterButtonBg); // this one must be slightly different to background 
+        }
 
         document.querySelectorAll(".footerButton-icon").forEach((element) => {
             if (element instanceof SVGElement) {
@@ -84,33 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
         //document.documentElement.style.setProperty("--accent-color", "#4e0915");
         document.documentElement.style.setProperty("--accent-color", "#2E2E2E");
     }
-
-    if (listStyle == "PS5") {
-        showBottomBar(false)
-        document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "rgba(0, 0, 0, 0)");
-    } else if (listStyle == "Switch 2") {
-        document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "rgba(0, 0, 0, 0)");
-    }
-    /*
-        if (listStyle != "Switch") {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            switch (listStyle) {
-                case "PS5":
-                    link.href = './assets/css/ps5-list.css';
-                    document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "rgba(0, 0, 0, 0)");
-                    showBottomBar(false);
-                    break;
-                case "Switch 2":
-                    link.href = './assets/css/sw2.css';
-                    document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "rgba(0, 0, 0, 0)");
-                    break;
-                default:
-                    break;
-            }
-            document.head.appendChild(link);
-        }
-            */
 
     clockUpdate(userConfiguration["12H"]);
     setInterval(() => {
@@ -269,7 +257,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    displayHero = (userConfiguration["theme"] == "PS5");
     if (displayHero) {
         bg = document.getElementById("bg");
         bg.style.backgroundRepeat = "no-repeat";
@@ -372,14 +359,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             case 'ArrowDown':
-                jumpFactor = (listStyle == "PS5")?5:6;
 
                 if (currentRow == 2) {
                     playSound("border");
-                } else if (currentRow == 3 && currentIndex + jumpFactor < navigatingRow[currentRow].length) {
-                    currentIndex = currentIndex + jumpFactor;
+                } else if (currentRow == 3 && currentIndex + appListCols < navigatingRow[currentRow].length) {
+                    currentIndex = currentIndex + appListCols;
                     playSound("select");
-                } else if (currentRow == 3 && currentIndex + jumpFactor >= navigatingRow[currentRow].length) {
+                } else if (currentRow == 3 && currentIndex + appListCols >= navigatingRow[currentRow].length) {
                     currentIndex = navigatingRow[currentRow].length-1;
                     playSound("border");
                 } else {
@@ -396,7 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentRow == 0) {
                     playSound("border");
                 } else if (currentRow == 3 && currentIndex > 5) {
-                    currentIndex = currentIndex - jumpFactor;
+                    currentIndex = currentIndex - appListCols;
                     playSound("select");
                 } else if (currentRow == 3 && currentIndex < 6) {
                     currentIndex = 0;
@@ -497,7 +483,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
         }
 
-        if (currentRow != 2 && userConfiguration["theme"] == "PS5") {
+        if (currentRow != 2 && hideBottomBar) {
             showBottomBar(false);
         } else if (currentRow != 3) {
             showBottomBar(true);

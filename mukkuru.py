@@ -48,7 +48,7 @@ log.setLevel(logging.CRITICAL)
 mukkuru_env = {}
 
 COMPILER_FLAG = False
-APP_VERSION = "0.2.16.3"
+APP_VERSION = "0.2.17"
 BUILD_VERSION = None
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
@@ -164,7 +164,7 @@ def get_themes(raw = False):
         with open(theme_manifest, 'r', encoding='utf-8') as f:
             #themes.append(json.load(f))
             manifest = json.load(f)
-            themes[manifest["name"]] = manifest
+            themes[Path(theme_manifest).parent.name] = manifest
     if raw is True:
         return themes
     return json.dumps(themes)
@@ -198,7 +198,7 @@ def get_theme(selected = None):
         css = default_css
 
     for markup in theme["markup_files"]:
-        markup_path = os.path.join(themes_dir, markup)
+        markup_path = os.path.join(themes_dir,selected,markup)
         if Path(markup_path).is_file():
             css = css + Path(markup_path).read_text(encoding='utf-8')
         else:
@@ -467,6 +467,18 @@ def get_config(raw = False):
     if raw is False:
         return json.dumps(user_config)
     return user_config
+
+@app.route('/themes/get')
+def get_user_themes():
+    ''' get_themes() http controller, returns a json '''
+    return get_themes()
+
+@app.route('/theme/<theme_id>/<asset>')
+def get_theme_asset(theme_id, asset):
+    ''' get the asset of a user theme '''
+    theme_dir = os.path.join(mukkuru_env["root"], "themes", theme_id)
+    print(f"getting theme {theme_id} {asset}")
+    return send_from_directory(theme_dir, asset)
 
 @app.route('/config/get')
 def get_user_configuration():
