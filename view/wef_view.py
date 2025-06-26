@@ -64,7 +64,7 @@ class Frontend():
         os.environ["WEF_DISABLE_CONTEXT_MENU"] = "1"
         os.environ["WEF_HIDE_CURSOR"] = "1"
         #os.environ["BACKEND_URL_BIND"] = url + '/alive'
-        os.environ["BACKEND_PID_BIND"] = url + '/alive'
+        os.environ["BACKEND_PID_BIND"] = "1"
         os.environ["BACKEND_PID"] = str( os.getpid())
         # os.environ["WEF_EXIT_URL"]  overrides exit url
         # os.environ["WEF_CONFIG_URL"] overrides config url

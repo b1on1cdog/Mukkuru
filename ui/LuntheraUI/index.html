@@ -21,7 +21,19 @@ function measure_time(name, begin, end = performance.now()) {
     backend_log(name + " " + time_used + " ms");
 }
 
+const keyBindings = {
+  "Enter": "confirm",
+  "Space": "confirm",
+  "Escape": "back",
+  "Backspace" : "back"
+};
+
 let currentRow = 1;
+
+function sendBackgroundColorToParent(color) {
+  window.parent.postMessage({ bgColor: color }, '*');
+}
+
 
 document.addEventListener('DOMContentLoaded', () => {
     const start_load = performance.now();
@@ -106,6 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 30000);
     showKeyGuide(userConfiguration["showKeyGuide"]);
     allowRendering();
+    const bg = document.getElementsByClassName("homeMenu")[0].style.backgroundColor;
+    sendBackgroundColorToParent(bg);
     });    
     fetch(backendURL+"/library/get").then(function(response) {
         return response.json();
@@ -331,6 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tick = true;
         let navigatingRow = [profileRow, gameLaunchers, utilityButtons, appLaunchers];
         let cols = [1, gameLaunchers.length, 6, appLaunchers.length];
+        const action = keyBindings[event.code];
         
         switch(e.key) {
             case 'ArrowRight':

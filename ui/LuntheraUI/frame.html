@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" class="notranslate" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Mukkuru</title>
+    <link rel="stylesheet" href="./assets/css/theme.css">
+    <script src="mukkuru.js"></script>
+    <script src="localization.js"></script>
+    <style>
+    iframe {
+        position: fixed;  /* Or absolute */
+        top: 0;
+        left: 0;
+        width: 100vw;  /* Viewport width */
+        height: 100vh; /* Viewport height */
+        border: none;  /* Remove default border */
+  }
+        </style>
+</head>
+<body>
+<iframe id="main" src="index.html" allowfullscreen style="width:100%; height:100%; border:none;"></iframe>
+<script>
+window.addEventListener('message', (event) => {
+  if (event.data && event.data.bgColor) {
+    document.body.style.backgroundColor = event.data.bgColor;
+    console.log("Setting bg color to " + event.data.bgColor)
+  }
+});
+let once = false;
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        document.getElementById("main").requestFullscreen();
+        once = true;
+    } catch {
+
+    }
+    document.addEventListener('keydown', (e) => {
+        switch (e.key){
+            default:
+                if (!once) {
+                    once = true;
+                    document.getElementById("main").requestFullscreen();
+                }
+        }
+        e.preventDefault();
+    });
+});
+</script>
+</body>

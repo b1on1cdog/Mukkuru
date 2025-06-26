@@ -23,6 +23,7 @@ parser.add_argument("--wef", action="store_true")
 parser.add_argument("--add", nargs='+')
 parser.add_argument("--debug", action="store_true")
 parser.add_argument("--alt", action="store_true")
+parser.add_argument("--onedir", action="store_true")
 
 args = parser.parse_args()
 compiler_config = {}
@@ -234,7 +235,10 @@ if not Path(VENV).is_dir():
 if args.alt:
     add_package(["pyinstaller"], venv_python)
     compiler_flags = ['-m', "PyInstaller"]
-    compiler_flags.append("--onefile")
+    if args.onedir:
+        compiler_flags.append("--onedir")
+    else:
+        compiler_flags.append("--onefile")
     compiler_flags.extend(["--add-data", f"{UI_SOURCE}:{UI_SOURCE}"])
     compiler_flags.extend(["--distpath", os.path.join(OUTPUT_DIR, "pack")])
     compiler_flags.extend(["-i", ICON_PATH])

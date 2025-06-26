@@ -53,7 +53,7 @@ log.setLevel(logging.CRITICAL)
 mukkuru_env = {}
 
 COMPILER_FLAG = False
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.3.1"
 BUILD_VERSION = None
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
@@ -215,6 +215,12 @@ def quit_app():
     ''' exit mukkuru '''
     if FRONTEND_MODE == "FLASKUI":
         close_application() # pylint: disable=E0606, E0601
+    if FRONTEND_MODE == "WEF":
+        terminate_wef()
+    if os.environ.get("XDG_SESSION_DESKTOP", "").lower() == "gamescope":
+        proc_flags = ["flatpak"]
+        proc_flags.extend(["kill","org.mozilla.firefox"])
+        subprocess.run(proc_flags, check=False)
     os._exit(0)
 
 @app.route('/library/launch/<app_id>')
@@ -666,6 +672,7 @@ def main():
         os.path.join(mukkuru_env["root"], "thumbnails"),
         os.path.join(mukkuru_env["root"], "hero"),
         os.path.join(mukkuru_env["root"], "themes"),
+        os.path.join(mukkuru_env["root"], "plugins"),
     ]
 
     for needed_dir in needed_dirs:
@@ -702,7 +709,16 @@ def main():
         else:
             threading.Thread(target=start_server).start()
             time.sleep(2)
-            Frontend(is_fullscreen(), app_version(), mukkuru_env).start()
+            if os.environ.get("XDG_SESSION_DESKTOP", "").lower() == "gamescope":
+                mukkuru_url = 'http://localhost:49347/frontend/frame.html'
+                proc_flags = ["flatpak"]
+                proc_flags.extend(["run", "org.mozilla.firefox"])
+                proc_flags.append("--kiosk")
+                proc_flags.append("-private-window")
+                proc_flags.append(mukkuru_url)
+                subprocess.run(proc_flags, check=False)
+            else:
+                Frontend(is_fullscreen(), app_version(), mukkuru_env).start()
 
     else:
         start_server()

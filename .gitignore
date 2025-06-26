@@ -1,5 +1,6 @@
 .trash
 __pycache__
+_internal
 artwork/Square/*
 ui/SwitchUI/thumbnails/*
 mukkuru.build/

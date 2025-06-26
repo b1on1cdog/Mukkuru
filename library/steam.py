@@ -21,6 +21,7 @@ hardcoded_exclusions = ["Proton Experimental",
                         "Steam Linux Runtime 1.0 (scout)",
                         "Steam Linux Runtime 2.0 (soldier)",
                         "Steam Linux Runtime 3.0 (sniper)",
+                        "Proton 10.0 (Beta)"
                         "Proton 9.0",
                         "Proton 8.0",
                         "Proton 7.0",
@@ -29,7 +30,9 @@ hardcoded_exclusions = ["Proton Experimental",
                         "Proton 3.7",
                         "Proton 3.16",
                         "Proton 3.0",
-                        "Proton Hotfix"]
+                        "Proton Hotfix",
+                        "Proton EasyAntiCheat Runtime",
+                        "Proton BattlEye Runtime"]
 
 AVATAR_DOWNLOAD_URL = "https://api.panyolsoft.com/steam/avatar/[USERNAME]"
 

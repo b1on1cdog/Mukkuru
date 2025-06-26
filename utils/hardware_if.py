@@ -110,6 +110,9 @@ def get_info():
 
     if hardware_info["os"] == "Linux":
         hardware_info["distro"] = distro.name(pretty=True)
+        xdg = os.environ.get("XDG_SESSION_DESKTOP", "").lower()
+        if "gamescope" in xdg:
+            hardware_info["distro"] = hardware_info["distro"] + " (Gaming Mode)"
     elif hardware_info["os"] == "Windows":
         try:
             output = subprocess.check_output(['wmic', 'os', 'get', 'Caption'], shell=True)

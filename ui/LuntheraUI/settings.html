@@ -149,6 +149,11 @@ const menuOptions = document.querySelectorAll('.menu-option');
 //menuItems[0].className = "menu-tab selected";
 menuItems[0].classList.add("selected");
 
+if (isFirefox) {
+    document.getElementById("fullScreen").remove();
+    document.getElementById("fullScreen-separator").remove();
+}
+
 fetch(backendURL+"/config/get").then(function(response) {
         return response.json();
     }).then(function(data) {
@@ -570,7 +575,7 @@ document.addEventListener('keydown', (e) => {
                     <div class="option-description" id="startupGameScan-desc" data-trm="swapTGL" data-loc="id">Scan games automatically everytime Mukkuru opens</div>
                 </div>
                 <div class="options" id="options-2" style="display:none;">
-                    <div class="option-separator"></div>
+                    <div class="option-separator" id="fullScreen-separator"></div>
                     <div class="menu-option" id="fullScreen" data-trm="swapTGL" data-loc="fullScreen">Use Fullscreen [BTOGGLE]</div>
                     <div class="option-separator"></div>
                     <div class="menu-option" id="loop" data-trm="swapTGL" data-loc="loop">Cursor loop effect [BTOGGLE]</div>
@@ -637,11 +642,11 @@ document.addEventListener('keydown', (e) => {
                     <div>---------------</div>
                     <div id="computer_name" data-loc="Name" data-trm="patchHTML" data-patch="Name">Name: unknown</div>
                     <div id="arch">Arch: unknown</div>
+                    <div id="distro">OS: unknown</div>
                     <div id="cpu_name">CPU: unknown</div>
                     <div id="gpu_name">GPU: unknown</div>
                     <div id="total_ram">RAM: unknown</div>
                     <div id="storage" data-loc="storage" data-trm="patchHTML" data-patch="Storage">Storage: unknown</div>
-                    <div id="distro">OS: unknown</div>
                     <br>
                 
                     <div>https://github.com/b1on1cdog/mukkuru</div>

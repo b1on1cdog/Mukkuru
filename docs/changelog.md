@@ -1,5 +1,9 @@
 # Changelog
 -----------------
+# 0.3.1
+- Small hack to make app work in Steam Deck gaming mode (requires firefox flatpak)<br/>
+- Moved hardware info os position, Gamescope will now add (Gaming mode) string to os name<br/>
+- More items to exclusions <br/>
 # 0.3.0
 - Heroic library support in Linux<br/>
 - Settings ui overflow fix<br/>

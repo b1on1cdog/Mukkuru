@@ -262,3 +262,4 @@ function clockUpdate(meridiem){
   function showBottomBar(state) {
     document.getElementsByClassName("footerNavigation")[0].style.display = state?"flex":"none";
   }
+  const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent);
