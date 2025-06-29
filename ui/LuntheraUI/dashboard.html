@@ -1,0 +1,85 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Mukkuru</title>
+    <link rel="stylesheet" href="./assets/css/style.css">
+    <!-- script src="mukkuru.js"></script -->
+    <script src="localization.js"></script>
+    <style>
+.maingrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(10%, 1fr));/*190px*/
+    grid-template-rows: repeat(3, max-content);
+    margin: 40px;
+    gap:40px
+}
+.main-button {
+    cursor: pointer;
+    width: 120px;
+}
+.main-button img {
+    width: 120px;
+    height: 120px;
+}
+
+    </style>
+</head>
+<body>
+
+<div class="maingrid">
+    <div class="main-button" id="uploadBtn">
+        <img src="assets/vector/file-export.svg" alt="File"></img>
+        <div class="button-title" data-loc="sendFile" data-trm="swapText">Send file</div>
+        <input type="file" id="fileInput" hidden>
+    </div>
+</div>
+
+<script>
+const CHUNK_SIZE = 1024 * 1024;
+
+document.addEventListener('DOMContentLoaded', () => {  
+    document.getElementById('uploadBtn').onclick = () => {
+        document.getElementById('fileInput').click();
+    };
+    document.getElementById('fileInput').addEventListener('change', async function () {
+        startUpload();
+    });
+});
+
+
+
+async function startUpload() {
+  const file = document.getElementById('fileInput').files[0];
+  if (!file) {
+    console.log("No file selected");
+    return;
+  };
+
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+    const start = chunkIndex * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, file.size);
+    const chunk = file.slice(start, end);
+
+    const formData = new FormData();
+    formData.append('chunk', chunk);
+    formData.append('filename', file.name);
+    formData.append('chunkIndex', chunkIndex);
+    formData.append('chunkSize', CHUNK_SIZE);
+    formData.append('totalChunks', totalChunks);
+
+    await fetch('/upload', {
+      method: 'POST',
+      body: formData
+    });
+
+    console.log(`Uploaded chunk ${chunkIndex + 1} of ${totalChunks}`);
+  }
+}
+</script>
+
+</body>
+</html>

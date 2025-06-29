@@ -193,6 +193,8 @@ html {
 
 .appLauncher, .appLauncher-thumbnail {
   border-radius: 3px;
+  max-height: 300px;
+  max-width: 300px;
 }
 
 .appLauncher:focus .appLauncher-thumbnail {

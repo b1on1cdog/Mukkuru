@@ -30,19 +30,16 @@ Some others are going to receive occasional uploads</br>
 [Read changelog.md](docs/changelog.md)
 
 # To-do list
-- Switch-Like contextual menus (when pressing options and some footer items)<br/>
 - Add ability to download games</br>
 - Add joystick buttons customization<br/>
 - Add scanning animation <br/>
 - Order recent played items in main screen<br/>
-- Allow to add games as favorite <br/>
 - Additional webui to manipulate Mukkuru config from another device <br/>
     - Drag and drop wallpaper change <br/>
     - Drag and drop video playback <br/>
     - Menu to organize games, mark as favorite, blacklist, etc <br/>
     - Option to setup SteamGridDB api <br/>
     - Must also support plugins <br/>
-    - Must use chunk splitting to prevent browser upload filesize limit <br/>
     - (Optional) chunk checksum validation to prevent file corruption in upload <br/>
 - Plugin support, with a plugin storefront<br/>
     - The first plugin might be one to patch VNs<br/>

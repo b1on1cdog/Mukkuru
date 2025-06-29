@@ -351,7 +351,7 @@ def get_steam_env():
         main_paths = [
             "~/.local/share/Steam",
             "~/.var/app/com.valvesoftware.Steam/.local/share/Steam",
-            "~/snap/steam/common/.steam/steam/steamapps/"
+            "~/snap/steam/common/.steam/steam"
         ]
         steam["launchPath"] = find_path(launch_paths)
         steam["path"] = find_path(main_paths)

@@ -45,6 +45,11 @@
         "clearArtBlacklist" : "Limpiar lista negra de arte",
         "clear-blacklist-desc" : "Permite reintentar la descarga de artes marcadas como no disponibles",
         "clearArt" : "Borrar arte descargado",
-        "clearData" : "Borrar datos de Mukkuru"
+        "clearData" : "Borrar datos de Mukkuru",
+        "sendFile" : "Enviar archivo",
+        "addFavorite" : "Agregar a favorito",
+        "removeFavorite" : "Quitar favorito",
+        "hideGame" : "Ocultar juego",
+        "showGame" : "Mostrar juego"
     }
 }

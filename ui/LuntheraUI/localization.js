@@ -34,6 +34,17 @@ function patchHTML(elementID, oldText, newText){
   }
 }
 
+let localization = {};
+
+function translate_str(key, str){
+  if (localization["available"] == false ) {
+    return str;
+  } else if (localization[key] == undefined) {
+    return str;
+  }
+  return localization[key];
+}
+
 function allowRendering(reload = false) {
   backend_log("applying localization...")
   fetch(backendURL+"/localization").then(function(response) {
@@ -41,6 +52,7 @@ function allowRendering(reload = false) {
   }).then(function(data) {
     homeMenu = document.getElementsByClassName("homeMenu")[0];
     translation = data;
+    localization = data;
     if (translation["available"] == false) {
       backend_log("localization unavailable");
       if (reload) {
@@ -49,7 +61,7 @@ function allowRendering(reload = false) {
       }
     } else {
     
-    swapText("options-keyGuide", translation["Options"]);
+    swapText("options-keyText", translation["Options"]);
     swapText("start-keyGuide", translation["Start"]);
     swapText("ok-keyGuide", translation["OK"]);
     swapText("back-keyGuide", translation["Back"]);

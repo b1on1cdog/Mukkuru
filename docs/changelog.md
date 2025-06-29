@@ -1,5 +1,13 @@
 # Changelog
 -----------------
+# 0.3.2
+- Added %command% in launch_app for compatibility<br/>
+- Added game image size limit in applist<br/>
+- Fixed missing keyGuide<br/>
+- Added contextual menus (add games to favorite, show/hide games)<br/>
+- Favorite games will now display a small heart in top right<br/>
+- WASD and Spacebar can now be used to move in menu<br/>
+- Snap bugfix (still untested)<br/>
 # 0.3.1
 - Small hack to make app work in Steam Deck gaming mode (requires firefox flatpak)<br/>
 - Moved hardware info os position, Gamescope will now add (Gaming mode) string to os name<br/>

@@ -87,7 +87,7 @@ def zip_dir_contents(src_dir, zip_path):
 requirements = ["flask", "waitress",
                 "requests", "pillow",
                 "distro", "psutil",
-                "nuitka", "imageio"]
+                "nuitka", "imageio", "qrcode"]
 
 requirements = requirements + ["setuptools"]
 

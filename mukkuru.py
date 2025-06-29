@@ -6,12 +6,12 @@ import os
 import json
 from pathlib import Path
 from functools import lru_cache
+import stat
 import subprocess
 import base64
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
 import sys
 import hashlib
 import logging
@@ -19,6 +19,7 @@ import platform
 import shutil
 
 #import inspect
+import qrcode
 from waitress import serve
 from flask import Flask, request
 from flask import send_from_directory, send_file
@@ -47,16 +48,18 @@ else:
     os._exit(0)
 
 app = Flask(__name__)
+wserver = Flask(__name__)
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.CRITICAL)
 
 mukkuru_env = {}
 
 COMPILER_FLAG = False
-APP_VERSION = "0.3.1"
+APP_VERSION = "0.3.2"
 BUILD_VERSION = None
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
+SERVER_PORT = 49351
 
 def log_calls(frame, event, _):
     ''' logs function calls'''
@@ -71,7 +74,7 @@ def log_calls(frame, event, _):
 def app_version():
     ''' generate 6 MD5 digits to use as build number '''
     if COMPILER_FLAG is False:
-        print("Calculating build version at runtime....")
+        backend_log("Calculating build version at runtime....")
         path = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(__file__)
         hasher = hashlib.md5()
         with open(path, 'rb') as f:
@@ -165,14 +168,14 @@ def get_theme(selected = None):
     default_css = Path(default_theme_dir).read_text(encoding='utf-8')
     # Not a user theme
     if selected in builtin_themes:
-        print(f"using built-in theme {selected}")
+        backend_log(f"using built-in theme {selected}")
         css = default_css
         if selected == "PS5":
             css = css + Path(os.path.join(sys_themes_dir, "ps5.css")).read_text(encoding='utf-8')
         elif selected == "Switch 2":
             css = css + Path(os.path.join(sys_themes_dir, "sw2.css")).read_text(encoding='utf-8')
         return css
-    print(f"loading user theme {selected}")
+    backend_log(f"loading user theme {selected}")
     themes_dir = os.path.join(mukkuru_env["root"], "themes")
     themes = get_themes(True)
     theme = themes[selected]
@@ -185,9 +188,9 @@ def get_theme(selected = None):
         if Path(markup_path).is_file():
             css = css + Path(markup_path).read_text(encoding='utf-8')
         else:
-            print(f"Skipping {markup} markup since it does not exists")
+            backend_log(f"Skipping {markup} markup since it does not exists")
     if css == '':
-        print("Unable to load theme, returning default")
+        backend_log("Unable to load theme, returning default")
         css = default_css
     return css
 
@@ -223,17 +226,37 @@ def quit_app():
         subprocess.run(proc_flags, check=False)
     os._exit(0)
 
+def get_proton_command(app_id, command):
+    ''' run game using proton '''
+    steam = get_steam_env()
+    proton = os.path.join(steam["path"], "steamapps", "common", "Proton 8.0", "proton")
+    if not Path(proton).exists():
+        backend_log("proton runtime not found")
+    compat_data_path = os.path.join(steam["path"], "steamapps", "compatdata", app_id)
+    if not Path(compat_data_path).exists():
+        backend_log("compat_data not found")
+    os.environ["STEAM_COMPAT_DATA_PATH"] = compat_data_path
+    os.environ["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = steam["path"]
+    return f"{proton} run {command}"
+
 @app.route('/library/launch/<app_id>')
 def launch_app(app_id):
     '''launches an app using its appID'''
     games = get_games(True)
     game_path = games[app_id]["Exe"].strip('"')
-    print(f'Launching game: {game_path} using {games[app_id]["LaunchOptions"]}')
+    backend_log(f'Launching game: {game_path} using {games[app_id]["LaunchOptions"]}')
     if "flatpak" in game_path:
         pass
     else:
         game_path = f'"{game_path}"'
-    subprocess.run(f'{game_path} {games[app_id]["LaunchOptions"]}',
+    launch_command = f'{game_path} {games[app_id]["LaunchOptions"]}'
+    if '%command%' in games[app_id]["LaunchOptions"]:
+        launch_command = games[app_id]["LaunchOptions"].replace('%command', game_path)
+    # Linux cannot run exe without a compatibility layer
+    if platform.system() == "Linux" and game_path.strip('"').endswith(".exe"):
+        launch_command = get_proton_command(app_id, launch_command)
+
+    subprocess.run(launch_command,
                    stderr=subprocess.DEVNULL,
                    stdout=subprocess.DEVNULL,
                    env=os.environ.copy(), shell=True, check=False)
@@ -241,6 +264,8 @@ def launch_app(app_id):
     if user_config["lastPlayed"] != app_id:
         user_config["lastPlayed"] = app_id
         update_config(user_config)
+    os.environ.pop("STEAM_COMPAT_DATA_PATH", None)
+    os.environ.pop("STEAM_COMPAT_CLIENT_INSTALL_PATH", None)
     return "200"
 
 def copy_file(source, destination):
@@ -304,7 +329,7 @@ def fetch_artwork(app_id, game, b1, b2, b3):
 @app.route('/library/artwork/scan')
 def scan_artwork(games = None):
     ''' scan for games artwork '''
-    print("scanning for new artwork..")
+    backend_log("scanning for new artwork..")
     config = get_config(True)
     blacklist1 = config["boxartBlacklist"]
     blacklist2 = config["heroBlacklist"]
@@ -414,7 +439,7 @@ def get_config(raw = False):
         time.sleep(0.1)
 
     if not Path(mukkuru_env["config.json"]).is_file():
-        print("No config.json")
+        backend_log("No config.json")
         with open(mukkuru_env["config.json"], 'w', encoding='utf-8') as f:
             json.dump(user_config, f)
     with open(mukkuru_env["config.json"], encoding='utf-8') as f:
@@ -436,7 +461,7 @@ def get_user_themes():
 def get_theme_asset(theme_id, asset):
     ''' get the asset of a user theme '''
     theme_dir = os.path.join(mukkuru_env["root"], "themes", theme_id)
-    print(f"getting theme {theme_id} {asset}")
+    backend_log(f"getting theme {theme_id} {asset}")
     return send_from_directory(theme_dir, asset)
 
 @app.route('/config/get')
@@ -447,9 +472,7 @@ def get_user_configuration():
 @app.route('/config/set', methods = ['GET', 'POST', 'DELETE'])
 def set_config():
     '''update user configuration from request'''        
-    #print("setting configuration...")
     if request.method == 'POST':
-        #print(request.get_json())
         user_config = request.get_json()
         update_config(user_config)
         return "200"
@@ -476,7 +499,7 @@ def terminate_wef():
 @app.route('/clear/<selection>', methods = ['POST'])
 def delete_data(selection):
     ''' deletes app data '''
-    print(f"deleting data {selection}")
+    backend_log(f"deleting data {selection}")
     tn_folder = os.path.join(mukkuru_env["root"], "thumbnails")
     logo_folder = os.path.join(mukkuru_env["root"], "logo")
     hero_folder = os.path.join(mukkuru_env["root"], "hero")
@@ -497,7 +520,7 @@ def delete_data(selection):
             shutil.rmtree(mukkuru_env["root"])
         except (OSError, FileNotFoundError, PermissionError):
             pass
-        print("deleted Mukkuru data folder, quitting....")
+        backend_log("deleted Mukkuru data folder, quitting....")
         quit_app()
     else:
         pass
@@ -533,13 +556,19 @@ def scan_games():
     update_games(games)
     return json.dumps(games)
 
+def backend_log(message):
+    ''' print message and save to file '''
+    print(message)
+    if "log" in mukkuru_env:
+        with open(mukkuru_env["log"], 'a', encoding='utf-8') as f:
+            f.write(f"{message}\n")
+
 @app.route('/log/<message>')
 def log_message(message):
     ''' prints frontend messages in backend, useful for debugging '''
     msg = base64.b64decode(message).decode("utf-8")
-    print(f'[frontend] { msg }')
-    with open(mukkuru_env["log"], 'a', encoding='utf-8') as f:
-        f.write(f"{msg}\n")
+    msg = f"[frontend] {msg}"
+    backend_log(msg)
     return "200"
 
 # To-do: allow custom specified username from userConfiguration
@@ -573,6 +602,61 @@ def main_uri():
     ''' redirect to homepage '''
     return app.redirect(location=f'http://localhost:{APP_PORT}/frontend/')
 
+@wserver.route('/<path:path>')
+def server_file(path):
+    ''' returns dashboard static files '''
+    user_config = get_config(True)
+    serve_path = os.path.join(APP_DIR, "ui", user_config["interface"])
+    if path.endswith("web/qrcode"):
+        code = 123456
+        img = qrcode.make(f'http://localhost:{SERVER_PORT}/code/{code}')
+        return send_file(img, mimetype="image/png")
+    return send_from_directory(serve_path, path)
+
+@wserver.route('/upload', methods=['POST'])
+def upload():
+    ''' receive files as chunks from dashboard uploads '''
+    file = request.files['chunk']
+    filename = request.form['filename']
+    backend_log(f"downloading {filename}")
+    chunk_index = int(request.form['chunkIndex'])
+    chunk_size = int(request.form['chunkSize'])
+    #total_chunks = int(request.form['totalChunks'])
+
+    video_files = ["mp4", "mkv"]
+    image_files = ["png", "jpg", "webm"]
+    music_files = ["mp3", "m4a"]
+    #allowed_files = []
+    # To-do: allow user to store these files in another drive
+    # To-do: allow users to move and/or store files in OS user folder
+    # To-do: restrict what file formats can be received
+    file_extension = Path(filename).suffix.replace(".", "")
+    if file_extension in video_files:
+        upload_folder = os.path.join(mukkuru_env["root"], "video")
+    elif file_extension in image_files:
+        upload_folder = os.path.join(mukkuru_env["root"], "pictures")
+    elif file_extension in music_files:
+        upload_folder = os.path.join(mukkuru_env["root"], "music")
+    else:
+        upload_folder = os.path.join(mukkuru_env["root"], "miscellaneous")
+
+    save_path = os.path.join(upload_folder, filename)
+    os.makedirs(upload_folder, exist_ok=True)
+
+    with open(save_path, 'ab') as f:
+        f.seek(chunk_index * chunk_size)
+        f.write(file.read())
+
+    return 'Chunk received', 200
+
+@wserver.route('/')
+@wserver.route('/index.html')
+def server_main():
+    ''' returns main dashboard page'''
+    user_config = get_config(True)
+    serve_path = os.path.join(APP_DIR, "ui", user_config["interface"])
+    return send_from_directory(serve_path, "dashboard.html")
+
 @app.route('/frontend/<path:path>')
 def static_file(path):
     ''' serve asset '''
@@ -599,6 +683,10 @@ def static_file(path):
         css = CssPreprocessor(full_path, data=theme)
         css.process()
         return send_file(css.data(), mimetype="text/css")
+    if path.endswith("web/qrcode"):
+        code = 123456
+        img = qrcode.make(f'http://localhost:{SERVER_PORT}/code/{code}')
+        return send_file(img, mimetype="image/png")
     return send_from_directory(serve_path, path)
 
 def scan_thumbnails(games):
@@ -626,15 +714,62 @@ def kwserver(**server_kwargs):
     except ConnectionResetError:
         quit_app()
 
-def start_server():
+def start_app(is_server = False):
     ''' init server '''
     try:
         cores = get_config(True)["cores"]
-        serve(app, host="localhost", threads=cores, port=APP_PORT)
+        if is_server:
+            pass
+            #backend_log(f"starting server at {SERVER_PORT}")
+            #serve(wserver, host="0.0.0.0", threads=cores, port=SERVER_PORT)
+        else:
+            serve(app, host="localhost", threads=cores, port=APP_PORT)
     except ConnectionResetError:
-        quit_app()
-    #app.run(host='localhost', port=APP_PORT, debug=True, use_reloader=False)
+        if not is_server:
+            quit_app()
 
+def close_update(m = None):
+    ''' called when update is completed or aborted '''
+    update_file = os.path.join(mukkuru_env["update"], "update")
+    if platform.system() == "Windows":
+        update_file = update_file + ".exe"
+    if Path(update_file).resolve() == Path(sys.executable).resolve():
+        #We are running from update itself, we cannot delete the update here
+        e_path = None
+        if "MUKK_EXECUTABLE" in os.environ:
+            e_path = os.environ["MUKK_EXECUTABLE"]
+        if m is not None and "executable" in "m":
+            e_path = m["executable"]
+        if e_path is not None:
+            subprocess.Popen([e_path])
+        os._exit(0)
+    shutil.rmtree(mukkuru_env["update"])
+    return
+
+def process_update():
+    '''We have an update we need to handle'''
+    update_manifest = os.path.join(mukkuru_env["update"], "update.json")
+    if not Path(update_manifest).is_file():
+        # We cannot proceed without a manifest, aborting
+        return close_update()
+    update_file = os.path.join(mukkuru_env["update"], "update")
+    if platform.system() == "Windows":
+        update_file = update_file + ".exe"
+    with open(update_manifest, encoding='utf-8', mode='r') as manifest_file:
+        manifest = json.loads(manifest_file)
+        if not "version" in manifest:
+            # Bad update, aborting
+            return close_update(manifest)
+        if manifest["version"] == APP_VERSION:
+            # already updated
+            shutil.rmtree(mukkuru_env["update"])
+            return close_update(manifest)
+        executable = manifest["executable"]
+        shutil.copy(update_file, executable)
+        if platform.system() != "Windows":
+            current_permissions = os.stat(executable).st_mode
+            os.chmod(manifest["executable"], current_permissions | stat.S_IXUSR)
+        close_update(manifest)
 
 def main():
     ''' start of app execution '''
@@ -644,8 +779,8 @@ def main():
     #for k, v in os.environ.items():
     #   print(f"{k}={v}")
     system = platform.system()
-    print(f"Running on {system}")
-    print(f'Using { FRONTEND_MODE } for rendering')
+    backend_log(f"Running on {system}")
+    backend_log(f'Using { FRONTEND_MODE } for rendering')
     if system == 'Windows':
         mukkuru_env["root"] = os.path.join(os.environ.get('APPDATA'), "Mukkuru")
     elif system == 'Linux':
@@ -653,12 +788,17 @@ def main():
     elif system == 'Darwin':
         mukkuru_env["root"] = os.path.join(os.path.expanduser("~"), ".config", "Mukkuru")
     else:
-        print("Running in unsupported OS")
+        backend_log("Running in unsupported OS")
     mukkuru_env["library.json"] = os.path.join(mukkuru_env["root"], "library.json")
     mukkuru_env["config.json"] = os.path.join(mukkuru_env["root"], "config.json")
     mukkuru_env["artwork"] = os.path.join(mukkuru_env["root"], "artwork")
     mukkuru_env["log"] = os.path.join(mukkuru_env["root"], "mukkuru.log")
     mukkuru_env["app_path"] = APP_DIR
+    mukkuru_env["update"] = os.path.join(mukkuru_env["root"], "update")
+    # Instead of writing another executable, this one will conditionally
+    # act as the updater
+    if Path(mukkuru_env["update"]).is_dir():
+        process_update()
 
     needed_dirs = [
         mukkuru_env["root"],
@@ -681,12 +821,12 @@ def main():
 
     user_config = get_config(True)
     if not Path(mukkuru_env["library.json"]).is_file():
-        print("No library.json")
+        backend_log("No library.json")
     else:
         games = get_games(True)
         scan_thumbnails(games)
     if user_config["startupGameScan"] is True:
-        print("[debug] startupGameScan: True, starting library scan")
+        backend_log("[debug] startupGameScan: True, starting library scan")
         threading.Thread(target=scan_games).start()
     download_steam_avatar(mukkuru_env["artwork"])
     if threading.current_thread() is threading.main_thread():
@@ -707,12 +847,13 @@ def main():
             height=window_height
             ).run()
         else:
-            threading.Thread(target=start_server).start()
+            threading.Thread(target=start_app).start()
+            threading.Thread(target=start_app, args=(True,)).start()
             time.sleep(2)
             if os.environ.get("XDG_SESSION_DESKTOP", "").lower() == "gamescope":
                 mukkuru_url = 'http://localhost:49347/frontend/frame.html'
-                proc_flags = ["flatpak"]
-                proc_flags.extend(["run", "org.mozilla.firefox"])
+                proc_flags = []
+                proc_flags.extend(["flatpak", "run", "org.mozilla.firefox"])
                 proc_flags.append("--kiosk")
                 proc_flags.append("-private-window")
                 proc_flags.append(mukkuru_url)
@@ -721,6 +862,6 @@ def main():
                 Frontend(is_fullscreen(), app_version(), mukkuru_env).start()
 
     else:
-        start_server()
+        start_app()
 if __name__ == "__main__":
     main()

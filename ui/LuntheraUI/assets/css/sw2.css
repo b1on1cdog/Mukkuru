@@ -47,8 +47,10 @@
     animation: gradient-rotate 8s linear infinite;
 }
 .appLauncher::before {
-    top: 48%;
-    height: 100%;
+    /*48.5, 101.5*/
+    /*51, 104.5*/
+    top: 48.5;
+    height: 101.5%;
 }
 
 .footerButton::before {
@@ -67,8 +69,8 @@
     /*Mukkuru::BackgroundLinearGradientRotation(0.2 $# rgba(143, 242, 241, 1) 0%, rgba(105, 76, 252, 1) 35%, rgba(255, 204, 204, 1) 80%, rgba(115, 115, 250, 1) 100%);*/
 }
 
-.homeFooter {
-    border-top: unset;
+.homeFooter::before {
+    content: unset;
 }
 
 .appLauncher, .appLauncher-thumbnail {

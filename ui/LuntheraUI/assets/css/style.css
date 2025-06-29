@@ -151,63 +151,6 @@ button {
     }
 }
 
-/*
-.statusBar {
-    margin-left: auto;
-    margin-right: 0;
-    display: flex;
-    flex-flow: row nowrap;
-    align-items: center;
-    z-index: 1000;
-    position: fixed;
-}
-
-.timeState {
-    color: var(--main-color);
-    font-family: var(--font-number);
-    display: flex;
-    flex-flow: row nowrap;
-    font-weight: 500;
-}
-
-.currentTime {
-    font-size: 24px;
-    letter-spacing: 2px;
-    line-height: 24px;
-}
-.timeState-separator {
-    vertical-align: 2px;
-}
-
-.timeState + .wifiState {
-    margin-left: 12px;
-}
-
-.wifiState {
-    width: 26px;
-    height: 26px;
-    display: flex;
-    transform: translateY(-1px)
-}
-
-.wifiState-icon {
-    width: 100%;
-    height: 100%;
-}
-
-.wifiState + .batteryState {
-    margin-left: 20px;
-}
-
-.batteryState {
-    width: 20px;
-    height: 10px;
-    background-color: var(--main-color);
-    box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--main-color);
-    position: relative;
-}
-*/
-
 .statusBar {
     display: flex;
     align-items: center;
@@ -296,12 +239,71 @@ button {
     margin-bottom: 8%;
 }
 
-.appList {
-    box-sizing: border-box;
+.appheaders {
+    position: fixed;
+    top: 0%;
+    /*left: 0%;
+    margin-left: 7vw;
+    color: var(--accent-color);
+    */
+    color: var(--main-color);
+    padding-bottom: 4vh;
+    display: none;
     width: 100%;
+    margin: auto 32px 0 32px;
+    justify-content: center;
+    padding-bottom: 2vh;
+    z-index: 1000;
+    background: var(--bg-color);
+}
+.appheaders::before {
+    content: "";
+    position: absolute;
+    z-index: 100;
+    width: 95vw;
+    top: 100%;
+    border-bottom: 1px solid var(--main-color);
+}
+
+.appheader {
+    margin-top: 1.5vh;
+    font-size: 1.2em;
+    text-shadow: 0 0 2px white;
+    z-index: 900;
+}
+.lined {
+    color: var(--accent-color)
+}
+
+.lined::before {
+    content: "";
+    position: absolute;
+    margin-left: -1.2em;
+    bottom: 10px;
+    height: 0.4vh;
+    width: 5em;
+    background-color: #0066cc;
+    border-radius: 0 1px 1px 0;
+}
+
+.appheader + .appheader {
+   /* margin-left: 4vw;*/
+   margin-left: 20vw;
+}
+
+.appheader + .appheader {
+   /* margin-left: 4vw;*/
+   margin-left: 12vw;
+}
+
+.appList {
+    margin: 8vh auto;
+    box-sizing: border-box;
+    width: max-content; /* shrink-wrap grid to fit items */
+    max-width: 100%;
    /* padding: 8px 124px;*/
     display: grid;
-    grid-template-columns: repeat(6, minmax(10%, 1fr));/*190px*/
+    grid-template-columns: repeat(6, minmax(5%, 1fr));/*190px*/
     grid-template-rows: repeat(3, max-content);
     padding: 40px 50px 60px 50px;
     gap: 10px;
@@ -314,6 +316,9 @@ button {
     width: 100%;
     outline: none;
     position: relative;
+    
+    max-height: 250px;
+    max-width: 250px;
 }
 
 .appLauncher:focus {
@@ -462,6 +467,19 @@ animation: footerButton-select - 1s ease-in-out infinite;
     height: 100%;
 }
 
+.favorite::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  background-image: url("data:image/svg+xml;utf8,<svg fill='red' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/></svg>");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
 .gameLauncher-placeholder {
     width: 246px;
     height: 246px;
@@ -552,10 +570,8 @@ animation: footerButton-select - 1s ease-in-out infinite;
 }
 
 .homeFooter {
-    margin: auto 32px 0 32px;
     padding: 0 24px;
     height: 72px;
-    border-top: 1px solid var(--main-color);
     display: flex;
     flex-flow: row nowrap;
     align-items: center;
@@ -563,16 +579,25 @@ animation: footerButton-select - 1s ease-in-out infinite;
     position: fixed;
     bottom: 0;
     left: 0;
-    width: 92%;
+    width: 100%;
     z-index: 1000;
     background: var(--bg-color);
+}
+.homeFooter::before {
+    content: "";
+    position: fixed;
+    border-top: 1px solid var(--main-color);
+    width: 95vw;
+    z-index: 200;
+
+    height: 72px;
 }
 
 .controllerState {
     display: flex;
     flex-flow: row nowrap;
     align-items: center;
-    margin-left: 0;
+    margin-left: 1vw;
     margin-right: auto;
 }
 
@@ -585,7 +610,7 @@ animation: footerButton-select - 1s ease-in-out infinite;
     flex-flow: row nowrap;
     align-items: center;
     margin-left: auto;
-    margin-right: 0;
+    margin-right: 10vw;
 }
 .keyGuide {
     display: flex;
@@ -648,4 +673,54 @@ animation: footerButton-select - 1s ease-in-out infinite;
    /* padding-left: 100%;  Start with the text off-screen to the right */
     padding-left: 1em;
     animation: scroll-text 8s linear infinite;  /*Smooth scroll */
+}
+
+.contextualMenu {
+    position: fixed;
+    top: 30vh;
+    left: 35vw;
+    color: var(--main-color);
+    background-color: var(--bland-bg);
+    z-index: 5000;
+    
+    font-family: Arial, sans-serif;
+    padding: 10px 0;
+    font-size: 1em;
+    border-radius: 12px;
+    width: 35vw;
+    overflow: hidden;
+    display: none;
+}
+
+.contextualMenu.active {
+    display: block;
+}
+
+.contextItem {
+    left: 10%;
+    width: 46vw;
+    padding: 12px 16px;
+    position: relative;
+    color: var(--main-color); /*#333*/
+    justify-content: space-between;
+    display: flex;
+    cursor: pointer;
+    margin: 10px 0;
+    box-sizing: border-box;
+    max-width: 80%;
+    max-height: 100%;
+    margin-right: 2vw;
+}
+
+.contextItem + .contextItem {
+    border-top: 1px solid var(--bg-color);
+}
+
+.contextItem.selected {
+    border: 5px solid transparent;
+    border-radius: 1px;
+   /*   color: #004a99;*/
+    background-color: transparent;
+    z-index: 5001;
+    animation: game-select 1s ease-in-out infinite;
 }

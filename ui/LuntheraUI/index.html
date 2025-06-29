@@ -23,17 +23,28 @@ function measure_time(name, begin, end = performance.now()) {
 
 const keyBindings = {
   "Enter": "confirm",
-  "Space": "confirm",
+  " ": "confirm",
   "Escape": "back",
-  "Backspace" : "back"
+  "Backspace" : "back",
+  "Shift" : "options",
+  "ArrowLeft" : "left",
+  "ArrowRight" : "right",
+  "ArrowUp" : "up",
+  "ArrowDown" : "down",
+  "w" : "up",
+  "s" : "down",
+  "a" : "left",
+  "d" : "right"
 };
 
 let currentRow = 1;
+let currentIndex = 0;
+let currentContext = 0;
+let isContextMenu = false;
 
 function sendBackgroundColorToParent(color) {
   window.parent.postMessage({ bgColor: color }, '*');
 }
-
 
 document.addEventListener('DOMContentLoaded', () => {
     const start_load = performance.now();
@@ -172,14 +183,17 @@ document.addEventListener('DOMContentLoaded', () => {
             box_src = "./assets/vector/missing.svg";
         }
 
-        if (userConfiguration["blacklist"].AppID != undefined){
+        if (userConfiguration["blacklist"].includes(AppID)){
             gamesSkipped++;
             return;
         }
 
         const button = document.createElement('button');
         button.className = 'gameLauncher';
-        button.id = AppID; // Set your unique ID here
+        button.id = AppID;
+        if (favoriteGames.has(AppID)){
+            button.classList.add("favorite");
+        }
 
         const title = document.createElement('div');
         title.className = 'gameLauncher-title';
@@ -206,6 +220,9 @@ document.addEventListener('DOMContentLoaded', () => {
        // (async () => {
         const app = document.createElement('button');
         app.className = 'appLauncher';
+        if (favoriteGames.has(AppID)){
+            app.classList.add("favorite");
+        }
         app.id = "app_" + AppID;
         const appTitle = document.createElement('div');
         appTitle.className = "appLauncher-title";
@@ -326,7 +343,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const utilityButtons = Array.from(document.querySelectorAll('.footerNavigation button'));
     const profileRow = document.querySelectorAll('.userList-user');
-    let currentIndex = 0;
 
     fetch(backendURL+"/username").then(function(response) {
         return response.text();
@@ -336,7 +352,21 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Fetch Error :-S', err);
     });
 
+    function refreshCtxMenu(){
+        if (currentRow == 1 && gameLaunchers[currentIndex].classList.contains("favorite")){
+            document.getElementById("fvOption").innerText = translate_str("removeFavorite", "Remove from favorite");
+        }  else {
+            document.getElementById("fvOption").innerText = translate_str("addFavorite", "Add as favorite");
+        }
+        if (currentRow == 1 && userConfiguration.blacklist.includes(gameLaunchers[currentIndex].id) ) {
+            document.getElementById("blOption").innerText = translate_str("showGame", "Show game");
+        } else {
+            document.getElementById("blOption").innerText = translate_str("hideGame", "Hide game");
+        }
+    }
+
     document.addEventListener('keydown', (e) => {
+         e.preventDefault();
         //ensureFullscreen(!userConfiguration["fullScreen"]);
         if (homeMenu.style.opacity < 1) {
             return;
@@ -345,58 +375,31 @@ document.addEventListener('DOMContentLoaded', () => {
         tick = true;
         let navigatingRow = [profileRow, gameLaunchers, utilityButtons, appLaunchers];
         let cols = [1, gameLaunchers.length, 6, appLaunchers.length];
-        const action = keyBindings[event.code];
         
-        switch(e.key) {
-            case 'ArrowRight':
-            if (currentIndex == cols[currentRow]-1 && !userConfiguration["loop"]) {
-                playSound("border");
-            } else if (currentIndex == cols[currentRow]-1) {
-                currentIndex = 0;
-                playSound("select");
-            } else {
-                currentIndex = (currentIndex + 1) % navigatingRow[currentRow].length;
-                playSound("select");
-            }
-                /*
-                if (currentRow == 1 && currentIndex > 3) {
-                    gameLaunchers[currentIndex-4].style.display = 'none';
-                }
-                    */
-                break;
-            case 'ArrowLeft':
-
-                if (currentIndex == 0 && !userConfiguration["loop"]) {
-                    playSound("border");
-                } else if (currentIndex == 0) {
-                    currentIndex = cols[currentRow]-1
-                    playSound("select");
-                } else {
-                    currentIndex = (currentIndex - 1 + navigatingRow[currentRow].length) % navigatingRow[currentRow].length;
+        
+        switch (keyBindings[e.key]) {
+            case "options":
+                if (currentRow == 1 && currentIndex < gameLimit) {
+                    isContextMenu = true;
+                    document.getElementById("gameContextMenu").classList.add("active");
+                    refreshCtxMenu();
                     playSound("select");
                 }
                 break;
-            case 'ArrowDown':
-
-                if (currentRow == 2) {
-                    playSound("border");
-                } else if (currentRow == 3 && currentIndex + appListCols < navigatingRow[currentRow].length) {
-                    currentIndex = currentIndex + appListCols;
-                    playSound("select");
-                } else if (currentRow == 3 && currentIndex + appListCols >= navigatingRow[currentRow].length) {
-                    currentIndex = navigatingRow[currentRow].length-1;
-                    playSound("border");
-                } else {
-                    currentIndex = 0
-                    currentRow = currentRow + 1;
-                    playSound("select");
-                    if (currentRow == 1 && gameLaunchers.length == 0){
-                        currentRow = 2;
+            case "up":
+                if (isContextMenu) {
+                    if (currentContext == 0)
+                    {
+                        playSound("border")
+                        return;
                     }
+                    playSound("select");
+                    currentContext--;
+                    selectedContext = document.getElementsByClassName("contextItem selected")[0];
+                    selectedContext.classList.remove("selected");
+                    selectedContext.previousElementSibling.classList.add("selected");
+                    return;
                 }
-               // currentIndex = Math.min(currentIndex + cols, gameLaunchers.length - 1);
-                break;
-            case 'ArrowUp':
                 if (currentRow == 0) {
                     playSound("border");
                 } else if (currentRow == 3 && currentIndex > 5) {
@@ -413,9 +416,88 @@ document.addEventListener('DOMContentLoaded', () => {
                         currentRow = 0;
                     }
                 }
-                //currentIndex = Math.max(currentIndex - cols, 0);
                 break;
-            case 'Enter':
+            case "down":
+                if (isContextMenu) {
+                    ctxMenu = document.getElementsByClassName("contextualMenu active")[0];
+                    ctxMax = ctxMenu.querySelectorAll('.contextItem').length;
+                    if (currentContext >= ctxMax-1) {
+                        playSound("border");
+                        return
+                    }
+                    playSound("select");
+                    currentContext++;
+                    selectedContext = document.getElementsByClassName("contextItem selected")[0];
+                    selectedContext.classList.remove("selected");
+                    selectedContext.nextElementSibling.classList.add("selected");
+                    return;
+                }
+                if (currentRow == 2) {
+                    playSound("border");
+                } else if (currentRow == 3 && currentIndex + appListCols < navigatingRow[currentRow].length) {
+                    currentIndex = currentIndex + appListCols;
+                    playSound("select");
+                } else if (currentRow == 3 && currentIndex + appListCols >= navigatingRow[currentRow].length) {
+                    currentIndex = navigatingRow[currentRow].length-1;
+                    playSound("border");
+                } else {
+                    currentIndex = 0
+                    currentRow = currentRow + 1;
+                    playSound("select");
+                    if (currentRow == 1 && gameLaunchers.length == 0){
+                        currentRow = 2;
+                    }
+                }
+                break;
+            case "left":
+                if (isContextMenu) {
+                    return;
+                }
+                if (currentIndex == 0 && !userConfiguration["loop"]) {
+                    playSound("border");
+                } else if (currentIndex == 0) {
+                    currentIndex = cols[currentRow]-1
+                    playSound("select");
+                } else {
+                    currentIndex = (currentIndex - 1 + navigatingRow[currentRow].length) % navigatingRow[currentRow].length;
+                    playSound("select");
+                }
+                break;
+            case "right":
+                if (isContextMenu) {
+                    return;
+                }
+                if (currentIndex == cols[currentRow]-1 && !userConfiguration["loop"]) {
+                    playSound("border");
+                } else if (currentIndex == cols[currentRow]-1) {
+                    currentIndex = 0;
+                    playSound("select");
+                } else {
+                    currentIndex = (currentIndex + 1) % navigatingRow[currentRow].length;
+                    playSound("select");
+                }
+                break;
+            case "confirm":
+                if (isContextMenu){
+                    ctxMenu = document.getElementsByClassName("contextualMenu active")[0];
+                    selectedContext = document.getElementsByClassName("contextItem selected")[0];
+                    selectedContext.click();
+                    playSound("tick");
+                    if (currentContext == 0 && ctxMenu.id == "gameContextMenu") {
+                        let game = gameLaunchers[currentIndex];
+                        let app = document.getElementById("app_"+game.id);
+                        if (game.classList.contains("favorite")) {
+                            game.classList.remove("favorite");
+                            app.classList.remove("favorite");
+
+                        } else {
+                            game.classList.add("favorite");
+                            app.classList.add("favorite");
+                        }
+                    }
+                    refreshCtxMenu();
+                    break;
+                }
                 if (document.activeElement.id == "allSoftware") {
                     playSound("run");
                     setTimeout(function () {
@@ -423,6 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     gameList.style.display = "none";
                     document.getElementsByClassName("homeHeader")[0].style.display = "none";
                     document.getElementsByClassName("footerNavigation")[0].style.display = "none";
+                  //  document.getElementsByClassName("appheaders")[0].style.display = "flex";
                     appList.style.display = "grid";
                     currentIndex = 0;
                     }, 300);
@@ -487,18 +570,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 return;
-            case 'Backspace':
+            case "back":
+                if (isContextMenu) {
+                    isContextMenu = false;
+                    elements = document.getElementsByClassName("contextualMenu active");
+                    Array.prototype.forEach.call(elements, function(element) {
+                        element.classList.remove("active");
+                    });
+
+                }
+                //to-do: restore home menu without reloading
                 if (currentRow == 3){
                     goHome();
                 }
-                break;
-            case 'Escape':
-                if (currentRow == 3){
-                    goHome();
-                }//to-do: restore home menu without reloading
-                break;
-            default:
-                return;
+
+        }
+
+        if (currentRow == 1 && currentIndex < gameLimit) {
+            document.getElementById("options-keyGuide").style.display = "flex";
+        } else {
+            document.getElementById("options-keyGuide").style.display = "none";
         }
 
         if (currentRow != 2 && hideBottomBar) {
@@ -531,17 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         }
 
-        /*
-        if (currentRow == 1 && currentIndex == 0 && gameLaunchers.length > 5){
-            gameLaunchers[0].style.display = '';
-            gameLaunchers[1].style.display = '';
-            gameLaunchers[2].style.display = '';
-            gameLaunchers[3].style.display = '';
-            gameLaunchers[4].style.display = '';
-        }
-        */
         navigatingRow[currentRow][currentIndex].focus();
-        e.preventDefault();
     });
 });
 
@@ -572,6 +653,10 @@ document.addEventListener('DOMContentLoaded', () => {
         </header>
 
         <main class="homeBody pending">
+            <div class="appheaders">
+            <span class="appheader lined">Games</span>
+            <span class="appheader">Media</span>
+            </div>
             <div class="appList" style="display: none;">
             </div>
             <div class="gameList">
@@ -587,8 +672,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <img class="footerButton-icon" src="assets/vector/download.svg" alt="download-icon">
                 </button>
                 <button id="controllerFB" class="footerButton controller" aria-label="Controller">
-                    <svg class="footerButton-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M38.116,85.841a16.632,16.632,0,0,1-11.844-4.89L14.309,68.987c-.09-.089-.173-.181-.255-.276l-1.847-1.943,1.884-1.911L67.965,10.983l1.943,1.847c.112.1.206.181.3.273L82.163,25.06a16.79,16.79,0,0,1,0,23.689l-32.2,32.2A16.629,16.629,0,0,1,38.116,85.841Zm-18.2-19.029,10.248,10.25a11.289,11.289,0,0,0,15.91,0l32.2-32.2a11.289,11.289,0,0,0,0-15.91L68.025,18.7Zm48.9-31.052a3.044,3.044,0,1,0,0,4.306A3.044,3.044,0,0,0,68.812,35.76Zm-.063,10.176a3.044,3.044,0,1,0,0,4.305A3.044,3.044,0,0,0,68.749,45.936ZM58.576,46a3.044,3.044,0,1,0,0,4.306A3.044,3.044,0,0,0,58.576,46Zm.1-10.133a3.044,3.044,0,1,0,0,4.305A3.044,3.044,0,0,0,58.676,35.863ZM48.478,56.1a6.346,6.346,0,1,0,0,8.974A6.346,6.346,0,0,0,48.478,56.1Z" fill="#707676"/></svg>                </button>
-                <button id="settingsFB" class="footerButton settings" aria-label="System Settings">
+                    <?xml version="1.0" encoding="utf-8"?>
+                    <svg class="footerButton-icon" fill="#000000" width="800px" height="800px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2,20.889V16.444H4.222a2.224,2.224,0,0,0,2.192-2.595A2.305,2.305,0,0,0,4.1,12H2V7.556A1.111,1.111,0,0,1,3.111,6.444H7.556V4.222a2.224,2.224,0,0,1,2.6-2.192A2.305,2.305,0,0,1,12,4.341v2.1h4.444a1.112,1.112,0,0,1,1.112,1.112V12h2.1a2.305,2.305,0,0,1,2.311,1.849,2.224,2.224,0,0,1-2.192,2.595H17.556v4.445A1.111,1.111,0,0,1,16.444,22H13.111V19.778a2.224,2.224,0,0,0-2.6-2.192A2.305,2.305,0,0,0,8.667,19.9V22H3.111A1.11,1.11,0,0,1,2,20.889Z"/></svg>
+                </button>
+                    <button id="settingsFB" class="footerButton settings" aria-label="System Settings">
                     <svg class="footerButton-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M83.285,52.4V46.9H73.1a23.155,23.155,0,0,0-4.83-11.633l7.208-7.209-3.888-3.888-7.209,7.208a23.155,23.155,0,0,0-11.633-4.83V16.361h-5.5V26.544a23.155,23.155,0,0,0-11.633,4.83l-7.209-7.208L24.52,28.054l7.208,7.209A23.155,23.155,0,0,0,26.9,46.9H16.715v5.5H26.9a23.157,23.157,0,0,0,4.829,11.633L24.52,71.237l3.888,3.889,7.209-7.209a23.146,23.146,0,0,0,11.633,4.83V82.931h5.5V72.747a23.146,23.146,0,0,0,11.633-4.83l7.209,7.209,3.888-3.889-7.208-7.208A23.157,23.157,0,0,0,73.1,52.4ZM50,67.415A17.77,17.77,0,1,1,67.77,49.646,17.79,17.79,0,0,1,50,67.415Z" fill="#707676"/></svg>
                 </button>
                 <button id="powerFB" class="footerButton power" aria-label="Power">
@@ -596,18 +683,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 </button>
             </div>
         </main>
-        <div class="contextualMenu" id="gameContextMenu" style="display:none">
-            <ul>
-                <li onclick="doAction1()">Mark game as favorite</li>
-                <li onclick="doAction2()">Blacklist game</li>
-                <li onclick="doAction3()">Uninstall game</li>
-            </ul>
-        <div class="contextualMenu" id="powerDownContextMenu" style="display:none">
-            <ul>
-                <li onclick="doAction1()">Exit Mukkuru</li>
-                <li onclick="doAction2()">Shutdown device</li>
-                <li onclick="doAction3()">Restart device</li>
-            </ul>
+        <div class="contextualMenu" id="gameContextMenu">
+            <div class="contextItem selected" id="fvOption" onclick='setGameProperty("favorite", gameLaunchers[currentIndex].id)'>Add as favorite</div>
+            <div class="contextItem" id="blOption" onclick='setGameProperty("blacklist", gameLaunchers[currentIndex].id)'>Blacklist game</div>
+        </div>
+        <div class="contextualMenu" id="powerDownContextMenu">
+            <div class="contextItem" onclick="doAction1()">Exit Mukkuru</div>
+            <div class="contextItem" onclick="doAction2()">Shutdown device</div>
+            <div class="contextItem" onclick="doAction3()">Restart device</div>
         </div>
         <footer class="homeFooter pending">
             <div class="controllerState">
@@ -616,9 +699,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
             <div class="keyGuideList pending">
-                <div class="keyGuide">
+                <div class="keyGuide" id="options-keyGuide">
                     <svg class="keyGuide-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,16.715A33.285,33.285,0,1,0,83.285,50,33.285,33.285,0,0,0,50,16.715Zm19.731,36.5H53.213V69.731H46.787V53.213H30.269V46.787H46.787V30.269h6.426V46.787H69.731Z" fill="2E2E2E"/></svg>
-                    <div id="options-keyGuide" class="keyGuide-text">
+                    <div class="keyGuide-text" id="options-keyText">
                         Options
                     </div>
                 </div>

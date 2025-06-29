@@ -195,6 +195,9 @@ function hardwareStatusUpdate(){
           document.getElementsByClassName("batteryState")[0].style.display = "none";
       } else {
           document.getElementsByClassName("batteryLevel")[0].style.width = "" + (100-battery.percent) + "%";
+          if ("power_plugged" in battery && battery.power_plugged) {
+            //document.getElementsByClassName("batteryCharging")[0].style.display = "";
+          }
       }
       
     });
@@ -262,4 +265,40 @@ function clockUpdate(meridiem){
   function showBottomBar(state) {
     document.getElementsByClassName("footerNavigation")[0].style.display = state?"flex":"none";
   }
+
+  function setGameProperty(property, value){
+    switch (property) {
+      case "favorite":
+        if (userConfiguration.favorite.includes(value)){
+          const index = userConfiguration.favorite.indexOf(value);
+          userConfiguration.favorite.splice(index, 1);
+        } else {
+          userConfiguration.favorite.push(value);
+        }
+        break;
+      case "blacklist":
+        if (userConfiguration.blacklist.includes(value)){
+          const index = userConfiguration.blacklist.indexOf(value);
+          userConfiguration.blacklist.splice(index, 1);
+        } else {
+          userConfiguration.blacklist.push(value);
+        }
+        break;
+      default:
+        return;
+    }
+
+    fetch(backendURL+"/config/set", {
+      method: "POST",
+      body: JSON.stringify(userConfiguration),
+      headers: {
+        "Content-type": "application/json; charset=UTF-8"
+      }
+      }).then((response) => {
+        
+      });
+
+  }
+
+
   const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent);
