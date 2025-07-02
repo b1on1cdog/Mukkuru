@@ -50,6 +50,17 @@
         "addFavorite" : "Agregar a favorito",
         "removeFavorite" : "Quitar favorito",
         "hideGame" : "Ocultar juego",
-        "showGame" : "Mostrar juego"
+        "showGame" : "Mostrar juego",
+        "deadBackendMsg" : "El backend de Mukkuru cerro.... reinicia la app",
+        "exitMukkuru" : "Salir de Mukkuru",
+        "shutdownDevice" : "Apagar dispositivo",
+        "restartDevice" : "Reiniciar dispositivo",
+        "restartMukkuru" : "Reiniciar Mukkuru",
+        "ControlCenter" : "Centro de control",
+        "patches" : "Parches",
+        "OfflineServer" : "Servidor: Apagado",
+        "AutoPlayEnabled" : "AutoPlay habilitado",
+        "AutoPlayDisabled" : "AutoPlay apagado",
+        "Media" : "Multimedia"
     }
 }

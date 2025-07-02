@@ -158,14 +158,15 @@ def has_internet(host="8.8.8.8", port=53, timeout=0.3):
     except TimeoutError:
         return False
 
-# this is causing segmentation fault in linux
-def get_current_interface():
+def get_current_interface(get_ip = False):
     ''' determine current network interface using a dummy socket'''
     # Step 1: Create a dummy socket connection to a public IP (Google DNS)
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.connect(("8.8.8.8", 80))  # doesn't actually send data
             local_ip = s.getsockname()[0]
+            if get_ip:
+                return local_ip
     except (TimeoutError) as e:
         print(f"Could not determine local IP: {e}")
         return None

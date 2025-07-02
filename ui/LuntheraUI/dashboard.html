@@ -4,16 +4,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Mukkuru</title>
-    <link rel="stylesheet" href="./assets/css/style.css">
+    <!-- link rel="stylesheet" href="./assets/css/style.css" -->
     <!-- script src="mukkuru.js"></script -->
     <script src="localization.js"></script>
     <style>
+html {
+    --font-sans: 'source-han-sans-simplified-c', sans-serif;
+    --font-bold: var(--font-sans);
+    --font-number: 'din-2014', sans-serif;
+    overflow: hidden;
+    font-family: var(--font-sans);
+    font-size: 24px;
+}
 .maingrid {
     display: grid;
     grid-template-columns: repeat(4, minmax(10%, 1fr));/*190px*/
     grid-template-rows: repeat(3, max-content);
     margin: 40px;
-    gap:40px
+    gap: 40px;
+    padding: 2vw;
 }
 .main-button {
     cursor: pointer;
@@ -22,6 +31,32 @@
 .main-button img {
     width: 120px;
     height: 120px;
+}
+
+.progress {
+    display: none;
+    position:fixed;
+    width: 95vw;
+    background-color: grey;
+    bottom: 5vh;
+    border-radius: 24px;
+    box-shadow: 1px 1px 1px black;
+    margin-left: 2vh;
+    overflow: hidden;
+}
+
+.progress.active {
+    display: flex;
+}
+
+.bar {
+    position: relative;
+    top:0;
+    left:0;
+    width: 0%;
+    height: 30px;
+    background: linear-gradient(90deg,rgba(143, 242, 241, 1) 0%, rgba(167, 76, 252, 1) 44%, rgba(116, 86, 248, 1) 54%, rgba(255, 204, 204, 1) 100%);
+    border-radius: 24px;
 }
 
     </style>
@@ -34,10 +69,14 @@
         <div class="button-title" data-loc="sendFile" data-trm="swapText">Send file</div>
         <input type="file" id="fileInput" hidden>
     </div>
+
+</div>
+<div class="progress" id="progress">
+    <div id="progressBar" class="bar"></div>
 </div>
 
 <script>
-const CHUNK_SIZE = 1024 * 1024;
+const CHUNK_SIZE = 4 * 1024 * 1024;
 
 document.addEventListener('DOMContentLoaded', () => {  
     document.getElementById('uploadBtn').onclick = () => {
@@ -48,7 +87,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+function updatePb(percent) {
+    var bar = document.getElementById("progressBar"); 
+    var p = document.getElementById("progress"); 
+    if (percent < 0) {
+        bar.style.width = "0%";
+        p.classList.remove("active");
+        return;
+    }
 
+    if (!p.classList.contains("active")) {
+        p.classList.add("active");
+    }
+    bar.style.width = percent + "%";
+}
 
 async function startUpload() {
   const file = document.getElementById('fileInput').files[0];
@@ -75,8 +127,14 @@ async function startUpload() {
       method: 'POST',
       body: formData
     });
+    progress = ((chunkIndex+1)/totalChunks)*100;
+    updatePb(progress);
 
     console.log(`Uploaded chunk ${chunkIndex + 1} of ${totalChunks}`);
+    if (progress >= 100) {
+        console.log("clearing progress bar...");
+        setTimeout(updatePb, 2000, -1);
+    }
   }
 }
 </script>

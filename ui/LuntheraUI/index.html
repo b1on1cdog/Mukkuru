@@ -21,26 +21,8 @@ function measure_time(name, begin, end = performance.now()) {
     backend_log(name + " " + time_used + " ms");
 }
 
-const keyBindings = {
-  "Enter": "confirm",
-  " ": "confirm",
-  "Escape": "back",
-  "Backspace" : "back",
-  "Shift" : "options",
-  "ArrowLeft" : "left",
-  "ArrowRight" : "right",
-  "ArrowUp" : "up",
-  "ArrowDown" : "down",
-  "w" : "up",
-  "s" : "down",
-  "a" : "left",
-  "d" : "right"
-};
-
 let currentRow = 1;
 let currentIndex = 0;
-let currentContext = 0;
-let isContextMenu = false;
 
 function sendBackgroundColorToParent(color) {
   window.parent.postMessage({ bgColor: color }, '*');
@@ -51,9 +33,11 @@ document.addEventListener('DOMContentLoaded', () => {
     /*Load games*/
     const gameList = document.querySelector('.gameList');
     const appList = document.querySelector('.appList');
+    const mediaList = document.querySelector('.mediaList');
     appLaunchers = document.querySelector('.appLauncher');
     gameLaunchers = document.querySelectorAll('.gameLauncher');
     homeMenu = document.getElementsByClassName("homeMenu")[0];
+    mediaItems = document.querySelectorAll('.videoLauncher');
     /*
         Mukkuru should have it's own game source, since some users might want games outside
         from Steam or they might want to include/exclude some games from it
@@ -127,10 +111,14 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => {
         clockUpdate(userConfiguration["12H"]);
     }, 30000);
+    setInterval(() => {
+        isAlive();
+    }, 3000);
     showKeyGuide(userConfiguration["showKeyGuide"]);
     allowRendering();
     const bg = document.getElementsByClassName("homeMenu")[0].style.backgroundColor;
     sendBackgroundColorToParent(bg);
+    refreshServer();
     });    
     fetch(backendURL+"/library/get").then(function(response) {
         return response.json();
@@ -352,6 +340,8 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Fetch Error :-S', err);
     });
 
+    fetch_videos();
+
     function refreshCtxMenu(){
         if (currentRow == 1 && gameLaunchers[currentIndex].classList.contains("favorite")){
             document.getElementById("fvOption").innerText = translate_str("removeFavorite", "Remove from favorite");
@@ -365,6 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+
     document.addEventListener('keydown', (e) => {
          e.preventDefault();
         //ensureFullscreen(!userConfiguration["fullScreen"]);
@@ -376,6 +367,23 @@ document.addEventListener('DOMContentLoaded', () => {
         let navigatingRow = [profileRow, gameLaunchers, utilityButtons, appLaunchers];
         let cols = [1, gameLaunchers.length, 6, appLaunchers.length];
         
+        if (lockControls) {
+            return;
+        }
+        //i do not want to bloat a single file with too much code, i'll transfer controls to mukkuru.js
+        if (isVideoPlayer) {
+            videoControl(keyBindings[e.key]);
+            return;
+        }
+
+        if (currentRow == 4) {
+            if (mediaItems.length == 0) {
+                mediaItems = document.querySelectorAll('.videoLauncher');
+            }
+            mediaControl(keyBindings[e.key]);
+            return;
+        }
+        ctxMenu = document.getElementsByClassName("contextualMenu active")[0];
         
         switch (keyBindings[e.key]) {
             case "options":
@@ -395,7 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     playSound("select");
                     currentContext--;
-                    selectedContext = document.getElementsByClassName("contextItem selected")[0];
+                    selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
                     selectedContext.classList.remove("selected");
                     selectedContext.previousElementSibling.classList.add("selected");
                     return;
@@ -419,7 +427,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case "down":
                 if (isContextMenu) {
-                    ctxMenu = document.getElementsByClassName("contextualMenu active")[0];
                     ctxMax = ctxMenu.querySelectorAll('.contextItem').length;
                     if (currentContext >= ctxMax-1) {
                         playSound("border");
@@ -427,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     playSound("select");
                     currentContext++;
-                    selectedContext = document.getElementsByClassName("contextItem selected")[0];
+                    selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
                     selectedContext.classList.remove("selected");
                     selectedContext.nextElementSibling.classList.add("selected");
                     return;
@@ -479,8 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case "confirm":
                 if (isContextMenu){
-                    ctxMenu = document.getElementsByClassName("contextualMenu active")[0];
-                    selectedContext = document.getElementsByClassName("contextItem selected")[0];
+                    selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
                     selectedContext.click();
                     playSound("tick");
                     if (currentContext == 0 && ctxMenu.id == "gameContextMenu") {
@@ -550,6 +556,24 @@ document.addEventListener('DOMContentLoaded', () => {
                             });
                             playSound("run");
                             break;
+                        case 2:
+                            playSound("run");
+                            setTimeout(function () {
+                                currentRow = 4;
+                                gameList.style.display = "none";
+                                document.getElementsByClassName("homeHeader")[0].style.display = "none";
+                                document.getElementsByClassName("footerNavigation")[0].style.display = "none";
+                                mediaList.style.display = "grid";
+                                currentIndex = 0;
+                            }, 300);
+                            blink(homeMenu);
+                            break;
+                        case 3:
+                            document.getElementById("controlContextMenu").classList.add("active");
+                            isContextMenu = true;
+                            handleAutoPlay("update");
+                            playSound("tick");
+                            break;
                         case 4:
                             playSound("settings");
                             vanish(homeMenu);
@@ -558,10 +582,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             });    
                             break;
                         case 5:
-                            fetch(backendURL+"/app/exit").then(function(response) {
-                                return 0;
-                            });
-                            playSound("power");
+                            document.getElementById("powerDownContextMenu").classList.add("active");
+                            isContextMenu = true;
+                            //refreshCtxMenu();
+                            playSound("tick");
                             break;
                         default:
                             console.log("no action specified");
@@ -573,10 +597,17 @@ document.addEventListener('DOMContentLoaded', () => {
             case "back":
                 if (isContextMenu) {
                     isContextMenu = false;
+                    currentContext = 0;
+                    //restart selected position
+                    selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
+                    selectedContext.classList.remove("selected");
+                    firstContext = ctxMenu.getElementsByClassName("contextItem")[0];
+                    firstContext.classList.add("selected");
                     elements = document.getElementsByClassName("contextualMenu active");
                     Array.prototype.forEach.call(elements, function(element) {
                         element.classList.remove("active");
                     });
+
 
                 }
                 //to-do: restore home menu without reloading
@@ -630,6 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </head>
 <body>
+    <video id="videoPlayer" controls controlsList="nofullscreen"></video>
     <article class="homeMenu pending">
         <header class="homeHeader">
             <div class="background-layer" id="bg"></div>
@@ -653,6 +685,9 @@ document.addEventListener('DOMContentLoaded', () => {
         </header>
 
         <main class="homeBody pending">
+            <div id="overlay">
+                <div class="message" id="overlay-message" data-trm="swapText" data-loc="deadBackendMsg">Mukkuru backend is no longer running... restart app</div>
+            </div>
             <div class="appheaders">
             <span class="appheader lined">Games</span>
             <span class="appheader">Media</span>
@@ -661,24 +696,28 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="gameList">
             </div>
+            <div class="mediaList" style="display: none;">
+            </div>
             <div class="footerNavigation pending">
-                <button id="scanFB" class="footerButton refresh" aria-label="Refresh Library">
+                <button id="scanFB"  data-trm="ariaLabel" data-loc="scanFB" class="footerButton refresh" aria-label="Refresh Library">
                     <img class="footerButton-icon" src="assets/img/refresh.png" alt="refresh-icon">
                 </button>
-                <button id="storeFB" class="footerButton store" aria-label="Store">
+                <button id="storeFB" data-trm="ariaLabel" data-loc="storeFB" class="footerButton store" aria-label="Store">
                     <img class="footerButton-icon" src="assets/vector/store.svg" alt="store-icon">
                 </button>
-                <button id="downloadFB" data-trm="ariaLabel" data-loc="Downloads" class="footerButton download" aria-label="Downloads">
+                <!--button id="downloadFB" data-trm="ariaLabel" data-loc="Downloads" class="footerButton download" aria-label="Downloads">
                     <img class="footerButton-icon" src="assets/vector/download.svg" alt="download-icon">
+                </button-->
+                <button id="mediaFB" data-trm="ariaLabel" data-loc="Media" class="footerButton media" aria-label="Media">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="50px" height="50px"><g xmlns="http://www.w3.org/2000/svg" transform="scale(1.33333)"><path d="M32.12 10H3.88A1.88 1.88 0 0 0 2 11.88v18.24A1.88 1.88 0 0 0 3.88 32h28.24A1.88 1.88 0 0 0 34 30.12V11.88A1.88 1.88 0 0 0 32.12 10M32 30H4V12h28z" class="clr-i-outline clr-i-outline-path-1" fill="blue"></path><path d="M30.14 3a1 1 0 0 0-1-1h-22a1 1 0 0 0-1 1v1h24z" class="clr-i-outline clr-i-outline-path-2" fill="blue"></path><path d="M32.12 7a1 1 0 0 0-1-1h-26a1 1 0 0 0-1 1v1h28z" class="clr-i-outline clr-i-outline-path-3" fill="blue"></path><path d="M12.82 26.79a1.74 1.74 0 0 0 .93.28 1.7 1.7 0 0 0 .69-.15l9.77-4.36a1.69 1.69 0 0 0 0-3.1l-9.77-4.36a1.7 1.7 0 0 0-2.39 1.55v8.72a1.7 1.7 0 0 0 .77 1.42m.63-10.14a.29.29 0 0 1 .14-.25.3.3 0 0 1 .16 0 .3.3 0 0 1 .12 0l9.77 4.35a.29.29 0 0 1 .18.28.28.28 0 0 1-.18.27l-9.77 4.36a.28.28 0 0 1-.28 0 .31.31 0 0 1-.14-.25z" class="clr-i-outline clr-i-outline-path-4" fill="blue"></path><path fill="none" d="M0 0h36v36H0z"></path></g></svg>
                 </button>
-                <button id="controllerFB" class="footerButton controller" aria-label="Controller">
-                    <?xml version="1.0" encoding="utf-8"?>
-                    <svg class="footerButton-icon" fill="#000000" width="800px" height="800px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2,20.889V16.444H4.222a2.224,2.224,0,0,0,2.192-2.595A2.305,2.305,0,0,0,4.1,12H2V7.556A1.111,1.111,0,0,1,3.111,6.444H7.556V4.222a2.224,2.224,0,0,1,2.6-2.192A2.305,2.305,0,0,1,12,4.341v2.1h4.444a1.112,1.112,0,0,1,1.112,1.112V12h2.1a2.305,2.305,0,0,1,2.311,1.849,2.224,2.224,0,0,1-2.192,2.595H17.556v4.445A1.111,1.111,0,0,1,16.444,22H13.111V19.778a2.224,2.224,0,0,0-2.6-2.192A2.305,2.305,0,0,0,8.667,19.9V22H3.111A1.11,1.11,0,0,1,2,20.889Z"/></svg>
-                </button>
-                    <button id="settingsFB" class="footerButton settings" aria-label="System Settings">
+                <button id="controllerFB" data-trm="ariaLabel" data-loc="ControlCenter" class="footerButton controller" aria-label="Control Center">
+                    <!-- svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="50px" height="50px"><path xmlns="http://www.w3.org/2000/svg" d="M6 26h16V6H6zm0 16h16V30H6zm20 0h16V22H26zm0-36v12h16V6z"></path></svg-->
+                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="64px" height="64px"><g xmlns="http://www.w3.org/2000/svg" fill="none" transform="scale(2)"><path fill="#707676" d="m17.657 11.293-1.414 1.414L12 8.464l-4.243 4.243-1.414-1.414L12 5.636z"></path><path fill="#707676" d="m17.657 16.95-1.414 1.414L12 14.12l-4.243 4.243-1.414-1.414L12 11.293z"></path></g></svg>
+                <button id="settingsFB" data-trm="ariaLabel" data-loc="settingsFB" class="footerButton settings" aria-label="System Settings">
                     <svg class="footerButton-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M83.285,52.4V46.9H73.1a23.155,23.155,0,0,0-4.83-11.633l7.208-7.209-3.888-3.888-7.209,7.208a23.155,23.155,0,0,0-11.633-4.83V16.361h-5.5V26.544a23.155,23.155,0,0,0-11.633,4.83l-7.209-7.208L24.52,28.054l7.208,7.209A23.155,23.155,0,0,0,26.9,46.9H16.715v5.5H26.9a23.157,23.157,0,0,0,4.829,11.633L24.52,71.237l3.888,3.889,7.209-7.209a23.146,23.146,0,0,0,11.633,4.83V82.931h5.5V72.747a23.146,23.146,0,0,0,11.633-4.83l7.209,7.209,3.888-3.889-7.208-7.208A23.157,23.157,0,0,0,73.1,52.4ZM50,67.415A17.77,17.77,0,1,1,67.77,49.646,17.79,17.79,0,0,1,50,67.415Z" fill="#707676"/></svg>
                 </button>
-                <button id="powerFB" class="footerButton power" aria-label="Power">
+                <button id="powerFB" data-trm="ariaLabel" data-loc="powerFB" class="footerButton power" aria-label="Power">
                     <svg class="footerButton-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M79.8,49.646A29.8,29.8,0,1,1,39.125,21.913v6.015a24.3,24.3,0,1,0,21.75,0V21.913A29.84,29.84,0,0,1,79.8,49.646ZM52.75,15.038h-5.5V44.6h5.5Z" fill="#707676"/></svg>
                 </button>
             </div>
@@ -687,10 +726,24 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="contextItem selected" id="fvOption" onclick='setGameProperty("favorite", gameLaunchers[currentIndex].id)'>Add as favorite</div>
             <div class="contextItem" id="blOption" onclick='setGameProperty("blacklist", gameLaunchers[currentIndex].id)'>Blacklist game</div>
         </div>
+        <div class="contextualMenu" id="controlContextMenu">
+            <img id="dashboardQR" src="web/qrcode" width="50%" height="50%" style="display: none;">
+            <div class="contextItem selected" id="sOption" onclick='serverHandle("auto")'>Enable server</div>
+            <div class="contextItem" id="autoPlayOption" data-on="AutoPlay enabled" data-off="AutoPlay eisabled" onclick='handleAutoPlay("auto")'>Autoplay</div>
+        </div>
         <div class="contextualMenu" id="powerDownContextMenu">
-            <div class="contextItem" onclick="doAction1()">Exit Mukkuru</div>
-            <div class="contextItem" onclick="doAction2()">Shutdown device</div>
-            <div class="contextItem" onclick="doAction3()">Restart device</div>
+            <div class="contextItem selected" id="exitMukkuruBtn" data-loc="exitMukkuru" data-trm="patchHTML" data-patch="Exit Mukkuru" onclick="exitMukkuru()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="32px" height="32px">
+                    <path xmlns="http://www.w3.org/2000/svg" fill="currentColor" fill-rule="evenodd" d="M8 30h4v10h24V8H12v10H8V6a2 2 0 0 1 2-2h28a2 2 0 0 1 2 2v36a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2zm12-8v-6l10 8-10 8v-6H4v-4z"></path>
+                </svg>Exit Mukkuru</div>
+                <div class="contextItem" id="restartAppBtn" data-loc="restartMukkuru" data-trm="patchHTML" data-patch="Restart Mukkuru" onclick="restartMukkuru()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="32px" height="32px">
+                    <path xmlns="http://www.w3.org/2000/svg" fill="currentColor" fill-rule="evenodd" d="M38.25 24a13.5 13.5 0 0 1-25.83 5.502l-4.173 1.695A18.003 18.003 0 0 0 42.75 24 18 18 0 0 0 10.5 13.002V7.5H6v12l2.25 2.25h10.5v-4.5h-5.694A13.5 13.5 0 0 1 38.25 24" clip-rule="evenodd"></path>
+                </svg>Restart Mukkuru</div>
+                            <!-- div class="contextItem" id="restartDeviceBtn" data-loc="restartDevice" data-trm="swapText" onclick="restartDevice()">Restart device</div -->
+
+            <!-- div class="contextItem" id="shutdownDeviceBtn" data-loc="shutdownDevice" data-trm="swapText" onclick="shutdownDevice()">Shutdown device</div -->
+            <!-- div class="contextItem" id="restartDeviceBtn" data-loc="restartDevice" data-trm="swapText" onclick="restartDevice()">Restart device</div -->
         </div>
         <footer class="homeFooter pending">
             <div class="controllerState">

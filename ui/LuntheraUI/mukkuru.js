@@ -1,61 +1,17 @@
-/*
-(function(document) {
-    var config = {
-        kitId: 'ozw8epo',
-        scriptTimeout: 3000,
-        async: true
-    };
-
-    var htmlElement = document.documentElement;
-
-    var timeoutId = setTimeout(function() {
-        htmlElement.className = htmlElement.className.replace(/\bwf-loading\b/g, "") + " wf-inactive";
-    }, config.scriptTimeout);
-
-    // Create Typekit script element
-    var typekitScript = document.createElement("script");
-    var firstScript = document.getElementsByTagName("script")[0];
-    var scriptLoaded = false;
-
-    // Add loading class to HTML element
-    htmlElement.className += " wf-loading";
-
-    // Configure Typekit script
-    typekitScript.src = 'https://use.typekit.net/' + config.kitId + '.js';
-    typekitScript.async = true;
-
-    // Set up load/readystate handlers
-    typekitScript.onload = typekitScript.onreadystatechange = function() {
-        var readyState = this.readyState;
-        
-        // Skip if already loaded or in incomplete state
-        if (scriptLoaded || (readyState && readyState != "complete" && readyState != "loaded")) {
-            return;
-        }
-        
-        scriptLoaded = true;
-        clearTimeout(timeoutId);
-        
-        try {
-            Typekit.load(config);
-        } catch (error) {
-            // Handle error if Typekit fails to load
-        }
-    };
-
-    // Insert Typekit script before the first script element
-    firstScript.parentNode.insertBefore(typekitScript, firstScript);
-})(document);
-*/
+// Copyright (c) 2025 b1on1cdog
+// Licensed under the MIT License
 const backendURL = "http://localhost:49347";
 
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-const audioBuffers = {}; // Store all loaded buffers
+const audioBuffers = {};
 const maxPoolSize = 4; // Maximum number of instances to keep for each sound
 const audioPlayedAt = {};
 let userConfiguration = {};
+let lockControls = false;
+let isVideoPlayer = false;
+let currentContext = 0;
+let isContextMenu = false;
 
-// Object to track buffer sources pools for each sound
 const bufferPools = {};
 
 async function loadSound(name, url) {
@@ -104,7 +60,7 @@ function playSound(name) {
           source.start(0);
       }
     } else {
-      source.start(0); // Start playing immediately
+      source.start(0);
     }
   
     audioPlayedAt[name] = Date.now();
@@ -127,7 +83,7 @@ function vanish(element)
     (function next() {
         element.style.opacity = oppArray[x];
         if(++x < oppArray.length) {
-            setTimeout(next, 20); //depending on how fast you want to fade
+            setTimeout(next, 20);
         }
     })();
 }
@@ -139,7 +95,7 @@ function unvanish(element, ms)
     (function next() {
         element.style.opacity = oppArray[x];
         if(++x < oppArray.length) {
-            setTimeout(next, ms); //depending on how fast you want to fade
+            setTimeout(next, ms);
         }
     })();
 }
@@ -187,10 +143,17 @@ const isConfigReady = new Promise((resolve) => {
   configReady = resolve; // assign resolver to outer variable
 });
 
-function hardwareStatusUpdate(){
-     fetch(backendURL+"/hardware/battery").then(function(response) {
-        return response.json();
-    }).then(function(battery) {
+let aliveFails = 0;
+
+async function hardwareStatusUpdate(){
+      if (aliveFails > 1) {
+        return;
+      }
+      const response = await fetch(backendURL+"/hardware/battery");
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      battery = await response.json();
       if (battery == null) {
           document.getElementsByClassName("batteryState")[0].style.display = "none";
       } else {
@@ -200,11 +163,12 @@ function hardwareStatusUpdate(){
           }
       }
       
-    });
 
-      fetch(backendURL+"/hardware/network").then(function(response) {
-        return response.json();
-    }).then(function(network) {
+      const network_resp = await fetch(backendURL+"/hardware/network");
+      if (!network_resp.ok) {
+        throw new Error(`HTTP ${network_resp.status}`);
+      }
+      network = await network_resp.json();
       const wifiState = document.getElementsByClassName("wifiState-icon")[0];
       const wifiPath = wifiState.querySelectorAll("path")[0];
       if (!network.internet) {
@@ -227,7 +191,6 @@ function hardwareStatusUpdate(){
         }
 
       }
-    });
 
 }
 
@@ -256,8 +219,281 @@ function clockUpdate(meridiem){
     } else {
         m.innerText = now.getMinutes() + suffix;
     }
-    hardwareStatusUpdate();
+    try {
+      hardwareStatusUpdate();
+    } catch {
+
+    }
+    
   }
+
+function hideUI(state){
+  if (state) {
+    document.getElementsByClassName("homeBody")[0].classList.add("pending");
+    document.getElementsByClassName("homeFooter")[0].classList.add("pending");
+  } else {
+    document.getElementsByClassName("homeBody")[0].classList.remove("pending");
+    document.getElementsByClassName("homeFooter")[0].classList.remove("pending");
+  }
+
+}
+
+function closeCTX(){
+  isContextMenu = false;
+  ctxMenu = document.getElementsByClassName("contextualMenu active")[0];                    
+  currentContext = 0;
+  selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
+  selectedContext.classList.remove("selected");
+  firstContext = ctxMenu.getElementsByClassName("contextItem")[0];
+  firstContext.classList.add("selected");
+  elements = document.getElementsByClassName("contextualMenu active");
+  Array.prototype.forEach.call(elements, function(element) {
+   element.classList.remove("active");
+   });
+}
+
+function playVideo(videoFile){
+  isVideoPlayer = true;
+  video = document.getElementById("videoPlayer");
+  video.classList.add("active");
+  
+/*
+  var source = document.createElement('source');
+  source.setAttribute('src', videoFile);
+  source.setAttribute('type', 'video/mp4');
+  video.appendChild(source);
+*/
+  video.src = videoFile;
+  video.load();
+  video.play();
+  hideUI(true);
+  if (isContextMenu) {
+    closeCTX();
+  }
+}
+
+function closeVideo(){
+  isVideoPlayer = false;
+  video = document.getElementById("videoPlayer");
+  video.classList.remove("active");
+  video.pause();
+  video.currentTime = 0;
+  hideUI(false);
+}
+
+
+function videoControl(action){
+  video = document.getElementById("videoPlayer");
+  switch (action) {
+    case "left":
+      video.currentTime = Math.max(video.currentTime - 10, 0);
+      break;
+    case "right":
+      video.currentTime = Math.min(video.currentTime + 10, video.duration);
+      break;
+    case "up":
+      video.volume = Math.min(video.volume + 0.05, 1);
+      break;
+    case "down":
+      video.volume = Math.max(video.volume - 0.05, 0);
+      break;
+    case "back":
+      closeVideo();
+      break;
+    case "confirm":
+      if (video.paused) {
+        video.play();
+      } else {
+        video.pause();
+      }
+      break;
+    default:
+      break;
+
+  }
+}
+
+// video_parser.js
+
+let videos = { };
+
+function formatDuration(totalSeconds) {
+  const sec = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
+  const min = Math.floor((totalSeconds / 60) % 60).toString().padStart(2, '0');
+  const hrs = Math.floor(totalSeconds / 3600);
+
+  return hrs > 0 ? `${hrs}:${min}:${sec}` : `${min}:${sec}`;
+}
+
+function send_videos_metadata(){
+    fetch(backendURL+"/video/set", {
+      method: "POST",
+      body: JSON.stringify(videos),
+      headers: {
+        "Content-type": "application/json; charset=UTF-8"
+      }
+      }).then((response) => {
+        
+      });
+}
+
+function send_video_thumbnail(thumbnail, video_id){
+    fetch(backendURL+"/video/thumbnail/"+video_id, {
+      method: "POST",
+      body: JSON.stringify(thumbnail),
+      headers: {
+        "Content-type": "application/json; charset=UTF-8"
+      }
+      }).then((response) => {
+        
+      });
+}
+
+async function get_video_metadata(video_url, vid){
+    console.log("processing metadata for " + video_url);
+    vid.id = 'metadata-video';
+    vid.preload = 'metadata';
+    vid.src = video_url;
+    vid.muted = true;
+    document.body.appendChild(vid);
+
+    await new Promise(r => vid.onloadedmetadata = r);
+    const duration = vid.duration;
+
+    vid.currentTime = Math.min(90.5, duration / 2);
+
+    await new Promise(r => vid.onseeked = r);
+
+    const c  = document.createElement('canvas');
+    c.width  = vid.videoWidth;
+    c.height = vid.videoHeight;
+    c.getContext('2d').drawImage(vid, 0, 0);
+    const png = c.toDataURL('image/png');
+    vid.pause();
+    metadata = {
+        "duration" : vid.duration,
+        "thumbnail" : png,
+    }
+    return metadata;
+}
+
+function refreshVideoMetadata(video_id, video_duration = "00:00"){
+    videoElement = document.getElementById("video_"+video_id);
+    if (videoElement != undefined){
+        try {
+            th = videoElement.getElementsByClassName("video-thumbnail")[0];
+            th.src = th.src;
+            duration = videoElement.getElementsByClassName("duration")[0];
+            duration.textContent = formatDuration(video_duration);
+        } catch {}
+    }
+}
+
+async function update_videos_metadata(vids){
+    const vid = document.createElement('video');
+    for (const id in vids) {
+        const video = vids[id];
+        if ("duration" in video && video["thumbnail_exists"]){
+            //console.log("skipping "+id)
+            continue;
+        }
+        const metadata = await get_video_metadata(video.url, vid);
+        thumbnail = metadata["thumbnail"];
+        delete metadata.thumbnail;
+        Object.assign(videos[id], metadata);
+        send_video_thumbnail(thumbnail, id);
+
+        //let's refresh thumbnail
+        setTimeout(() => {
+            refreshVideoMetadata(id, metadata.duration);
+        }, "500");
+    }
+  //  console.log(JSON.stringify(videos));
+    send_videos_metadata();
+    vid.remove();
+}
+
+function fetch_videos(){
+    document.querySelectorAll('.videoLauncher').forEach(el => el.remove());
+    fetch(backendURL+"/media/get").then(function(response) {
+        return response.json();
+    }).then(function(data) {
+        videos = data["videos"];
+       // console.log(data);
+        update_videos_metadata(videos);
+        mediaList = document.getElementsByClassName("mediaList")[0];
+        for (const id in videos){
+            video = videos[id];
+            
+            const videoLauncher = document.createElement('button');
+            videoLauncher.className = 'videoLauncher';
+            /*
+            if (favoriteGames.has(AppID)){
+                app.classList.add("favorite");
+            }*/
+            videoLauncher.id = "video_" + id;
+            videoLauncher.dataset.play = video.url;
+            const videoTitle = document.createElement('div');
+            videoTitle.className = "video-title";
+            videoTitle.textContent = video.file
+            videoTitle.dataset.text = videoTitle.textContent;
+            const videoImage = document.createElement('img');
+            videoImage.className = 'video-thumbnail';
+            videoImage.src = video.thumbnail_url;
+            videoImage.alt = video.file;
+            const durationElement = document.createElement('div');
+            durationElement.className = "duration";
+            durationElement.textContent = formatDuration(video.duration);
+            videoLauncher.appendChild(videoTitle);
+            videoLauncher.appendChild(videoImage);
+            videoLauncher.appendChild(durationElement);
+            mediaList.appendChild(videoLauncher);
+            videoLauncher.addEventListener('focus', () => {
+              videoLauncher.scrollIntoView({ behavior: "instant", block: "center" });
+            });
+        }
+
+    });
+}
+
+// end video_parser.js
+
+async function isAlive(){
+    if (aliveFails > 1) {
+      return;
+    }
+    try {
+      const response = await fetch(backendURL+"/alive");
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+      message = await response.json();
+
+      aliveFails = 0;
+      if ( message["command"] != undefined) {
+        const command = message["command"];
+        const value = message["value"] ?? "";
+        switch (command) {
+          case "playVideo":
+            playVideo(value);
+            fetch_videos();
+            break;
+          case "reloadVideos":
+            fetch_videos();
+            break;
+          case "playAudio":
+            break;
+          default:
+            break;
+        }
+      }
+    } catch (exception) {
+      aliveFails++;
+      document.getElementById('overlay').style.display = 'flex';
+      lockControls = true;
+      console.log("AliveError: " + exception.message);
+  }
+}
 
   function showKeyGuide(state) {
     document.getElementsByClassName("homeFooter")[0].style.display = state?"flex":"none";
@@ -300,5 +536,137 @@ function clockUpdate(meridiem){
 
   }
 
+const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent);
 
-  const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent);
+const keyBindings = {
+  "Enter": "confirm",
+  " ": "confirm",
+  "Escape": "back",
+  "Backspace" : "back",
+  "Shift" : "options",
+  "ArrowLeft" : "left",
+  "ArrowRight" : "right",
+  "ArrowUp" : "up",
+  "ArrowDown" : "down",
+  "w" : "up",
+  "s" : "down",
+  "a" : "left",
+  "d" : "right"
+};
+
+async function updateConfiguration() {
+  response = await fetch(backendURL+"/config/set", {
+    method: "POST",
+    body: JSON.stringify(userConfiguration),
+    headers: {
+    "Content-type": "application/json; charset=UTF-8"
+      }
+    });
+}
+
+function restartMukkuru(){
+  fetch(backendURL+"/app/restart").then(function(response) {
+    return 0;
+  });
+  homeMenu = document.getElementsByClassName("homeMenu")[0];
+  vanish(homeMenu);
+}
+
+async function refreshServer(){
+    res = await fetch(backendURL+"/server/info");
+    sOption = document.getElementById("sOption");
+    sOption.innerText = await res.text();
+    if (res.status == "200") {
+        document.getElementById("dashboardQR").style.display = "";
+        return true;
+    } else {
+        document.getElementById("dashboardQR").style.display = "none";
+    }
+    return false;
+}
+
+async function serverHandle(action){
+   if (action == "auto") {
+    state = await refreshServer();
+    if (state) {
+      return serverHandle("close");
+    } else {
+      return serverHandle("start");
+    }
+   }
+   response = await fetch(backendURL+"/server/"+action, {method: "POST"});
+   return await refreshServer();
+}
+
+function exitMukkuru(){
+  fetch(backendURL+"/app/exit").then(function(response) {
+    return 0;
+  });
+  homeMenu = document.getElementsByClassName("homeMenu")[0];
+  vanish(homeMenu);
+}
+
+
+function handleAutoPlay(action = "update"){
+  apOption = document.getElementById("autoPlayOption");
+  apState = userConfiguration["autoPlayMedia"];
+  switch (action) {
+    case "auto":
+      handleAutoPlay(apState?"false":"true");
+      break;
+    case "true":
+      userConfiguration["autoPlayMedia"] = true;
+      updateConfiguration();
+      handleAutoPlay("update");
+      break;
+    case "false":
+      userConfiguration["autoPlayMedia"] = false;
+      updateConfiguration();
+      handleAutoPlay("update");
+      break;
+    default://update or anything else
+      apOption.innerText = apState?apOption.dataset.on:apOption.dataset.off;
+      break
+  }
+}
+
+let currentMedia = 0;
+let mediaItems;
+
+function mediaControl(action) {
+  prevMedia = currentMedia;
+  switch (action) {
+    case "up":
+      currentMedia = Math.max(currentMedia-4, 0);
+      break;
+    case "down":
+      currentMedia = Math.min(currentMedia+4, mediaItems.length-1);
+      break;
+    case "left":
+      currentMedia = Math.max(currentMedia-1, 0);
+      break;
+    case "right":
+      currentMedia = Math.min(currentMedia+1, mediaItems.length-1);
+      break;
+    case "back":
+      goHome();
+      break;
+    case "confirm":
+      switch (mediaItems[currentMedia].className){
+        case "videoLauncher":
+          playVideo(mediaItems[currentMedia].dataset.play);
+          break;
+        default:
+          playSound("border");
+          return;
+      }
+      playSound("run");
+      return;
+  }
+   if (currentMedia == prevMedia) {
+      playSound("border");
+   } else {
+      playSound("select");
+   }
+   mediaItems[currentMedia].focus();       
+}

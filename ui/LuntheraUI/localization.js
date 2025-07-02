@@ -2,7 +2,6 @@ function swapText(elementID, newText) {
   const element = document.getElementById(elementID);
   if (element != undefined && element != null) {
       element.innerText = newText;
-
   }
 }
 
@@ -38,12 +37,15 @@ let localization = {};
 
 function translate_str(key, str){
   if (localization["available"] == false ) {
+    backend_log("localization not available");
     return str;
   } else if (localization[key] == undefined) {
+    backend_log("undefined key, l "+Object.keys(localization).length);
     return str;
   }
   return localization[key];
 }
+
 
 function allowRendering(reload = false) {
   backend_log("applying localization...")
@@ -68,11 +70,12 @@ function allowRendering(reload = false) {
     swapTGL("librarySource", translation["LibrarySources"]);
     swapText("librarySource-desc", translation["LibrarySources-desc"]);
     swapText("settings-header", translation["SystemSettings"]);
-    swapAriaLabel("settingsFB", translation["settingsFB"]);
-    swapAriaLabel("storeFB", translation["storeFB"]);
-    swapAriaLabel("scanFB", translation["scanFB"]);
-    swapAriaLabel("powerFB", translation["powerFB"]);
-    swapAriaLabel("controllerFB", translation["controllerFB"]);
+
+    apOption = document.getElementById("autoPlayOption");
+    if (apOption != undefined){
+      apOption.dataset.off = translate_str("AutoPlayDisabled", "AutoPlay enabled");
+      apOption.dataset.on = translate_str("AutoPlayEnabled", "AutoPlay disabled");
+    }
     
     const elements = document.querySelectorAll('[data-loc]');
     elements.forEach(el => {

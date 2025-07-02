@@ -36,7 +36,6 @@ Some others are going to receive occasional uploads</br>
 - Order recent played items in main screen<br/>
 - Additional webui to manipulate Mukkuru config from another device <br/>
     - Drag and drop wallpaper change <br/>
-    - Drag and drop video playback <br/>
     - Menu to organize games, mark as favorite, blacklist, etc <br/>
     - Option to setup SteamGridDB api <br/>
     - Must also support plugins <br/>
@@ -48,7 +47,8 @@ Some others are going to receive occasional uploads</br>
 - User friendly installer<br/>
 
 # Known issues
-- A too big window might cause keyguide to display incorrectly in app launcher<br/>
+- (Working on it) Mukkuru does not setup Proton by itself, so non-steam games added directly to Steam will not open<br/>
+- Default SW2 theme do not apply to some aspects of the ui<br/>
 
 # Contribution guidelines
 - **Linting** Use pylint and remove as many warnings as reasonably possible before submitting your code. <br/>

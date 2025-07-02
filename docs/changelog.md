@@ -1,5 +1,13 @@
 # Changelog
 -----------------
+# 0.3.3
+- Applied keybindings to settings<br/>
+- Power button will now display a context menu, restart app option added<br/>
+- Exiting Mukkuru will now show a vanishing effect first<br/>
+- UI will be locked with a overlay message when backend is no longer running <br/>
+- Moved footer localization to DOM<br/>
+- Added server option to transfer media and files<br/>
+- Added WIP video player<br/>
 # 0.3.2
 - Added %command% in launch_app for compatibility<br/>
 - Added game image size limit in applist<br/>

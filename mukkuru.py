@@ -17,14 +17,15 @@ import hashlib
 import logging
 import platform
 import shutil
-
+from io import BytesIO
 #import inspect
 import qrcode
 from waitress import serve
+from waitress.server import create_server
 from flask import Flask, request
 from flask import send_from_directory, send_file
 
-from library import grid_db
+from library import grid_db, video
 from library.steam import get_non_steam_games, get_steam_games, get_steam_env
 from library.steam import read_steam_username, download_steam_avatar
 
@@ -55,11 +56,12 @@ log.setLevel(logging.CRITICAL)
 mukkuru_env = {}
 
 COMPILER_FLAG = False
-APP_VERSION = "0.3.2"
+APP_VERSION = "0.3.3"
 BUILD_VERSION = None
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
 SERVER_PORT = 49351
+sserver = create_server(wserver, host="0.0.0.0", port=SERVER_PORT)
 
 def log_calls(frame, event, _):
     ''' logs function calls'''
@@ -408,6 +410,34 @@ def get_games(raw = False):
         return json.dumps(games)
     return games
 
+@app.route('/media/get')
+def get_media():
+    ''' Get all Multimedia '''
+    media = {}
+    backend_log("fetching media...")
+    user_config = get_config(True)
+    video_manifest = mukkuru_env["video.json"]
+    media["videos"] = video.get_videos(user_config["videoSources"], video_manifest)
+    return json.dumps(media)
+
+@app.route('/video/set', methods = ['POST'])
+def set_videos():
+    '''update videos json from request'''        
+    if request.method == 'POST':
+        videos = request.get_json()
+        video.update_videos(mukkuru_env["video.json"], videos)
+        return "200"
+    return "400"
+
+@app.route('/video/thumbnail/<video_id>', methods = ['POST'])
+def set_video_thumbnail(video_id):
+    '''update video thumbnail from request'''        
+    if request.method == 'POST':
+        thumbnail = request.get_json()
+        video.update_thumbnail(mukkuru_env["video.json"], video_id, thumbnail)
+        return "200"
+    return "400"
+
 @lru_cache(maxsize=2)
 def get_config(raw = False):
     ''' get user configuration'''
@@ -416,9 +446,15 @@ def get_config(raw = False):
             "skipNoArt" : False,
             "maxGamesInHomeScreen" : 12,
             "interface" : "LuntheraUI",
-            "librarySource" : 3, #0
+            "enableServer" : False,
+            "autoPlayMedia" : False,
+            "videoSources" : [os.path.join(mukkuru_env["root"], "video")],
+            "musicSources" : [os.path.join(mukkuru_env["root"], "music")],
+            "pictureSources" : [os.path.join(mukkuru_env["root"], "pictures")],
+            "librarySource" : 3,
             "darkMode" : False,
             "startupGameScan" : False,
+            "safeMode" : False,
             "12H" : True,
             "fullScreen" : False,
             "language" : "EN",
@@ -482,6 +518,7 @@ def set_config():
         return "500"
     return "400"
 
+@app.route('/app/restart')
 def restart_app():
     ''' restarts app '''
     if COMPILER_FLAG:
@@ -536,7 +573,7 @@ def update_config(user_config):
 @app.route('/alive')
 def ping_request():
     '''reply with "ok", its purpose is making sure backend is running'''
-    return "ok", 200
+    return get_alive_status(), 200
 
 @app.route('/library/scan')
 def scan_games():
@@ -607,10 +644,6 @@ def server_file(path):
     ''' returns dashboard static files '''
     user_config = get_config(True)
     serve_path = os.path.join(APP_DIR, "ui", user_config["interface"])
-    if path.endswith("web/qrcode"):
-        code = 123456
-        img = qrcode.make(f'http://localhost:{SERVER_PORT}/code/{code}')
-        return send_file(img, mimetype="image/png")
     return send_from_directory(serve_path, path)
 
 @wserver.route('/upload', methods=['POST'])
@@ -618,35 +651,60 @@ def upload():
     ''' receive files as chunks from dashboard uploads '''
     file = request.files['chunk']
     filename = request.form['filename']
-    backend_log(f"downloading {filename}")
     chunk_index = int(request.form['chunkIndex'])
     chunk_size = int(request.form['chunkSize'])
-    #total_chunks = int(request.form['totalChunks'])
+    total_chunks = int(request.form['totalChunks'])
 
-    video_files = ["mp4", "mkv"]
+    video_files = ["mp4", "m4v"]
     image_files = ["png", "jpg", "webm"]
     music_files = ["mp3", "m4a"]
     #allowed_files = []
     # To-do: allow user to store these files in another drive
     # To-do: allow users to move and/or store files in OS user folder
     # To-do: restrict what file formats can be received
+    cmd = None
+    alt_cmd = None
+    value = None
     file_extension = Path(filename).suffix.replace(".", "")
+    user_config = get_config(True)
     if file_extension in video_files:
-        upload_folder = os.path.join(mukkuru_env["root"], "video")
+        upload_folder = user_config["videoSources"][0]
+        cmd = "playVideo"
+        alt_cmd = "reloadVideos"
+        value = f"video/0/{filename}"
     elif file_extension in image_files:
         upload_folder = os.path.join(mukkuru_env["root"], "pictures")
+        cmd = "openPicture"
+        alt_cmd = "reloadPictures"
+        value = f"pictures/0/{filename}"
     elif file_extension in music_files:
         upload_folder = os.path.join(mukkuru_env["root"], "music")
+        cmd = "playAudio"
+        alt_cmd = "reloadAudios"
+        value = f"music/0/{filename}"
     else:
         upload_folder = os.path.join(mukkuru_env["root"], "miscellaneous")
 
     save_path = os.path.join(upload_folder, filename)
     os.makedirs(upload_folder, exist_ok=True)
 
+    if chunk_index == 0:
+        backend_log(f"downloading {filename}")
+        if Path(save_path).exists():
+            os.remove(save_path)
+
     with open(save_path, 'ab') as f:
         f.seek(chunk_index * chunk_size)
         f.write(file.read())
-
+    if (chunk_index + 1) == total_chunks and cmd is not None:
+        user_config = get_config(True)
+        status = {}
+        if user_config["autoPlayMedia"]:
+            status["command"] = cmd
+        else:
+            status["command"] = alt_cmd
+        status["value"] = value
+        set_alive_status(status)
     return 'Chunk received', 200
 
 @wserver.route('/')
@@ -684,10 +742,41 @@ def static_file(path):
         css.process()
         return send_file(css.data(), mimetype="text/css")
     if path.endswith("web/qrcode"):
-        code = 123456
-        img = qrcode.make(f'http://localhost:{SERVER_PORT}/code/{code}')
-        return send_file(img, mimetype="image/png")
+        #code = 123456
+        ip = hardware_if.get_current_interface(get_ip = True)
+       # img = qrcode.make(f'http://{ip}:{SERVER_PORT}/code/{code}')
+        img = qrcode.make(f'http://{ip}:{SERVER_PORT}')
+        buf = BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        return send_file(buf, mimetype="image/png")
+   # if path.startswith("video/"):
+   #     video_path = os.path.join(mukkuru_env["root"], "video")
+    #    video_file = path.replace("video/", "")
+    #    return send_from_directory(video_path, video_file)
+  #  print(f"path -> {path}")
     return send_from_directory(serve_path, path)
+
+@app.route('/frontend/video/<source>/<filename>')
+def video_serve(source, filename):
+    '''serve video files'''
+    user_config = get_config(True)
+    video_path = user_config["videoSources"][int(source)]
+    return send_from_directory(video_path, filename)
+
+@app.route('/frontend/music/<source>/<filename>')
+def music_serve(source, filename):
+    '''serve music files'''
+    user_config = get_config(True)
+    music_path = user_config["musicSources"][int(source)]
+    return send_from_directory(music_path, filename)
+
+@app.route('/frontend/picture/<source>/<filename>')
+def picture_serve(source, filename):
+    '''serve music files'''
+    user_config = get_config(True)
+    pic_path = user_config["pictureSources"][int(source)]
+    return send_from_directory(pic_path, filename)
 
 def scan_thumbnails(games):
     '''update the thumbnail status for all games'''
@@ -714,13 +803,37 @@ def kwserver(**server_kwargs):
     except ConnectionResetError:
         quit_app()
 
+
+@app.route('/server/<action>', methods = ['POST', 'GET'])
+def init_server(action):
+    ''' http controller for wserver start '''
+    global sserver #pylint: disable=W0603
+    if action == "start":
+        threading.Thread(target=start_app, args=(True,)).start()
+        return hardware_if.get_current_interface(get_ip=True), 200
+    if action == "info":
+        if "SERVER_RUNNING" in os.environ:
+            ip = hardware_if.get_current_interface(get_ip=True)
+            url = f'http://{ip}:{SERVER_PORT}'
+            return url, 200
+        loc = get_localization(True)
+        return loc.get("OfflineServer", "Server: Offline"), 222
+    else:
+        sserver.close()
+        os.environ.pop('SERVER_RUNNING', None)
+        sserver = create_server(wserver, host="0.0.0.0", port=SERVER_PORT)
+    return "200"
+
 def start_app(is_server = False):
     ''' init server '''
     try:
-        cores = get_config(True)["cores"]
+        user_config = get_config(True)
+        cores = user_config["cores"]
         if is_server:
-            pass
-            #backend_log(f"starting server at {SERVER_PORT}")
+            sserver.adj.core_count = cores
+            os.environ["SERVER_RUNNING"] = "1"
+            print("starting server....")
+            sserver.run()
             #serve(wserver, host="0.0.0.0", threads=cores, port=SERVER_PORT)
         else:
             serve(app, host="localhost", threads=cores, port=APP_PORT)
@@ -771,6 +884,18 @@ def process_update():
             os.chmod(manifest["executable"], current_permissions | stat.S_IXUSR)
         close_update(manifest)
 
+def get_alive_status():
+    ''' get alive status'''
+    default = {"Status": "OK" }
+    response = mukkuru_env["alive"]
+    if response != default:
+        set_alive_status(default)
+    return response
+
+def set_alive_status(value):
+    ''' set alive status, this will be periodically read from frontend '''
+    mukkuru_env["alive"] = value
+
 def main():
     ''' start of app execution '''
     #logging.basicConfig(level=logging.INFO, format='%(asctime)s  %(message)s')
@@ -791,6 +916,7 @@ def main():
         backend_log("Running in unsupported OS")
     mukkuru_env["library.json"] = os.path.join(mukkuru_env["root"], "library.json")
     mukkuru_env["config.json"] = os.path.join(mukkuru_env["root"], "config.json")
+    mukkuru_env["video.json"] = os.path.join(mukkuru_env["root"], "video.json")
     mukkuru_env["artwork"] = os.path.join(mukkuru_env["root"], "artwork")
     mukkuru_env["log"] = os.path.join(mukkuru_env["root"], "mukkuru.log")
     mukkuru_env["app_path"] = APP_DIR
@@ -814,6 +940,8 @@ def main():
         os.path.join(mukkuru_env["root"], "themes"),
         os.path.join(mukkuru_env["root"], "plugins"),
     ]
+
+    set_alive_status({"Status": "OK" })
 
     for needed_dir in needed_dirs:
         if not os.path.isdir(needed_dir):
@@ -848,7 +976,6 @@ def main():
             ).run()
         else:
             threading.Thread(target=start_app).start()
-            threading.Thread(target=start_app, args=(True,)).start()
             time.sleep(2)
             if os.environ.get("XDG_SESSION_DESKTOP", "").lower() == "gamescope":
                 mukkuru_url = 'http://localhost:49347/frontend/frame.html'

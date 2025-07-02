@@ -311,8 +311,8 @@ document.addEventListener('keydown', (e) => {
             return;
     }
 
-        switch(e.key) {
-            case 'ArrowRight':
+        switch(keyBindings[e.key]) {
+            case 'right':
                 if (lockedOption) {
                     changeLockedValue(1);
                     break;
@@ -322,10 +322,8 @@ document.addEventListener('keydown', (e) => {
                     break;
                 }
                 isTab = false;
-             //   tabOptions[selectedTab][selectedOption].className = "menu-option selected";
                 tabOptions[selectedTab][selectedOption].classList.add("selected");
                 menuItems[selectedTab].className = "menu-tab marked";
-              //  menuItems[selectedTab].classList.add("marked");
                 
                 if (tabOptions[selectedTab][selectedOption].previousElementSibling != null && tabOptions[selectedTab][selectedOption].previousElementSibling.className == "option-separator") {
                     tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "none";
@@ -337,7 +335,7 @@ document.addEventListener('keydown', (e) => {
                 playSound("tick");
                 break;
             
-            case 'Enter':
+            case 'confirm':
             if (isTab) {
                 playSound("select");
                 //Trigger ArrowRight
@@ -364,9 +362,6 @@ document.addEventListener('keydown', (e) => {
                 if (elem.dataset.value == "true" || elem.dataset.value == "false") {
                     tstate = (elem.dataset.value == "true");
                     userConfiguration[elem.dataset.key] = tstate;
-                   // if (elem.dataset.key = "darkMode") {
-                   //     setDarkModeState(tstate);
-                   // }
                 } else if (elem.dataset.hasOwnProperty("flip")) {
                     userConfiguration[elem.dataset.key] ^= SOURCE_OPTIONS[elem.dataset.flip];
                     updateLibraryOptions();
@@ -414,7 +409,7 @@ document.addEventListener('keydown', (e) => {
             
             break;
 
-            case 'ArrowLeft':
+            case 'left':
                 if (isTab) {
                     playSound("border");
                     break;
@@ -439,7 +434,7 @@ document.addEventListener('keydown', (e) => {
                 playSound("tick");
                 break;
             
-            case 'ArrowUp':
+            case 'up':
                 if (lockedOption) {
                     changeLockedValue(0);
                 }
@@ -449,11 +444,9 @@ document.addEventListener('keydown', (e) => {
                     break;
                 }
                 menuItems[selectedTab].className = "menu-tab";
-                //menuItems[selectedTab].classList.remove("selected");
                 selectedTab--;
                 menuItems[selectedTab].className = "menu-tab selected";
                 menuItems[selectedTab].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
-                //menuItems[selectedTab].classList.add("selected");
                 selectedOption = 0;
             } else {
                 if (selectedOption == 0)
@@ -463,17 +456,15 @@ document.addEventListener('keydown', (e) => {
                 }
                 tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "";
                 tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = "";
-                //tabOptions[selectedTab][selectedOption].className = "menu-option";
                 tabOptions[selectedTab][selectedOption].classList.remove("selected");
                 tabOptions[selectedTab][selectedOption].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
                 selectedOption--;
-                //tabOptions[selectedTab][selectedOption].className = "menu-option selected";
                 tabOptions[selectedTab][selectedOption].classList.add("selected");
                 tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "none";
             }
                 playSound("tick");
                 break;
-            case 'ArrowDown':
+            case 'down':
                 if (lockedOption) {
                     changeLockedValue(0);
                 }
@@ -508,10 +499,7 @@ document.addEventListener('keydown', (e) => {
             }
                 playSound("tick");
                 break;
-            case 'Backspace':
-                goHome();
-                break;
-            case 'Escape':
+            case 'back':
                 goHome();
                 break;
             default:
