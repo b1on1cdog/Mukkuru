@@ -58,9 +58,10 @@
         "restartMukkuru" : "Reiniciar Mukkuru",
         "ControlCenter" : "Centro de control",
         "patches" : "Parches",
-        "OfflineServer" : "Servidor: Apagado",
+        "OfflineServer" : "Servidor apagado",
         "AutoPlayEnabled" : "AutoPlay habilitado",
         "AutoPlayDisabled" : "AutoPlay apagado",
-        "Media" : "Multimedia"
+        "Media" : "Multimedia",
+        "emptyMessage" : "No hay nada que mostrar aqui"
     }
 }

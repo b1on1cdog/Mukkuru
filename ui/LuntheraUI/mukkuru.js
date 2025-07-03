@@ -1,7 +1,5 @@
 // Copyright (c) 2025 b1on1cdog
 // Licensed under the MIT License
-const backendURL = "http://localhost:49347";
-
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 const audioBuffers = {};
 const maxPoolSize = 4; // Maximum number of instances to keep for each sound
@@ -104,7 +102,7 @@ function goHome(){
     vanish(document.getElementsByClassName("homeMenu")[0]);
     playSound("home");
         sleep(500).then(() => {
-            window.location.replace(backendURL+"/frontend/")
+            window.location.replace("/frontend/")
         }); 
 }
 
@@ -114,7 +112,7 @@ function booleanTgl(statement){
 
 function backend_log(message){
   console.log(message);
-  fetch(backendURL+ "/log/"+btoa(message)).then(function(response) {
+  fetch("/log/"+btoa(message)).then(function(response) {
     return response.text();
 });
 }
@@ -144,12 +142,21 @@ const isConfigReady = new Promise((resolve) => {
 });
 
 let aliveFails = 0;
+let protonList = [];
+
+async function fetch_proton_list(){
+      const response = await fetch("/library/proton");
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      protonList = await response.json();
+}
 
 async function hardwareStatusUpdate(){
       if (aliveFails > 1) {
         return;
       }
-      const response = await fetch(backendURL+"/hardware/battery");
+      const response = await fetch("/hardware/battery");
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -164,7 +171,7 @@ async function hardwareStatusUpdate(){
       }
       
 
-      const network_resp = await fetch(backendURL+"/hardware/network");
+      const network_resp = await fetch("/hardware/network");
       if (!network_resp.ok) {
         throw new Error(`HTTP ${network_resp.status}`);
       }
@@ -326,7 +333,7 @@ function formatDuration(totalSeconds) {
 }
 
 function send_videos_metadata(){
-    fetch(backendURL+"/video/set", {
+    fetch("/video/set", {
       method: "POST",
       body: JSON.stringify(videos),
       headers: {
@@ -338,7 +345,7 @@ function send_videos_metadata(){
 }
 
 function send_video_thumbnail(thumbnail, video_id){
-    fetch(backendURL+"/video/thumbnail/"+video_id, {
+    fetch("/video/thumbnail/"+video_id, {
       method: "POST",
       body: JSON.stringify(thumbnail),
       headers: {
@@ -415,7 +422,7 @@ async function update_videos_metadata(vids){
 
 function fetch_videos(){
     document.querySelectorAll('.videoLauncher').forEach(el => el.remove());
-    fetch(backendURL+"/media/get").then(function(response) {
+    fetch("/media/get").then(function(response) {
         return response.json();
     }).then(function(data) {
         videos = data["videos"];
@@ -463,7 +470,7 @@ async function isAlive(){
       return;
     }
     try {
-      const response = await fetch(backendURL+"/alive");
+      const response = await fetch("/alive");
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -502,7 +509,7 @@ async function isAlive(){
     document.getElementsByClassName("footerNavigation")[0].style.display = state?"flex":"none";
   }
 
-  function setGameProperty(property, value){
+  function setGameProperty(property, value, value2 = undefined){
     switch (property) {
       case "favorite":
         if (userConfiguration.favorite.includes(value)){
@@ -511,6 +518,11 @@ async function isAlive(){
         } else {
           userConfiguration.favorite.push(value);
         }
+        break;
+      case "proton":
+        protonConfig = userConfiguration["protonConfig"];
+        protonConfig[value] = value2;
+        userConfiguration["protonConfig"] = protonConfig;
         break;
       case "blacklist":
         if (userConfiguration.blacklist.includes(value)){
@@ -524,7 +536,7 @@ async function isAlive(){
         return;
     }
 
-    fetch(backendURL+"/config/set", {
+    fetch("/config/set", {
       method: "POST",
       body: JSON.stringify(userConfiguration),
       headers: {
@@ -555,7 +567,7 @@ const keyBindings = {
 };
 
 async function updateConfiguration() {
-  response = await fetch(backendURL+"/config/set", {
+  response = await fetch("/config/set", {
     method: "POST",
     body: JSON.stringify(userConfiguration),
     headers: {
@@ -565,7 +577,7 @@ async function updateConfiguration() {
 }
 
 function restartMukkuru(){
-  fetch(backendURL+"/app/restart").then(function(response) {
+  fetch("/app/restart").then(function(response) {
     return 0;
   });
   homeMenu = document.getElementsByClassName("homeMenu")[0];
@@ -573,7 +585,7 @@ function restartMukkuru(){
 }
 
 async function refreshServer(){
-    res = await fetch(backendURL+"/server/info");
+    res = await fetch("/server/info");
     sOption = document.getElementById("sOption");
     sOption.innerText = await res.text();
     if (res.status == "200") {
@@ -594,12 +606,12 @@ async function serverHandle(action){
       return serverHandle("start");
     }
    }
-   response = await fetch(backendURL+"/server/"+action, {method: "POST"});
+   response = await fetch("/server/"+action, {method: "POST"});
    return await refreshServer();
 }
 
 function exitMukkuru(){
-  fetch(backendURL+"/app/exit").then(function(response) {
+  fetch("/app/exit").then(function(response) {
     return 0;
   });
   homeMenu = document.getElementsByClassName("homeMenu")[0];
@@ -669,4 +681,8 @@ function mediaControl(action) {
       playSound("select");
    }
    mediaItems[currentMedia].focus();       
+}
+
+function wrapIndex(index, arrayLength) {
+  return (index + arrayLength) % arrayLength;
 }

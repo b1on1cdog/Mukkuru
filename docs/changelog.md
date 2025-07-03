@@ -1,5 +1,14 @@
 # Changelog
 -----------------
+# 0.3.4
+- Game context menu is now accesible from applist <br/>
+- Added option to select proton version in games that require proton<br/>
+- Server dashboard can now be translated<br/>
+- Back keyguide button will now appear in appList/videoList<br/>
+- removed fixed "backendURL" variable as it was not needed in first place<br/>
+- Deleted video files will now reflect in media screen<br/>
+- Media menu won't open and will instead show a text message when there's no media to play<br/>
+- Fixed typo<br/>
 # 0.3.3
 - Applied keybindings to settings<br/>
 - Power button will now display a context menu, restart app option added<br/>

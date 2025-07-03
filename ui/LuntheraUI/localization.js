@@ -46,10 +46,49 @@ function translate_str(key, str){
   return localization[key];
 }
 
+function translateAll(translation = localization) {
+  const elements = document.querySelectorAll('[data-loc]');
+   elements.forEach(el => {
+      try {
+      let loc_key = el.dataset.loc;
+      if (loc_key == "id") {
+        loc_key = el.id;
+      }
+      switch(el.dataset.trm) {
+        case "ariaLabel":
+          swapAriaLabel(el.id, translation[loc_key]);
+          break;
+        case "patchHTML":
+          patchHTML(el.id, el.dataset.patch, translation[loc_key]);
+          break;
+        case "swapText":
+          swapText(el.id, translation[loc_key]);
+          break;
+        case "swapTGL":
+          swapTGL(el.id, translation[loc_key]);
+          break;
+        default:
+          backend_log("unknown translation rule");
+          break;
+      }
+    } catch (err) {
+      backend_log("exception: "+err.message);
+    }
+    });
+}
+
+function get_localization(){
+  fetch("/localization").then(function(response) {
+    return response.json();
+  }).then(function(data) {
+    localization = data;
+    translateAll(data);
+  });
+}
 
 function allowRendering(reload = false) {
   backend_log("applying localization...")
-  fetch(backendURL+"/localization").then(function(response) {
+  fetch("/localization").then(function(response) {
     return response.json();
   }).then(function(data) {
     homeMenu = document.getElementsByClassName("homeMenu")[0];
@@ -66,7 +105,7 @@ function allowRendering(reload = false) {
     swapText("options-keyText", translation["Options"]);
     swapText("start-keyGuide", translation["Start"]);
     swapText("ok-keyGuide", translation["OK"]);
-    swapText("back-keyGuide", translation["Back"]);
+    swapText("back-keyText", translation["Back"]);
     swapTGL("librarySource", translation["LibrarySources"]);
     swapText("librarySource-desc", translation["LibrarySources-desc"]);
     swapText("settings-header", translation["SystemSettings"]);
@@ -76,39 +115,7 @@ function allowRendering(reload = false) {
       apOption.dataset.off = translate_str("AutoPlayDisabled", "AutoPlay enabled");
       apOption.dataset.on = translate_str("AutoPlayEnabled", "AutoPlay disabled");
     }
-    
-    const elements = document.querySelectorAll('[data-loc]');
-    elements.forEach(el => {
-      try {
-      let loc_key = el.dataset.loc;
-      if (loc_key == "id") {
-        loc_key = el.id;
-      }
-      switch(el.dataset.trm) {
-        case "ariaLabel":
-          swapAriaLabel(el.id, translation[loc_key]);
-          break;
-        case "patchHTML":
-          patchHTML(el.id, el.dataset.patch, translation[loc_key]);
-          break;
-        case "swapText":
-      //    backend_log("translating ->"+el.id)
-          swapText(el.id, translation[loc_key]);
-          break;
-        case "swapTGL":
-          swapTGL(el.id, translation[loc_key]);
-          break;
-        default:
-          backend_log("unknown translation rule");
-          break;
-      }
-     // backend_log(el.id + " > " + el.innerText.length)
-    } catch (err) {
-      backend_log("exception: "+err.message);
-
-    }
-    });
-
+    translateAll(translation);
 
     }
 

@@ -40,6 +40,8 @@ def read_videos(source_dir, source_index = -1):
     videos = {}
     extensions = ["mp4", "m4v"]
     video_files = []
+    if not Path(source_dir).is_dir():
+        os.mkdir(source_dir)
     for extension in extensions:
         video_files.extend([f for f in os.listdir(source_dir) if f.lower().endswith(extension)])
     #video_collections = group_by_show(video_files)
@@ -57,6 +59,15 @@ def read_videos(source_dir, source_index = -1):
             if source_index > -1:
                 videos[video_id]["url"] = f"video/{source_index}/{quote(video)}"
                 videos[video_id]["thumbnail_url"] = f"video/{source_index}/{quote(th_name)}"
+    return videos
+
+def verify_video_files(videos):
+    ''' verify video files exists '''
+    for video_id, video in videos.items():
+        video_path = video["path"]
+        if not Path(video_path).exists():
+            videos.pop(video_id, None)
+    videos = check_thumbnails(videos)
     return videos
 
 def check_thumbnails(videos):
@@ -80,7 +91,7 @@ def get_videos(source_dirs, video_manifest_path):
         update_videos(video_manifest_path, videos)
     with open(video_manifest_path, encoding='utf-8') as f:
         videos.update(json.load(f))
-    videos = check_thumbnails(videos)
+    videos = verify_video_files(videos)
     update_videos(video_manifest_path, videos)
     return videos
 

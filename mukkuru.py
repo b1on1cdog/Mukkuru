@@ -18,16 +18,17 @@ import logging
 import platform
 import shutil
 from io import BytesIO
-#import inspect
+
 import qrcode
 from waitress import serve
 from waitress.server import create_server
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from flask import send_from_directory, send_file
 
 from library import grid_db, video
 from library.steam import get_non_steam_games, get_steam_games, get_steam_env
 from library.steam import read_steam_username, download_steam_avatar
+from library.steam import get_proton_list, get_proton_command
 
 from library.egs import get_egs_games, read_heroic_username
 
@@ -56,21 +57,12 @@ log.setLevel(logging.CRITICAL)
 mukkuru_env = {}
 
 COMPILER_FLAG = False
-APP_VERSION = "0.3.3"
+APP_VERSION = "0.3.4"
 BUILD_VERSION = None
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
 SERVER_PORT = 49351
 sserver = create_server(wserver, host="0.0.0.0", port=SERVER_PORT)
-
-def log_calls(frame, event, _):
-    ''' logs function calls'''
-    if event == "call":
-        code = frame.f_code
-        func = code.co_name
-        module = frame.f_globals.get("__name__", "")
-        logging.info("→ %s.%s()", module, func)
-    return log_calls
 
 @lru_cache(maxsize=1)
 def app_version():
@@ -228,18 +220,10 @@ def quit_app():
         subprocess.run(proc_flags, check=False)
     os._exit(0)
 
-def get_proton_command(app_id, command):
-    ''' run game using proton '''
-    steam = get_steam_env()
-    proton = os.path.join(steam["path"], "steamapps", "common", "Proton 8.0", "proton")
-    if not Path(proton).exists():
-        backend_log("proton runtime not found")
-    compat_data_path = os.path.join(steam["path"], "steamapps", "compatdata", app_id)
-    if not Path(compat_data_path).exists():
-        backend_log("compat_data not found")
-    os.environ["STEAM_COMPAT_DATA_PATH"] = compat_data_path
-    os.environ["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = steam["path"]
-    return f"{proton} run {command}"
+@app.route('/library/proton')
+def get_proton():
+    ''' list proton builds http '''
+    return jsonify(get_proton_list())
 
 @app.route('/library/launch/<app_id>')
 def launch_app(app_id):
@@ -256,8 +240,8 @@ def launch_app(app_id):
         launch_command = games[app_id]["LaunchOptions"].replace('%command', game_path)
     # Linux cannot run exe without a compatibility layer
     if platform.system() == "Linux" and game_path.strip('"').endswith(".exe"):
-        launch_command = get_proton_command(app_id, launch_command)
-
+        launch_command = get_proton_command(app_id, launch_command, get_config(True))
+    backend_log(f"using {launch_command}")
     subprocess.run(launch_command,
                    stderr=subprocess.DEVNULL,
                    stdout=subprocess.DEVNULL,
@@ -381,6 +365,7 @@ def get_localization(raw = False):
         return localization
     return json.dumps(localization)
 
+@wserver.route('/localization')
 @app.route('/localization')
 def localize():
     ''' get a json with current selected language strings'''
@@ -451,6 +436,7 @@ def get_config(raw = False):
             "videoSources" : [os.path.join(mukkuru_env["root"], "video")],
             "musicSources" : [os.path.join(mukkuru_env["root"], "music")],
             "pictureSources" : [os.path.join(mukkuru_env["root"], "pictures")],
+            "protonConfig" : {},
             "librarySource" : 3,
             "darkMode" : False,
             "startupGameScan" : False,
@@ -600,6 +586,7 @@ def backend_log(message):
         with open(mukkuru_env["log"], 'a', encoding='utf-8') as f:
             f.write(f"{message}\n")
 
+@wserver.route('/log/<message>')
 @app.route('/log/<message>')
 def log_message(message):
     ''' prints frontend messages in backend, useful for debugging '''
@@ -898,11 +885,6 @@ def set_alive_status(value):
 
 def main():
     ''' start of app execution '''
-    #logging.basicConfig(level=logging.INFO, format='%(asctime)s  %(message)s')
-   # sys.setprofile(log_calls)
-    #threading.setprofile(log_calls)
-    #for k, v in os.environ.items():
-    #   print(f"{k}={v}")
     system = platform.system()
     backend_log(f"Running on {system}")
     backend_log(f'Using { FRONTEND_MODE } for rendering')

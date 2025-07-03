@@ -154,6 +154,10 @@ def get_non_steam_games(steam_env):
                 app_id = str(int(shortcut.get("appid", 0))) if shortcut.get("appid") else ""
                 icon = shortcut.get("icon", "")
 
+                needs_proton = False
+
+                if app_exe.strip('"').endswith(".exe") and platform.system() == "Linux":
+                    needs_proton = True
 
                 if app_name and app_id:
                     games[app_id] = {
@@ -165,7 +169,8 @@ def get_non_steam_games(steam_env):
                         "Hero": os.path.join(steam_env["gridPath"], app_id+"_hero.jpg"),
                         "Logo": os.path.join(steam_env["gridPath"], app_id+"_logo.png"),
                         "Cover": os.path.join(steam_env["gridPath"], app_id+"p.jpg"),
-                        "Source" : "non-steam"
+                        "Source" : "non-steam",
+                        "Proton" : needs_proton
                     }
         except (FileNotFoundError, PermissionError, struct.error, ValueError, IndexError) as e:
             print(f"Error processing {file}: {e}")
@@ -190,6 +195,40 @@ def get_steam_libraries(vdf_path, steam_env):
     # Include main Steam folder
     paths.append(os.path.join(steam_env["path"], "steamapps"))
     return paths
+
+
+def get_proton_command(app_id, command, user_config):
+    ''' run game using proton '''
+    steam = get_steam_env()
+    proton_list = get_proton_list()
+    proton_version = proton_list[0]
+    if app_id in user_config["protonConfig"]:
+        proton_version = user_config["protonConfig"][app_id]
+    else:
+        print(f"Using default {proton_version}")
+    proton = os.path.join(steam["path"], "steamapps", "common", proton_version, "proton")
+    if not Path(proton).exists():
+        print("proton runtime not found")
+        return command
+    compat_data_path = os.path.join(steam["path"], "steamapps", "compatdata", app_id)
+    if not Path(compat_data_path).exists():
+        print("compat_data not found")
+        return command
+    os.environ["STEAM_COMPAT_DATA_PATH"] = compat_data_path
+    os.environ["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = steam["path"]
+    if " " in proton:
+        proton = f'"{proton}"'
+    return f"{proton} run {command}"
+
+def get_proton_list():
+    ''' list proton builds '''
+    proton_builds = []
+    steam = get_steam_env()
+    proton_root = os.path.join(steam["path"], "steamapps", "common")
+    for proton_build in os.listdir(proton_root):
+        if proton_build.startswith("Proton "):
+            proton_builds.append(proton_build)
+    return proton_builds
 
 def get_steam_games(steam):
     """ Get steam games """

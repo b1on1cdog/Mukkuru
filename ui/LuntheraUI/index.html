@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "rgba(0, 0, 0, 0)");
     }
 
-    fetch(backendURL+"/config/get").then(function(response) {
+    fetch("/config/get").then(function(response) {
         return response.json();
     }).then(function(data) {
         userConfiguration = data;
@@ -119,15 +119,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const bg = document.getElementsByClassName("homeMenu")[0].style.backgroundColor;
     sendBackgroundColorToParent(bg);
     refreshServer();
-    });    
-    fetch(backendURL+"/library/get").then(function(response) {
+    });
+    fetch("/library/get").then(function(response) {
         return response.json();
     }).then(function(data) {
     /*
-    We are using an IIFE because we need to wait for config to be initialized,
-    an alternative is the sync method Atomics.wait(), but since it was introduced
-    just 4 years ago (as of 2025), i didn't want to compromise app compatibility
-    just yet
+    We are using an IIFE because we need to wait for config to be initialized.
     */
     (async () => {
     library_start = performance.now();
@@ -179,9 +176,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const button = document.createElement('button');
         button.className = 'gameLauncher';
         button.id = AppID;
+        button.dataset.gameid = AppID;
         if (favoriteGames.has(AppID)){
             button.classList.add("favorite");
         }
+        let proton = false;
+        if ("Proton" in item[1] && item[1]["Proton"] == true ) {
+            proton = true;
+        }
+        button.dataset.proton = proton;
 
         const title = document.createElement('div');
         title.className = 'gameLauncher-title';
@@ -211,7 +214,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (favoriteGames.has(AppID)){
             app.classList.add("favorite");
         }
+        app.dataset.proton = proton;
         app.id = "app_" + AppID;
+        app.dataset.gameid = AppID;
         const appTitle = document.createElement('div');
         appTitle.className = "appLauncher-title";
         appTitle.textContent = item[1]["AppName"]
@@ -332,27 +337,57 @@ document.addEventListener('DOMContentLoaded', () => {
     const utilityButtons = Array.from(document.querySelectorAll('.footerNavigation button'));
     const profileRow = document.querySelectorAll('.userList-user');
 
-    fetch(backendURL+"/username").then(function(response) {
+    fetch("/username").then(function(response) {
         return response.text();
     }).then(function(data) {
         profileRow[0].title = data;
     }).catch(function(err) {
         console.log('Fetch Error :-S', err);
     });
-
+    fetch_proton_list();
     fetch_videos();
+    const proton_ctx_menu = document.createElement('div');
+    proton_ctx_menu.className = "contextItem";
+    proton_ctx_menu.innerText = "Proton";
+    proton_ctx_menu.id = "proton_ctx";
+    setTimeout(() => {
+        proton_ctx_menu.innerText = protonList[0];
+    }, "1000");
 
     function refreshCtxMenu(){
-        if (currentRow == 1 && gameLaunchers[currentIndex].classList.contains("favorite")){
+        currentApp = (currentRow == 1)?gameLaunchers[currentIndex]:appLaunchers[currentIndex];
+        isGameRow =  (currentRow == 1 || currentRow == 3)
+        gameId = currentApp.dataset.gameid;
+        if (isGameRow && currentApp.classList.contains("favorite")){
             document.getElementById("fvOption").innerText = translate_str("removeFavorite", "Remove from favorite");
         }  else {
             document.getElementById("fvOption").innerText = translate_str("addFavorite", "Add as favorite");
         }
-        if (currentRow == 1 && userConfiguration.blacklist.includes(gameLaunchers[currentIndex].id) ) {
+        if (isGameRow && userConfiguration.blacklist.includes(gameId) ) {
             document.getElementById("blOption").innerText = translate_str("showGame", "Show game");
         } else {
             document.getElementById("blOption").innerText = translate_str("hideGame", "Hide game");
         }
+
+        if (isGameRow){
+            ctxMenu = document.getElementsByClassName("contextualMenu active")[0];
+            isProtonSet = currentApp.dataset.proton == "true";
+            if (isProtonSet) {
+                currentProton = userConfiguration.protonConfig[gameId];
+                if (currentProton == undefined) {
+                    proton_ctx_menu.innerText = protonList[0];
+                } else {
+                    proton_ctx_menu.innerText = currentProton;
+                }
+                
+            }
+            if (isProtonSet && !proton_ctx_menu.isConnected){
+                ctxMenu.appendChild(proton_ctx_menu);
+            } else if (!isProtonSet && proton_ctx_menu.isConnected) {
+                ctxMenu.removeChild(proton_ctx_menu);
+            }
+        }
+
     }
 
 
@@ -377,6 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (currentRow == 4) {
+            document.getElementById("back-keyGuide").style.display = "flex";
             if (mediaItems.length == 0) {
                 mediaItems = document.querySelectorAll('.videoLauncher');
             }
@@ -387,7 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         switch (keyBindings[e.key]) {
             case "options":
-                if (currentRow == 1 && currentIndex < gameLimit) {
+                if (currentRow == 1 && currentIndex < gameLimit || currentRow == 3) {
                     isContextMenu = true;
                     document.getElementById("gameContextMenu").classList.add("active");
                     refreshCtxMenu();
@@ -458,6 +494,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case "left":
                 if (isContextMenu) {
+                    selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
+                    if (selectedContext.id == "proton_ctx") {
+                        playSound("select");
+                        index = wrapIndex(protonList.indexOf(proton_ctx_menu.innerText) - 1, protonList.length);
+                        proton_ctx_menu.innerText = protonList[index];
+                        AppID = navigatingRow[currentRow][currentIndex].dataset.gameid;
+                        setGameProperty("proton", AppID, proton_ctx_menu.innerText);
+                    }
                     return;
                 }
                 if (currentIndex == 0 && !userConfiguration["loop"]) {
@@ -472,6 +516,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case "right":
                 if (isContextMenu) {
+                    selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
+                    if (selectedContext.id == "proton_ctx") {
+                        playSound("select");
+                        index = wrapIndex(protonList.indexOf(proton_ctx_menu.innerText) + 1, protonList.length);
+                        proton_ctx_menu.innerText = protonList[index];
+                        AppID = navigatingRow[currentRow][currentIndex].dataset.gameid;
+                        setGameProperty("proton", AppID, proton_ctx_menu.innerText);
+                    }
                     return;
                 }
                 if (currentIndex == cols[currentRow]-1 && !userConfiguration["loop"]) {
@@ -490,15 +542,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     selectedContext.click();
                     playSound("tick");
                     if (currentContext == 0 && ctxMenu.id == "gameContextMenu") {
+                        let app = appLaunchers[currentIndex];//document.getElementById("app_"+game.id);
                         let game = gameLaunchers[currentIndex];
-                        let app = document.getElementById("app_"+game.id);
-                        if (game.classList.contains("favorite")) {
-                            game.classList.remove("favorite");
+                        if (app.classList.contains("favorite")) {
                             app.classList.remove("favorite");
-
+                            if (game != undefined) {
+                                game.classList.remove("favorite");
+                            }
                         } else {
-                            game.classList.add("favorite");
                             app.classList.add("favorite");
+                            if (game != undefined) {
+                                game.classList.add("favorite");
+                            }
                         }
                     }
                     refreshCtxMenu();
@@ -519,8 +574,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if(document.activeElement === gameLaunchers[currentIndex]) {
                     console.log("launching game....");
                     navigatingRow[currentRow][currentIndex].click();
-                    AppID = navigatingRow[currentRow][currentIndex].id;
-                    fetch(backendURL+"/library/launch/"+AppID).then(function(response) {
+                    AppID = navigatingRow[currentRow][currentIndex].dataset.gameid;
+                    fetch("/library/launch/"+AppID).then(function(response) {
                         return response.text();
                     }).then(function(data) {
                         console.log(data);                        
@@ -529,9 +584,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if(document.activeElement === appLaunchers[currentIndex]) {
                     console.log("launching game....");
                     navigatingRow[currentRow][currentIndex].click();
-                    AppID = navigatingRow[currentRow][currentIndex].id;
-                    AppID = AppID.replace("app_", "");
-                    fetch(backendURL+"/library/launch/"+AppID).then(function(response) {
+                    AppID = navigatingRow[currentRow][currentIndex].dataset.gameid;
+                    fetch("/library/launch/"+AppID).then(function(response) {
                         return response.text();
                     }).then(function(data) {
                         console.log(data);                        
@@ -540,7 +594,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (currentRow == 2){
                     switch (currentIndex) {
                         case 0:
-                            fetch(backendURL+"/library/scan").then(function(response) {
+                            fetch("/library/scan").then(function(response) {
                                 return response.json();
                             }).then(function(data){
                                 window.location.reload();
@@ -549,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         break;
                         case 1:
                             /* This should provide a contextual menu asking user for storefront to open*/
-                            fetch(backendURL+"/store/steam").then(function(response) {
+                            fetch("/store/steam").then(function(response) {
                                 return response.json();
                             }).then(function(data){
                                 window.location.reload();
@@ -557,6 +611,17 @@ document.addEventListener('DOMContentLoaded', () => {
                             playSound("run");
                             break;
                         case 2:
+                            if (mediaItems.length == 0) {
+                                mediaItems = document.querySelectorAll('.videoLauncher');
+                                if (mediaItems.length == 0) {
+                                    playSound("border");
+                                    document.getElementById("emptyContext").classList.add("active");
+                                    setTimeout(function () {
+                                        document.getElementById("emptyContext").classList.remove("active");
+                                    }, 1000);
+                                    return;
+                                }
+                            }
                             playSound("run");
                             setTimeout(function () {
                                 currentRow = 4;
@@ -578,7 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             playSound("settings");
                             vanish(homeMenu);
                             sleep(500).then(() => {
-                                window.location.replace(backendURL+"/frontend/settings.html")
+                                window.location.replace("/frontend/settings.html")
                             });    
                             break;
                         case 5:
@@ -607,17 +672,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     Array.prototype.forEach.call(elements, function(element) {
                         element.classList.remove("active");
                     });
-
-
+                    return;
                 }
-                //to-do: restore home menu without reloading
                 if (currentRow == 3){
                     goHome();
                 }
 
         }
 
-        if (currentRow == 1 && currentIndex < gameLimit) {
+        if (currentRow < 3 || isContextMenu) {
+            document.getElementById("back-keyGuide").style.display = "none";
+        } else {
+            document.getElementById("back-keyGuide").style.display = "flex";
+        }
+
+        if (currentRow == 1 && currentIndex < gameLimit || currentRow == 3) {
             document.getElementById("options-keyGuide").style.display = "flex";
         } else {
             document.getElementById("options-keyGuide").style.display = "none";
@@ -723,13 +792,16 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         </main>
         <div class="contextualMenu" id="gameContextMenu">
-            <div class="contextItem selected" id="fvOption" onclick='setGameProperty("favorite", gameLaunchers[currentIndex].id)'>Add as favorite</div>
-            <div class="contextItem" id="blOption" onclick='setGameProperty("blacklist", gameLaunchers[currentIndex].id)'>Blacklist game</div>
+            <div class="contextItem selected" id="fvOption" onclick='setGameProperty("favorite", appLaunchers[currentIndex].dataset.gameid)'>Add as favorite</div>
+            <div class="contextItem" id="blOption" onclick='setGameProperty("blacklist", appLaunchers[currentIndex].dataset.gameid)'>Blacklist game</div>
+        </div>
+        <div class="contextualMenu" id="emptyContext" style="opacity: 0.9;">
+            <div id="emptyMessage" data-loc="id" data-trm="swapText" style="margin: 50px 50px 50px 50px">There's nothing to display here</div>
         </div>
         <div class="contextualMenu" id="controlContextMenu">
             <img id="dashboardQR" src="web/qrcode" width="50%" height="50%" style="display: none;">
             <div class="contextItem selected" id="sOption" onclick='serverHandle("auto")'>Enable server</div>
-            <div class="contextItem" id="autoPlayOption" data-on="AutoPlay enabled" data-off="AutoPlay eisabled" onclick='handleAutoPlay("auto")'>Autoplay</div>
+            <div class="contextItem" id="autoPlayOption" data-on="AutoPlay enabled" data-off="AutoPlay disabled" onclick='handleAutoPlay("auto")'>Autoplay</div>
         </div>
         <div class="contextualMenu" id="powerDownContextMenu">
             <div class="contextItem selected" id="exitMukkuruBtn" data-loc="exitMukkuru" data-trm="patchHTML" data-patch="Exit Mukkuru" onclick="exitMukkuru()">
@@ -756,6 +828,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     <svg class="keyGuide-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,16.715A33.285,33.285,0,1,0,83.285,50,33.285,33.285,0,0,0,50,16.715Zm19.731,36.5H53.213V69.731H46.787V53.213H30.269V46.787H46.787V30.269h6.426V46.787H69.731Z" fill="2E2E2E"/></svg>
                     <div class="keyGuide-text" id="options-keyText">
                         Options
+                    </div>
+                </div>
+                <div class="keyGuide" id="back-keyGuide">
+                    <svg class="keyGuide-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M59.765 57.536a5.611 5.611 0 0 1-.821 3.15 6.024 6.024 0 0 1-2.171 1.985 9.644 9.644 0 0 1-3.016 1.029 19.232 19.232 0 0 1-3.309.291h-6.564V51.237h7.041a12.05 12.05 0 0 1 6.563 1.482 5.319 5.319 0 0 1 2.277 4.817zm-6.22-11.09a7 7 0 0 0 2.355-1.058 5.194 5.194 0 0 0 1.588-1.8 5.473 5.473 0 0 0 .582-2.62 4.6 4.6 0 0 0-2.222-4.315 11.857 11.857 0 0 0-5.982-1.3h-5.982v11.438h6.829a11.355 11.355 0 0 0 2.832-.345zM83.285 50A33.285 33.285 0 1 1 50 16.715 33.285 33.285 0 0 1 83.285 50zm-18.227 7.8a9.861 9.861 0 0 0-.609-3.547 8.167 8.167 0 0 0-1.72-2.752 8.707 8.707 0 0 0-2.647-1.88 10.89 10.89 0 0 0-3.335-.926v-.105a9.181 9.181 0 0 0 4.765-2.911 7.815 7.815 0 0 0 1.8-5.241 8.939 8.939 0 0 0-1.033-4.5 8.572 8.572 0 0 0-2.7-2.912 11.221 11.221 0 0 0-3.779-1.587 19.281 19.281 0 0 0-4.235-.475H38.644V68.44h12.334a21.8 21.8 0 0 0 5.478-.662 14.093 14.093 0 0 0 4.473-1.958 9.277 9.277 0 0 0 4.129-8.02z" fill="2e2e2e"/></svg>
+                    <div class="keyGuide-text" id="back-keyText">
+                        Back
                     </div>
                 </div>
                 <div class="keyGuide">

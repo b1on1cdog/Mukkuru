@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Mukkuru</title>
     <!-- link rel="stylesheet" href="./assets/css/style.css" -->
-    <!-- script src="mukkuru.js"></script -->
+    <!-- script src="mukkuru.js"></script-->
     <script src="localization.js"></script>
     <style>
 html {
@@ -14,7 +14,7 @@ html {
     --font-number: 'din-2014', sans-serif;
     overflow: hidden;
     font-family: var(--font-sans);
-    font-size: 24px;
+    font-size: 20px;
 }
 .maingrid {
     display: grid;
@@ -26,13 +26,12 @@ html {
 }
 .main-button {
     cursor: pointer;
-    width: 120px;
+    width: 150px;
 }
 .main-button img {
     width: 120px;
     height: 120px;
 }
-
 .progress {
     display: none;
     position:fixed;
@@ -66,7 +65,7 @@ html {
 <div class="maingrid">
     <div class="main-button" id="uploadBtn">
         <img src="assets/vector/file-export.svg" alt="File"></img>
-        <div class="button-title" data-loc="sendFile" data-trm="swapText">Send file</div>
+        <div class="button-title" id="uploadBtnTitle" data-loc="sendFile" data-trm="swapText">Send file</div>
         <input type="file" id="fileInput" hidden>
     </div>
 
@@ -78,7 +77,8 @@ html {
 <script>
 const CHUNK_SIZE = 4 * 1024 * 1024;
 
-document.addEventListener('DOMContentLoaded', () => {  
+document.addEventListener('DOMContentLoaded', () => {
+    get_localization();
     document.getElementById('uploadBtn').onclick = () => {
         document.getElementById('fileInput').click();
     };
