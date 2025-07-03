@@ -9,6 +9,8 @@ let lockControls = false;
 let isVideoPlayer = false;
 let currentContext = 0;
 let isContextMenu = false;
+let currentMedia = 0;
+let mediaItems;
 
 const bufferPools = {};
 
@@ -343,6 +345,26 @@ function send_videos_metadata(){
         
       });
 }
+function deleteVideo(videoItem){
+    const videoFile = videoItem.dataset.play;
+    fetch(videoFile, {
+      method: "DELETE",
+      headers: {
+        "Content-type": "application/json; charset=UTF-8"
+      }
+      }).then((response) => {
+        videoItem.remove();
+        document.getElementById("videoContextMenu").classList.remove("active");
+        isContextMenu = false;
+        mediaItems = document.querySelectorAll('.videoLauncher')
+        if (mediaItems.length == 0) {
+          goHome();
+        } else {
+          currentMedia--;
+          mediaItems[currentMedia].focus();
+        }
+      });
+}
 
 function send_video_thumbnail(thumbnail, video_id){
     fetch("/video/thumbnail/"+video_id, {
@@ -642,8 +664,7 @@ function handleAutoPlay(action = "update"){
   }
 }
 
-let currentMedia = 0;
-let mediaItems;
+
 
 function mediaControl(action) {
   prevMedia = currentMedia;
@@ -663,6 +684,10 @@ function mediaControl(action) {
     case "back":
       goHome();
       break;
+    case "options":
+      document.getElementById("videoContextMenu").classList.add("active");
+      isContextMenu = true;
+      return;
     case "confirm":
       switch (mediaItems[currentMedia].className){
         case "videoLauncher":

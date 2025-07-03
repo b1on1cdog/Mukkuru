@@ -389,6 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
     }
+    document.getElementById("back-keyGuide").style.display = "none";
 
 
     document.addEventListener('keydown', (e) => {
@@ -411,8 +412,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (currentRow == 4) {
+        if (currentRow == 4 && !isContextMenu) {
             document.getElementById("back-keyGuide").style.display = "flex";
+            document.getElementById("options-keyGuide").style.display = "flex";
             if (mediaItems.length == 0) {
                 mediaItems = document.querySelectorAll('.videoLauncher');
             }
@@ -557,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                     refreshCtxMenu();
-                    break;
+                    return;
                 }
                 if (document.activeElement.id == "allSoftware") {
                     playSound("run");
@@ -794,6 +796,9 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="contextualMenu" id="gameContextMenu">
             <div class="contextItem selected" id="fvOption" onclick='setGameProperty("favorite", appLaunchers[currentIndex].dataset.gameid)'>Add as favorite</div>
             <div class="contextItem" id="blOption" onclick='setGameProperty("blacklist", appLaunchers[currentIndex].dataset.gameid)'>Blacklist game</div>
+        </div>
+        <div class="contextualMenu" id="videoContextMenu">
+            <div class="contextItem selected" id="deleteVideoOption" data-loc="id" data-trm="swapText" onclick='deleteVideo(mediaItems[currentMedia])'>Delete video</div>
         </div>
         <div class="contextualMenu" id="emptyContext" style="opacity: 0.9;">
             <div id="emptyMessage" data-loc="id" data-trm="swapText" style="margin: 50px 50px 50px 50px">There's nothing to display here</div>

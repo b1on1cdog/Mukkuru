@@ -63,7 +63,7 @@ def read_videos(source_dir, source_index = -1):
 
 def verify_video_files(videos):
     ''' verify video files exists '''
-    for video_id, video in videos.items():
+    for video_id, video in videos.copy().items():
         video_path = video["path"]
         if not Path(video_path).exists():
             videos.pop(video_id, None)

@@ -57,7 +57,7 @@ log.setLevel(logging.CRITICAL)
 mukkuru_env = {}
 
 COMPILER_FLAG = False
-APP_VERSION = "0.3.4"
+APP_VERSION = "0.3.4.1"
 BUILD_VERSION = None
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
@@ -744,12 +744,19 @@ def static_file(path):
   #  print(f"path -> {path}")
     return send_from_directory(serve_path, path)
 
-@app.route('/frontend/video/<source>/<filename>')
+@app.route('/frontend/video/<source>/<filename>', methods=["GET", "DELETE"])
 def video_serve(source, filename):
     '''serve video files'''
     user_config = get_config(True)
-    video_path = user_config["videoSources"][int(source)]
-    return send_from_directory(video_path, filename)
+    video_source = user_config["videoSources"][int(source)]
+    if request.method == 'DELETE':
+        video_path = os.path.join(video_source, filename)
+        th = f"{os.path.splitext(filename)[0]}-thumbnail.png"
+        th_path = os.path.join(video_source, th)
+        os.remove(video_path)
+        os.remove(th_path)
+        return "200"
+    return send_from_directory(video_source, filename)
 
 @app.route('/frontend/music/<source>/<filename>')
 def music_serve(source, filename):

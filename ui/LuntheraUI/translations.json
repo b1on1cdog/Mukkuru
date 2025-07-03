@@ -62,6 +62,7 @@
         "AutoPlayEnabled" : "AutoPlay habilitado",
         "AutoPlayDisabled" : "AutoPlay apagado",
         "Media" : "Multimedia",
-        "emptyMessage" : "No hay nada que mostrar aqui"
+        "emptyMessage" : "No hay nada que mostrar aqui",
+        "deleteVideoOption" : "Eliminar video"
     }
 }

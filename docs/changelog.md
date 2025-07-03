@@ -1,5 +1,9 @@
 # Changelog
 -----------------
+# 0.3.4.1
+- Added option to delete videos<br/>
+- Solved exception when trying to update deleted videos<br/>
+- Fixed back keyguide appearing at homescreen start when it should not<br/>
 # 0.3.4
 - Game context menu is now accesible from applist <br/>
 - Added option to select proton version in games that require proton<br/>
