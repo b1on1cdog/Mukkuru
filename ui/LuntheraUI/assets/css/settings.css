@@ -1,5 +1,7 @@
 @import 'style.css';
-
+root {
+    --description-color: rgba(39, 51, 67, 0.747);
+}
 .icon {
     width: 96px;
     height: 96px;
@@ -57,7 +59,7 @@
     margin-left: 6vw;
     margin-right: 20px;
     font-size: 22px;
-    color: rgba(39, 51, 67, 0.747);
+    color: var(--description-color);
     margin-bottom: 40px;
 
 }

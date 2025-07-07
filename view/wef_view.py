@@ -12,7 +12,7 @@ from view.wef_bundle import download_wef, pick_wef, complain
 
 class Frontend():
     ''' Frontend class '''
-    def __init__(self, fullscreen, app_version, environ = None):
+    def __init__(self, fullscreen = True, app_version = "", environ = None):
         self.environ = environ
         self.fullscreen = fullscreen
         self.title = app_version

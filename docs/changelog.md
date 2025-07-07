@@ -1,5 +1,14 @@
 # Changelog
 -----------------
+# 0.3.5
+- Implemented own videocontrols<br/>
+- Flaskwebgui as default view for Linux<br/>
+- Cursor is now hidden<br/>
+- Buttons can now unlock view in iframe<br/>
+- An overlay message will be shown when user button press is required<br/>
+- Battery will show charging icon when device is charging<br/>
+- Solved wrong separators being hidden<br/>
+- Added option to display software licenses<br/>
 # 0.3.4.1
 - Added option to delete videos<br/>
 - Solved exception when trying to update deleted videos<br/>

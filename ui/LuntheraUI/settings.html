@@ -23,8 +23,10 @@ function setDarkModeState(state){
     document.getElementsByClassName("homeMenu")[0].style.setProperty("--bg-color", state?darkColor:lightColor);
     document.getElementsByClassName("controllerState-type")[0].getElementsByTagName("svg")[0].getElementsByTagName("path")[0].style.fill = state?lightColor:darkColor;
     document.querySelectorAll(".keyGuide-icon").forEach((element) => element.getElementsByTagName("path")[0].style.fill = state?lightColor:darkColor);
-    document.getElementById("about-text").style.setProperty("color", state?"#A7C4D9":"rgba(39, 51, 67, 0.747)");
-    document.querySelectorAll(".option-description").forEach((element) => element.style.setProperty("color", state?"#A7C4D9":"rgba(39, 51, 67, 0.747)"));
+    const root = document.documentElement;
+    root.style.setProperty('--description-color', state?'#A7C4D9':"rgba(39, 51, 67, 0.747)");
+    document.getElementById("about-text").style.setProperty("color", getComputedStyle(root).getPropertyValue('--description-color').trim());
+   // document.querySelectorAll(".option-description").forEach((element) => element.style.setProperty("color", state?"#A7C4D9":"rgba(39, 51, 67, 0.747)"));
     if (state == true){
         applyDarkMode();
     } else {
@@ -56,6 +58,18 @@ function updateLibraryOptions(){
         document.getElementById(`sources-${index}`)?.classList.remove("checked");
     }
   });
+}
+
+function showPreviousSeparator(state){
+    if (tabOptions[selectedTab][selectedOption].previousElementSibling != null && tabOptions[selectedTab][selectedOption].previousElementSibling.className == "option-separator") {
+        tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = state?"":"none";
+    }
+}
+
+function showNextSeparator(state){
+    if (tabOptions[selectedTab][selectedOption].nextElementSibling != null && tabOptions[selectedTab][selectedOption].nextElementSibling.className == "option-separator") {
+        tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = state?"":"none";
+    }
 }
 
 function clearArtBlacklist(){
@@ -134,10 +148,11 @@ function addUserThemes(){
 function refreshOptions() {
     document.querySelectorAll(".options").forEach((item, index) => {
         options = item.querySelectorAll(".menu-option");
-        console.log("reading...");
         tabOptions[index] = options;
 });
 }
+
+let aboutScreen = undefined;
 
 /*
 To-do: The vertical line must become cyan during dark mode
@@ -149,7 +164,7 @@ const menuOptions = document.querySelectorAll('.menu-option');
 //menuItems[0].className = "menu-tab selected";
 menuItems[0].classList.add("selected");
 
-if (isFirefox) {
+if (isFirefox || isKioskMode) {
     document.getElementById("fullScreen").remove();
     document.getElementById("fullScreen-separator").remove();
 }
@@ -214,6 +229,8 @@ fetch("/hardware").then(function(response) {
             gpuInfo.style.display = "none";
             distroInfo.style.display = "none";
         }
+        aboutId = "options-"+(Object.keys(tabOptions).length - 1);
+        aboutScreen = document.getElementById(aboutId);
     });
 
 
@@ -305,6 +322,77 @@ function changeLockedValue(position) {
     }
 }
 
+let licenses = {}
+
+async function showLicense(licenseKey){
+    console.log("displaying " + licenseKey+" license....");
+    lastElement = (Object.keys(tabOptions).length - 1)
+    aboutId = "options-"+lastElement;
+
+    const licenseScreen = document.createElement("div");
+
+    const licenseDescription = document.createElement("div");
+    licenseDescription.className = "option-description";
+    licenseDescription.innerText = licenses[licenseKey];
+    licenseScreen.appendChild(licenseDescription);
+
+    openNextPage(licenseScreen);
+    isScrollable = true;
+    scrollableItem = document.getElementsByClassName("menu-options")[0];
+}
+let previousPages = [];
+let isScrollable = false;
+let scrollableItem = null;
+
+function openNextPage(newScreen){
+    absoluteTab = document.getElementById("options-"+selectedTab);
+    previousPages.push(absoluteTab.cloneNode(true));
+    absoluteTab.replaceChildren(newScreen);
+    //scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
+    refreshOptions();
+}
+function openPreviousPage(){
+    absoluteTab = document.getElementById("options-"+selectedTab);
+    const previousPage = previousPages.pop();
+    absoluteTab.replaceChildren(...previousPage.childNodes);
+    refreshOptions();
+    isScrollable = false;
+    selectedOption = 0;
+    document.querySelectorAll(".menu-option.selected").forEach((element) => element.classList.remove("selected"));
+    document.querySelectorAll(".option-separator").forEach((element) => element.style.display = "");
+    if (!isTab){
+        showPreviousSeparator(false);
+        tabOptions[selectedTab][selectedOption].classList.add("selected");
+        showNextSeparator(false);
+    }
+}
+
+async function createLicenseScreen(){
+    const response = await fetch("/license");
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+    licenses = await response.json();
+    const separator = document.createElement("div");
+    separator.className = "option-separator";
+    const licenseScreen = document.createElement("div");
+    licenseScreen.appendChild(separator);
+    for (const [key, value] of Object.entries(licenses)) {
+        const m_option = document.createElement("div");
+        m_option.className = "menu-option";
+        m_option.innerText = key;
+        m_option.dataset.call = "showLicense";
+        m_option.dataset.param1 = key;
+        licenseScreen.appendChild(m_option);
+        licenseScreen.appendChild(separator.cloneNode(true));
+    }
+    const spacer = document.createElement('div');
+    spacer.style.minHeight = "300px";
+    licenseScreen.appendChild(spacer);
+
+    openNextPage(licenseScreen);
+}
+
 document.addEventListener('keydown', (e) => {
     e.preventDefault();
     if (homeMenu.style.opacity < 1) {
@@ -324,14 +412,8 @@ document.addEventListener('keydown', (e) => {
                 isTab = false;
                 tabOptions[selectedTab][selectedOption].classList.add("selected");
                 menuItems[selectedTab].className = "menu-tab marked";
-                
-                if (tabOptions[selectedTab][selectedOption].previousElementSibling != null && tabOptions[selectedTab][selectedOption].previousElementSibling.className == "option-separator") {
-                    tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "none";
-                }
-                if (tabOptions[selectedTab][selectedOption].nextElementSibling != null && tabOptions[selectedTab][selectedOption].previousElementSibling.className == "option-separator") {
-                    tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = "none";
-                }
-                    
+                showPreviousSeparator(false);
+                showNextSeparator(false);
                 playSound("tick");
                 break;
             
@@ -354,6 +436,14 @@ document.addEventListener('keydown', (e) => {
                             break;
                         case "clearArtBlacklist":
                             clearArtBlacklist();
+                            break;
+                        case "createLicenseScreen":
+                            createLicenseScreen();
+                            break;
+                        case "showLicense":
+                            showLicense(elem.dataset.param1);
+                        case "click":
+                            elem.click();
                             break;
                         default:
                             break;
@@ -425,11 +515,10 @@ document.addEventListener('keydown', (e) => {
                     //item.className = "menu-option";
                     item.classList.remove("selected");
                 });
-                if (tabOptions[selectedTab][selectedOption].previousElementSibling != null && tabOptions[selectedTab][selectedOption].previousElementSibling.className == "option-separator") {
-                    tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "";
-                }
-                if (tabOptions[selectedTab][selectedOption].nextElementSibling != null && tabOptions[selectedTab][selectedOption].previousElementSibling.className == "option-separator") {
-                    tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = "";
+                currentOption = tabOptions[selectedTab][selectedOption];
+                if (currentOption != null) {
+                    showPreviousSeparator(true);
+                    showNextSeparator(true);
                 }
                 playSound("tick");
                 break;
@@ -443,24 +532,34 @@ document.addEventListener('keydown', (e) => {
                     playSound("border");
                     break;
                 }
+                while (previousPages.length > 0) {
+                    openPreviousPage();
+                }
                 menuItems[selectedTab].className = "menu-tab";
                 selectedTab--;
                 menuItems[selectedTab].className = "menu-tab selected";
                 menuItems[selectedTab].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
                 selectedOption = 0;
             } else {
+
+                if (isScrollable) {
+                    scrollableItem.scrollBy(0, -100);
+                    return;
+                }
+
                 if (selectedOption == 0)
                 {
                     playSound("border");
                     break;
                 }
-                tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "";
-                tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = "";
+                showPreviousSeparator(true);
+                showNextSeparator(true);
                 tabOptions[selectedTab][selectedOption].classList.remove("selected");
                 tabOptions[selectedTab][selectedOption].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
                 selectedOption--;
                 tabOptions[selectedTab][selectedOption].classList.add("selected");
-                tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "none";
+                showPreviousSeparator(false);
+                showNextSeparator(false);
             }
                 playSound("tick");
                 break;
@@ -469,9 +568,13 @@ document.addEventListener('keydown', (e) => {
                     changeLockedValue(0);
                 }
                 if (isTab){
+
                 if (selectedTab == menuItems.length - 1) {
                     playSound("border");
                     break;
+                }
+                while (previousPages.length > 0) {
+                    openPreviousPage();
                 }
                 
                 menuItems[selectedTab].className = "menu-tab";
@@ -482,24 +585,39 @@ document.addEventListener('keydown', (e) => {
                 menuItems[selectedTab].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
                 selectedOption = 0;
             } else {
+
+                if (isScrollable) {
+                    scrollableItem.scrollBy(0, 100);
+                    return;
+                }
+
                 if (selectedOption+1 == tabOptions[selectedTab].length)
                 {
                     playSound("border");
                     break;
                 }
-                    tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = "";
-                    tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = "";
-                    //tabOptions[selectedTab][selectedOption].className = "menu-option";
+                    currentOption = tabOptions[selectedTab][selectedOption];
+                    if (currentOption == null) {
+                        playSound("border");
+                        return;
+                    }
+                    showPreviousSeparator(true);
+                    showNextSeparator(true);
                     tabOptions[selectedTab][selectedOption].classList.remove("selected");
                     selectedOption++;
                     tabOptions[selectedTab][selectedOption].classList.add("selected");
                     tabOptions[selectedTab][selectedOption].scrollIntoView({ behavior: "instant", block: "center" });
-                    //tabOptions[selectedTab][selectedOption].className = "menu-option selected";
-                    tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = "none";
+                    showPreviousSeparator(false);
+                    showNextSeparator(false);
             }
                 playSound("tick");
                 break;
             case 'back':
+                //tabOptions[selectedTab].getElementsByClassName("parent")
+                if (previousPages.length > 0) {
+                    openPreviousPage();
+                    return;
+                }
                 goHome();
                 break;
             default:
@@ -625,7 +743,9 @@ document.addEventListener('keydown', (e) => {
                 </div>
                 <div class="options" id="options-6" style="display:none;">
                     <div class="option-separator"></div>
-                    <div id="about-text" class="option-description" style="margin-left: 100px;font-size: 28px;color: rgba(30, 39, 50, 0.747)">
+                    <div class="menu-option" id="showLicenses" data-loc="id" data-trm="swapText" data-call="createLicenseScreen">License</div>
+                    <div class="option-separator"></div>
+                    <div id="about-text" class="option-description" style="font-size: 28px;color: rgba(30, 39, 50, 0.747)">
                     <div id="hardwareInfo" data-trm="swapTGL" data-loc="hardwareInfo">Hardware Information</div>
                     <div>---------------</div>
                     <div id="computer_name" data-loc="Name" data-trm="patchHTML" data-patch="Name">Name: unknown</div>
@@ -636,7 +756,6 @@ document.addEventListener('keydown', (e) => {
                     <div id="total_ram">RAM: unknown</div>
                     <div id="storage" data-loc="storage" data-trm="patchHTML" data-patch="Storage">Storage: unknown</div>
                     <br>
-                
                     <div>https://github.com/b1on1cdog/mukkuru</div>
                     <br>
                     <div id="app_version">Crash loading hardware info</div>

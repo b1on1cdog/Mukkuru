@@ -2,7 +2,6 @@
 # Licensed under the MIT License
 """ Mukkuru, cross-platform game launcher """
 import os
-#import glob
 import json
 from pathlib import Path
 from functools import lru_cache
@@ -18,7 +17,6 @@ import logging
 import platform
 import shutil
 from io import BytesIO
-
 import qrcode
 from waitress import serve
 from waitress.server import create_server
@@ -35,14 +33,14 @@ from library.egs import get_egs_games, read_heroic_username
 from utils import hardware_if
 from utils.css_preprocessor import CssPreprocessor
 
-FRONTEND_MODE = "PYWEBVIEW"
+FRONTEND_MODE = "FLASKUI"
 
 if FRONTEND_MODE == "PYWEBVIEW":
     from view.pywebview import Frontend
 elif FRONTEND_MODE == "WEF":
     from view.wef_view import Frontend
 elif FRONTEND_MODE == "FLASKUI":
-    from flaskwebgui import FlaskUI as Frontend, close_application
+    from view.alternate_ui import Frontend
     # Darwin, Windows, Linux: Chrome, Brave, Edge
     # Linux: Chromium
 else:
@@ -57,7 +55,7 @@ log.setLevel(logging.CRITICAL)
 mukkuru_env = {}
 
 COMPILER_FLAG = False
-APP_VERSION = "0.3.4.1"
+APP_VERSION = "0.3.5"
 BUILD_VERSION = None
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
@@ -107,6 +105,17 @@ def library_scan(options):
         egs_games = get_egs_games()
         games.update(egs_games)
     return games
+
+@app.route("/license")
+def get_licenses():
+    """ Get third-party licenses """
+    licenses = {}
+    license_dir = os.path.join(APP_DIR, "docs", "license")
+    license_files = list(Path(license_dir).glob("*.txt"))
+    for license_file in license_files:
+        product_name = license_file.name.replace(".txt", "")
+        licenses[product_name] = license_file.resolve().read_text()
+    return jsonify(licenses)
 
 def has_required_keys(json_data, required):
     ''' Returns whether json has required keys '''
@@ -188,7 +197,6 @@ def get_theme(selected = None):
         css = default_css
     return css
 
-
 @app.route("/hardware/network")
 def connection_status():#segmentation fault
     ''' returns a json with connection status'''
@@ -211,13 +219,10 @@ def harware_info():
 def quit_app():
     ''' exit mukkuru '''
     if FRONTEND_MODE == "FLASKUI":
-        close_application() # pylint: disable=E0606, E0601
+        Frontend().close() # pylint: disable=E0606, E0601
     if FRONTEND_MODE == "WEF":
         terminate_wef()
-    if os.environ.get("XDG_SESSION_DESKTOP", "").lower() == "gamescope":
-        proc_flags = ["flatpak"]
-        proc_flags.extend(["kill","org.mozilla.firefox"])
-        subprocess.run(proc_flags, check=False)
+    #if os.environ.get("XDG_SESSION_DESKTOP", "").lower() == "gamescope":
     os._exit(0)
 
 @app.route('/library/proton')
@@ -788,16 +793,6 @@ def is_fullscreen():
     user_config = get_config(True)
     return user_config["fullScreen"]
 
-def kwserver(**server_kwargs):
-    ''' start server using kwargs '''
-    try:
-        server = server_kwargs.pop("app", None)
-        cores = get_config(True)["cores"]
-        serve(server, host="localhost", threads=cores, port=APP_PORT)
-    except ConnectionResetError:
-        quit_app()
-
-
 @app.route('/server/<action>', methods = ['POST', 'GET'])
 def init_server(action):
     ''' http controller for wserver start '''
@@ -947,36 +942,9 @@ def main():
         threading.Thread(target=scan_games).start()
     download_steam_avatar(mukkuru_env["artwork"])
     if threading.current_thread() is threading.main_thread():
-        if "flaskwebgui" in sys.modules:
-            window_width = None
-            window_height = None
-            if not is_fullscreen():
-                window_width = 1280
-                window_height = 800
-            Frontend(server=kwserver, server_kwargs={
-            "app": app,
-            "port": APP_PORT,
-            "threaded": True,
-            },
-            on_shutdown=quit_app,
-            fullscreen=is_fullscreen(),
-            width=window_width,
-            height=window_height
-            ).run()
-        else:
-            threading.Thread(target=start_app).start()
-            time.sleep(2)
-            if os.environ.get("XDG_SESSION_DESKTOP", "").lower() == "gamescope":
-                mukkuru_url = 'http://localhost:49347/frontend/frame.html'
-                proc_flags = []
-                proc_flags.extend(["flatpak", "run", "org.mozilla.firefox"])
-                proc_flags.append("--kiosk")
-                proc_flags.append("-private-window")
-                proc_flags.append(mukkuru_url)
-                subprocess.run(proc_flags, check=False)
-            else:
-                Frontend(is_fullscreen(), app_version(), mukkuru_env).start()
-
+        threading.Thread(target=start_app).start()
+        time.sleep(2)
+        Frontend(is_fullscreen(), app_version(), mukkuru_env).start()
     else:
         start_app()
 if __name__ == "__main__":

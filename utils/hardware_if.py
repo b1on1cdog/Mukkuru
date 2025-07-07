@@ -227,7 +227,7 @@ def get_battery():
         return None
     return battery._asdict()
 
-def kill_executable_by_path(target_path):
+def kill_executable_by_path(target_path, force=True):
     """
     Hard-kill every running process whose executable exactly matches `target_path`.
     """
@@ -237,7 +237,10 @@ def kill_executable_by_path(target_path):
     for proc in psutil.process_iter(['pid', 'exe']):
         try:
             if proc.info['exe'] and os.path.abspath(proc.info['exe']) == target_path:
-                proc.kill()
+                if force:
+                    proc.kill()
+                else:
+                    proc.terminate()
                 killed.append(proc.pid)
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             # Skip processes that vanished or we can't touch

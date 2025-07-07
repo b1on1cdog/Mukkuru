@@ -63,6 +63,8 @@
         "AutoPlayDisabled" : "AutoPlay apagado",
         "Media" : "Multimedia",
         "emptyMessage" : "No hay nada que mostrar aqui",
-        "deleteVideoOption" : "Eliminar video"
+        "deleteVideoOption" : "Eliminar video",
+        "pressToStart" : "Presiona 'Aceptar' para continuar",
+        "showLicenses" : "Licencia"
     }
 }

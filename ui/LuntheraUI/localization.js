@@ -34,6 +34,11 @@ function patchHTML(elementID, oldText, newText){
 }
 
 let localization = {};
+let localizationReady;
+
+const isLocalizationReady = new Promise((resolve) => {
+  localizationReady = resolve;
+});
 
 function translate_str(key, str){
   if (localization["available"] == false ) {
@@ -75,6 +80,7 @@ function translateAll(translation = localization) {
       backend_log("exception: "+err.message);
     }
     });
+    localizationReady();
 }
 
 function get_localization(){
@@ -85,6 +91,8 @@ function get_localization(){
     translateAll(data);
   });
 }
+
+
 
 function allowRendering(reload = false) {
   backend_log("applying localization...")

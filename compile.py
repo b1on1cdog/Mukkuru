@@ -92,10 +92,10 @@ requirements = ["flask", "waitress",
 requirements = requirements + ["setuptools"]
 
 if system == "Linux":
-    requirements = requirements + ["patchelf"]
-    USE_WEF = True
+    requirements = requirements + ["patchelf", "flaskwebgui"]
+#    USE_WEF = True
 
-if USE_WEF is False:
+if USE_WEF is False and "flaskwebgui" not in requirements:
     requirements = requirements + ["pywebview"]
 
 AARCH = {'x86_64': 'x86_64',
@@ -127,6 +127,7 @@ if system == "Windows":
     venv_python = os.path.join(VENV, 'Scripts', 'python.exe')
 
 UI_SOURCE = os.path.join("ui")
+LICENSE_SOURCE = os.path.join("docs")
 # CONSTANTS END
 
 def create_venv(python_executable = sys.executable, update = False):
@@ -165,7 +166,7 @@ def patch_source_code(mukkuru_src):
     if "pywebview" in requirements:
         #mukkuru_src = mukkuru_src.replace("USE_PYWEBVIEW = False","USE_PYWEBVIEW = True")
         frontend = "PYWEBVIEW"
-    if "flaskwebui" in requirements:
+    if "flaskwebgui" in requirements:
         frontend = "FLASKUI"
     if USE_WEF:
         frontend = "WEF"
@@ -240,6 +241,7 @@ if args.alt:
     else:
         compiler_flags.append("--onefile")
     compiler_flags.extend(["--add-data", f"{UI_SOURCE}:{UI_SOURCE}"])
+    compiler_flags.extend(["--add-data", f"{LICENSE_SOURCE}:docs"])
     compiler_flags.extend(["--distpath", os.path.join(OUTPUT_DIR, "pack")])
     compiler_flags.extend(["-i", ICON_PATH])
     if not args.debug:
@@ -270,6 +272,7 @@ if system == "Linux":
     compiler_flags.append(f"--linux-icon={ICON_PATH}")
 compiler_flags.append("--enable-plugin=tk-inter")
 compiler_flags.append(f"--include-data-dir={UI_SOURCE}={UI_SOURCE}")
+compiler_flags.append(f"--include-data-dir={LICENSE_SOURCE}=docs")
 compiler_flags.append(SRC_OUT)
 compiler_flags.append(f"--output-filename={OUTPUT_FILE}")
 #compiler_flags.append("-o")

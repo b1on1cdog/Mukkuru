@@ -139,8 +139,9 @@ function applyDarkMode(){
 
 let configReady;
 
+
 const isConfigReady = new Promise((resolve) => {
-  configReady = resolve; // assign resolver to outer variable
+  configReady = resolve;
 });
 
 let aliveFails = 0;
@@ -166,9 +167,18 @@ async function hardwareStatusUpdate(){
       if (battery == null) {
           document.getElementsByClassName("batteryState")[0].style.display = "none";
       } else {
-          document.getElementsByClassName("batteryLevel")[0].style.width = "" + (100-battery.percent) + "%";
+          const batteryLevel =  document.getElementsByClassName("batteryLevel")[0];
+          const batteryState = document.getElementsByClassName("batteryState")[0];
+          batteryLevel.style.width = "" + (100-battery.percent) + "%";
           if ("power_plugged" in battery && battery.power_plugged) {
-            //document.getElementsByClassName("batteryCharging")[0].style.display = "";
+            batteryCharging = document.getElementsByClassName("batteryCharging")[0];
+            if (!batteryCharging.classList.contains("active")) {
+              batteryCharging.classList.add("active");
+              batteryState.style.backgroundColor = "rgba(33, 255, 59, 0.82)";
+            }
+          } else if (batteryCharging.classList.contains("active")) {
+              batteryCharging.classList.remove("active");
+              batteryState.style.removeProperty("background-color");
           }
       }
       
@@ -261,6 +271,9 @@ function closeCTX(){
    });
 }
 
+let videoTimeUpdateIntervalId;
+let videoTimeDisplayTimeoutId;
+
 function playVideo(videoFile){
   isVideoPlayer = true;
   video = document.getElementById("videoPlayer");
@@ -279,6 +292,14 @@ function playVideo(videoFile){
   if (isContextMenu) {
     closeCTX();
   }
+  videoTime = document.getElementById("videoTime");
+  videoTimeUpdateIntervalId = setInterval(() => {
+    if (videoTime == undefined) {
+      videoTime = document.getElementById("videoTime");
+    }
+    videoTime.innerText = formatDuration(video.currentTime) + "/" + formatDuration(video.duration);
+  }, "1000");
+  
 }
 
 function closeVideo(){
@@ -288,6 +309,18 @@ function closeVideo(){
   video.pause();
   video.currentTime = 0;
   hideUI(false);
+  if (videoTimeUpdateIntervalId != undefined){
+    clearInterval(videoTimeUpdateIntervalId);
+    document.getElementById("videoTime").classList.remove("active");
+  }
+}
+
+function formatDuration(totalSeconds) {
+  const sec = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
+  const min = Math.floor((totalSeconds / 60) % 60).toString().padStart(2, '0');
+  const hrs = Math.floor(totalSeconds / 3600);
+
+  return hrs > 0 ? `${hrs}:${min}:${sec}` : `${min}:${sec}`;
 }
 
 
@@ -295,10 +328,10 @@ function videoControl(action){
   video = document.getElementById("videoPlayer");
   switch (action) {
     case "left":
-      video.currentTime = Math.max(video.currentTime - 10, 0);
+      video.currentTime = Math.max(video.currentTime - 15, 0);
       break;
     case "right":
-      video.currentTime = Math.min(video.currentTime + 10, video.duration);
+      video.currentTime = Math.min(video.currentTime + 15, video.duration);
       break;
     case "up":
       video.volume = Math.min(video.volume + 0.05, 1);
@@ -308,7 +341,7 @@ function videoControl(action){
       break;
     case "back":
       closeVideo();
-      break;
+      return;
     case "confirm":
       if (video.paused) {
         video.play();
@@ -318,21 +351,21 @@ function videoControl(action){
       break;
     default:
       break;
-
   }
+  videoTime = document.getElementById("videoTime");
+  videoTime.innerText =  formatDuration(video.currentTime) + "/" + formatDuration(video.duration);
+  videoTime.classList.add("active");
+  if (videoTimeDisplayTimeoutId != undefined) {
+    clearTimeout(videoTimeDisplayTimeoutId);
+  }
+  videoTimeDisplayTimeoutId = setTimeout(() => {
+      videoTime.classList.remove("active");
+    }, "3500");
 }
 
 // video_parser.js
 
 let videos = { };
-
-function formatDuration(totalSeconds) {
-  const sec = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
-  const min = Math.floor((totalSeconds / 60) % 60).toString().padStart(2, '0');
-  const hrs = Math.floor(totalSeconds / 3600);
-
-  return hrs > 0 ? `${hrs}:${min}:${sec}` : `${min}:${sec}`;
-}
 
 function send_videos_metadata(){
     fetch("/video/set", {
@@ -571,6 +604,7 @@ async function isAlive(){
   }
 
 const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent);
+const isKioskMode = typeof navigator !== 'undefined' && /kioskMode/i.test(navigator.userAgent);
 
 const keyBindings = {
   "Enter": "confirm",
@@ -710,4 +744,24 @@ function mediaControl(action) {
 
 function wrapIndex(index, arrayLength) {
   return (index + arrayLength) % arrayLength;
+}
+
+function isPrintableKey(ev) {
+  if (ev.ctrlKey || ev.altKey || ev.metaKey) return false;
+  if (ev.key.length === 1) return true;
+  return ev.key === "Enter" || ev.key === " ";
+}
+
+let isUserGestureRequired = false;
+
+function userGestureNoLongerRequired() {
+  if (isUserGestureRequired) {
+    isUserGestureRequired = false;
+    localStorage.setItem("userGestureRequired", "false");
+    if (!lockControls){
+      document.getElementById('overlay').style.display = 'none';
+    }
+    overlayMessage = document.getElementById('overlay-message');
+    overlayMessage.innerText = overlayMessage.dataset.original;
+  }
 }

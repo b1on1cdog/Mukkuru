@@ -226,6 +226,14 @@ html {
   display: none;
 }
 
+.homeFooter {
+  opacity: 0.85;
+}
+
+.homeFooter::before {
+  border-top: unset;
+}
+
 /*
 
 @keyframes borderShine {

@@ -34,6 +34,8 @@ Some others are going to receive occasional uploads</br>
 - Add joystick buttons customization<br/>
 - Add scanning animation <br/>
 - Order recent played items in main screen<br/>
+- Screenshots in videoplayer<br/>
+- Videoplayback controls from webui dashboard<br/>
 - Additional webui to manipulate Mukkuru config from another device <br/>
     - Drag and drop wallpaper change <br/>
     - Menu to organize games, mark as favorite, blacklist, etc <br/>
@@ -49,6 +51,8 @@ Some others are going to receive occasional uploads</br>
 # Known issues
 - (Working on it) Mukkuru does not setup Proton by itself, so non-steam games added directly to Steam will not open<br/>
 - Default SW2 theme do not apply to some aspects of the ui<br/>
+- Sometimes context menus do not disappear when they should <br/>
+- Sometimes favorite games are not listed <br/>
 
 # Contribution guidelines
 - **Linting** Use pylint and remove as many warnings as reasonably possible before submitting your code. <br/>

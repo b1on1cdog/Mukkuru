@@ -38,6 +38,13 @@ document.addEventListener('DOMContentLoaded', () => {
     gameLaunchers = document.querySelectorAll('.gameLauncher');
     homeMenu = document.getElementsByClassName("homeMenu")[0];
     mediaItems = document.querySelectorAll('.videoLauncher');
+
+    if (localStorage.getItem("userGestureRequired") == "false") {
+        isUserGestureRequired = false;
+    } else {
+        isUserGestureRequired = window.self !== window.top;
+    }
+
     /*
         Mukkuru should have it's own game source, since some users might want games outside
         from Steam or they might want to include/exclude some games from it
@@ -119,6 +126,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const bg = document.getElementsByClassName("homeMenu")[0].style.backgroundColor;
     sendBackgroundColorToParent(bg);
     refreshServer();
+    (async () => {
+    await isLocalizationReady;
+    if (isUserGestureRequired) {
+        document.getElementById('overlay').style.display = 'flex';
+        overlayMessage = document.getElementById('overlay-message');
+        overlayMessage.dataset.original = overlayMessage.innerText;
+        overlayMessage.innerText = translate_str("pressToStart", "Press 'confirm' button to continue.")
+    }
+    })();
+
     });
     fetch("/library/get").then(function(response) {
         return response.json();
@@ -390,7 +407,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     }
     document.getElementById("back-keyGuide").style.display = "none";
-
+    document.addEventListener('click', (e) => {
+        userGestureNoLongerRequired();
+    }, { once: true });
+    window.addEventListener('message', (event) => { 
+        if (event.data == "userGestureNoLongerRequired") {
+            userGestureNoLongerRequired();
+        }
+     }, {once:true})
 
     document.addEventListener('keydown', (e) => {
          e.preventDefault();
@@ -422,6 +446,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         ctxMenu = document.getElementsByClassName("contextualMenu active")[0];
+
+
+        if (isUserGestureRequired && keyBindings[e.key] == "confirm") {
+            userGestureNoLongerRequired();
+            return;
+        } else if (isUserGestureRequired) {
+            return;
+        }
         
         switch (keyBindings[e.key]) {
             case "options":
@@ -732,7 +764,8 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </head>
 <body>
-    <video id="videoPlayer" controls controlsList="nofullscreen"></video>
+    <video id="videoPlayer" disablepictureinpicture controlsList="nofullscreen disablepictureinpicture noremoteplayback"></video>
+    <div id="videoTime">00:00/00:00</div>
     <article class="homeMenu pending">
         <header class="homeHeader">
             <div class="background-layer" id="bg"></div>
@@ -752,13 +785,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="batteryState">
                     <div class="batteryLevel" style="width: 0%;"></div>
+                    <div class="batteryCharging">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve"><path xmlns="http://www.w3.org/2000/svg" fill="orange" fill-rule="evenodd" d="M30 6a2 2 0 0 0-3.548-1.266l-20 22A2 2 0 0 0 8 30h10v12a2 2 0 0 0 3.548 1.266l20-22A2 2 0 0 0 40 18H30z" clip-rule="evenodd"></path></svg>
+                    </div>
                 </div>
         </header>
 
         <main class="homeBody pending">
-            <div id="overlay">
-                <div class="message" id="overlay-message" data-trm="swapText" data-loc="deadBackendMsg">Mukkuru backend is no longer running... restart app</div>
-            </div>
             <div class="appheaders">
             <span class="appheader lined">Games</span>
             <span class="appheader">Media</span>
@@ -849,6 +882,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
         </footer>
+    </div>
+    <div class="overlay" id="overlay">
+        <div class="message" id="overlay-message" data-trm="swapText" data-loc="deadBackendMsg">Mukkuru backend is no longer running... restart app</div>
     </div>
 </body>
     
