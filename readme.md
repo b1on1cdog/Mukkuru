@@ -13,6 +13,7 @@ See [third-party.md](docs/third-party.md) for third-party files license terms.<b
 - Dark mode<br/>
 - Scan games from Steam Library<br/>
 - Scan games from Epic Games Library and Heroic<br/>
+- WebUI to transfer videos from another device<br/>
 - Automatically download boxarts from SteamGridDB<br/>
 - Linux, Windows and MacOS Support<br/>
 - Strict static analysis compliance<br/>
@@ -33,6 +34,8 @@ Some others are going to receive occasional uploads</br>
 - Add ability to download games</br>
 - Add joystick buttons customization<br/>
 - Add scanning animation <br/>
+- Option to display battery percentage<br/>
+- Allow loading external audio packs<br/>
 - Order recent played items in main screen<br/>
 - Screenshots in videoplayer<br/>
 - Videoplayback controls from webui dashboard<br/>
@@ -49,8 +52,6 @@ Some others are going to receive occasional uploads</br>
 - User friendly installer<br/>
 
 # Known issues
-- (Working on it) Mukkuru does not setup Proton by itself, so non-steam games added directly to Steam will not open<br/>
-- Default SW2 theme do not apply to some aspects of the ui<br/>
 - Sometimes context menus do not disappear when they should <br/>
 - Sometimes favorite games are not listed <br/>
 

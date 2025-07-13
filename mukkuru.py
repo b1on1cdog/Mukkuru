@@ -26,14 +26,14 @@ from flask import send_from_directory, send_file
 from library import grid_db, video
 from library.steam import get_non_steam_games, get_steam_games, get_steam_env
 from library.steam import read_steam_username, download_steam_avatar
-from library.steam import get_proton_list, get_proton_command
+from library.steam import get_proton_list, get_crossover_env, get_crossover_steam
 
 from library.egs import get_egs_games, read_heroic_username
 
 from utils import hardware_if
 from utils.css_preprocessor import CssPreprocessor
 
-FRONTEND_MODE = "FLASKUI"
+FRONTEND_MODE = "PYWEBVIEW"
 
 if FRONTEND_MODE == "PYWEBVIEW":
     from view.pywebview import Frontend
@@ -55,7 +55,7 @@ log.setLevel(logging.CRITICAL)
 mukkuru_env = {}
 
 COMPILER_FLAG = False
-APP_VERSION = "0.3.5"
+APP_VERSION = "0.3.6"
 BUILD_VERSION = None
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
@@ -91,15 +91,21 @@ def library_scan(options):
     option_egs = 1 << 2  # 0100 = 4
 
     steam = get_steam_env()
-
+    crossover_steam = get_crossover_steam()
     games = {}
     if steam is not None:
         if options & option_steam:
             steam_games = get_steam_games(steam)
             games.update(steam_games)
-        # Scan Non-Steam games
         if steam["shortcuts"] is not None and (options & option_nonsteam):
             non_steam_games = get_non_steam_games(steam)
+            games.update(non_steam_games)
+    if crossover_steam is not None:
+        if options & option_steam:
+            steam_games = get_steam_games(crossover_steam)
+            games.update(steam_games)
+        if steam["shortcuts"] is not None and (options & option_nonsteam):
+            non_steam_games = get_non_steam_games(crossover_steam)
             games.update(non_steam_games)
     if options & option_egs:
         egs_games = get_egs_games()
@@ -233,30 +239,34 @@ def get_proton():
 @app.route('/library/launch/<app_id>')
 def launch_app(app_id):
     '''launches an app using its appID'''
+    process_env = os.environ.copy()
     games = get_games(True)
     game_path = games[app_id]["Exe"].strip('"')
+    working_dir = None
     backend_log(f'Launching game: {game_path} using {games[app_id]["LaunchOptions"]}')
     if "flatpak" in game_path:
         pass
     else:
         game_path = f'"{game_path}"'
     launch_command = f'{game_path} {games[app_id]["LaunchOptions"]}'
-    if '%command%' in games[app_id]["LaunchOptions"]:
-        launch_command = games[app_id]["LaunchOptions"].replace('%command', game_path)
-    # Linux cannot run exe without a compatibility layer
-    if platform.system() == "Linux" and game_path.strip('"').endswith(".exe"):
-        launch_command = get_proton_command(app_id, launch_command, get_config(True))
+    #if '%command%' in games[app_id]["LaunchOptions"]:
+    #    launch_command = games[app_id]["LaunchOptions"].replace('%command', game_path)
+    if "Type" in games[app_id] and games[app_id]["Type"] == "CROSSOVER":
+        process_env = get_crossover_env()
+        launch_command = f"wine --cx-app {launch_command}"
+        working_dir = process_env["CX_DISK"]
     backend_log(f"using {launch_command}")
     subprocess.run(launch_command,
                    stderr=subprocess.DEVNULL,
                    stdout=subprocess.DEVNULL,
-                   env=os.environ.copy(), shell=True, check=False)
+                   cwd=working_dir,
+                   env=process_env, shell=True, check=False)
     user_config = get_config(True)
     if user_config["lastPlayed"] != app_id:
         user_config["lastPlayed"] = app_id
         update_config(user_config)
-    os.environ.pop("STEAM_COMPAT_DATA_PATH", None)
-    os.environ.pop("STEAM_COMPAT_CLIENT_INSTALL_PATH", None)
+    #os.environ.pop("STEAM_COMPAT_DATA_PATH", None)
+    #os.environ.pop("STEAM_COMPAT_CLIENT_INSTALL_PATH", None)
     return "200"
 
 def copy_file(source, destination):
@@ -434,6 +444,7 @@ def get_config(raw = False):
     user_config = {
             "loop" : False,
             "skipNoArt" : False,
+            "displayBatteryPercent" : False,
             "maxGamesInHomeScreen" : 12,
             "interface" : "LuntheraUI",
             "enableServer" : False,

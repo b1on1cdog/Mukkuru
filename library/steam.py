@@ -126,6 +126,7 @@ def get_non_steam_games(steam_env):
     games = {}
     if steam_env is None:
         return games
+    steam_launch_path = steam_env["launchPath"]
     # Find all shortcuts.vdf files
     shortcuts_pattern = steam_env["shortcuts"]
     shortcuts_files = glob.glob(shortcuts_pattern)
@@ -149,28 +150,32 @@ def get_non_steam_games(steam_env):
                     continue
 
                 app_dir = shortcut.get("StartDir", "")
-                app_options = shortcut.get("LaunchOptions", "")
+                #app_options = shortcut.get("LaunchOptions", "")
 
-                app_id = str(int(shortcut.get("appid", 0))) if shortcut.get("appid") else ""
+                app_id = int(shortcut.get("appid", 0)) if shortcut.get("appid") else 0
+                app_id = str(get_rungameid(app_id))
                 icon = shortcut.get("icon", "")
 
-                needs_proton = False
+                #needs_proton = False
 
-                if app_exe.strip('"').endswith(".exe") and platform.system() == "Linux":
-                    needs_proton = True
+                #if app_exe.strip('"').endswith(".exe") and platform.system() == "Linux":
+                #    needs_proton = True
 
                 if app_name and app_id:
                     games[app_id] = {
                         "AppName": app_name,
                         "icon": icon,
-                        "Exe": app_exe,
+       #                 "Exe": app_exe,
                         "StartDir": app_dir,
-                        "LaunchOptions": app_options,
+       #                 "LaunchOptions": app_options,
+                        "Exe": os.path.join(steam_launch_path),
+                        "LaunchOptions" : f'steam://rungameid/{app_id}',
                         "Hero": os.path.join(steam_env["gridPath"], app_id+"_hero.jpg"),
                         "Logo": os.path.join(steam_env["gridPath"], app_id+"_logo.png"),
                         "Cover": os.path.join(steam_env["gridPath"], app_id+"p.jpg"),
                         "Source" : "non-steam",
-                        "Proton" : needs_proton
+                        #"Proton" : needs_proton,
+                        "Type" : steam_env["type"]
                     }
         except (FileNotFoundError, PermissionError, struct.error, ValueError, IndexError) as e:
             print(f"Error processing {file}: {e}")
@@ -196,6 +201,11 @@ def get_steam_libraries(vdf_path, steam_env):
     paths.append(os.path.join(steam_env["path"], "steamapps"))
     return paths
 
+def get_rungameid(shortcut_appid: int) -> int:
+    """
+    Turn a 32‑bit shortcut AppID into the 64‑bit value.
+    """
+    return (shortcut_appid << 32) | 0x02000000
 
 def get_proton_command(app_id, command, user_config):
     ''' run game using proton '''
@@ -252,10 +262,11 @@ def get_steam_games(steam):
                     "AppName": name,
                     "icon": os.path.join(library_cache, f"{app_id}_icon.jpg"),
                     "Exe": os.path.join(steam_launch_path),
-                    "LaunchOptions": f'steam://rungameid/{app_id}',
+                    "LaunchOptions" : f'steam://rungameid/{app_id}',
                     "Hero": os.path.join(library_cache, f"{app_id}", "library_hero.jpg"),
                     "Logo": os.path.join(library_cache, f"{app_id}", "logo.png"),
                     "Source" : "steam",
+                    "Type" : steam["type"]
                 }
     return games
 
@@ -365,6 +376,54 @@ def find_path(paths):
             return path
     return None
 
+def get_crossover_env():
+    ''' get crossover environment variables '''
+    crossenv = os.environ.copy()
+    crossover_app = os.path.expanduser("~/Applications/CrossOver.app/")
+    cxroot = os.path.join(crossover_app, "Contents", "SharedSupport", "CrossOver")
+    cxbottlepath = os.path.expanduser("~/Library/Application Support/CrossOver/Bottles")
+    crossenv["PYTHONPATH"] = os.path.join(cxroot, "lib", "python")
+    crossenv["CX_MANAGED_BOTTLE_PATH"] = "/Library/Application Support/CrossOver/Bottles"
+    crossenv["CX_BOTTLE"] = "Steam"
+    crossenv["CX_BOTTLE_PATH"] = cxbottlepath
+    crossenv["CX_APP_BUNDLE_PATH"] = crossover_app
+    crossenv["CX_ROOT"] = cxroot
+    crossenv["CX_DISK"] = os.path.join(cxbottlepath, crossenv["CX_BOTTLE"], "drive_c")
+    crossenv["PATH"] = crossenv["PATH"] + os.pathsep + os.path.join(cxroot, "bin")
+    return crossenv
+
+def get_crossover_steam():
+    ''' gets steam paths for crossover install (Not implemented yet) '''
+    system = platform.system()
+    steam = {}
+    prefix = ""
+    if system == "Darwin":
+        crossenv = get_crossover_env()
+        prefix = crossenv["CX_DISK"]
+    else:
+        return None
+    prefix = os.path.expanduser(prefix)
+    steam["path"] = os.path.join(prefix, "Program Files (x86)/Steam")
+    if not Path(steam["path"]).exists():
+        print("(CrossOver) Steam is not available")
+        return None
+    steam["libraryFile"] = os.path.join(steam["path"],"steamapps", "libraryfolders.vdf")
+    shortcut_path = os.path.join(steam["path"],"userdata", "*", "config", "shortcuts.vdf")
+    steam["shortcuts"] = map_shortcuts_path(shortcut_path)
+    steam["launchPath"] = os.path.join("C:", "Program Files (x86)", "Steam", "Steam.exe")
+    steam["crossover"] = True
+    if not Path(steam["libraryFile"]).is_file():
+        print("(CrossOver) Steam is not available")
+        return None
+    steam["gridPath"] = steam["shortcuts"].replace("shortcuts.vdf", "grid", 1)
+    steam["config.vdf"] = os.path.join(steam["path"], "config", "config.vdf")
+    steam["type"] = "CROSSOVER"
+    if not Path(steam["shortcuts"]).is_file():
+        print(f'Unable to find: {steam["shortcuts"]}\n')
+    # To-do:
+    # -Find linux crossover bottle directory
+    return steam
+
 @lru_cache(maxsize=1)
 def get_steam_env():
     ''' Get steam paths depending on platform '''
@@ -411,6 +470,7 @@ def get_steam_env():
         return None
     steam["gridPath"] = steam["shortcuts"].replace("shortcuts.vdf", "grid", 1)
     steam["config.vdf"] = os.path.join(steam["path"], "config", "config.vdf")
+    steam["type"] = "NATIVE"
     if not Path(steam["shortcuts"]).is_file():
         print(f'Unable to find: {steam["shortcuts"]}\n')
     return steam

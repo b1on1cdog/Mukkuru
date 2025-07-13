@@ -1,5 +1,12 @@
 # Changelog
 -----------------
+# 0.3.6
+- non-steam games that are not from heroic/lutris can now run<br/>
+- added executable metadata for windows build<br/>
+- 'onedir' in compile.py will be '--standalone' when using nuitka<br/>
+- SW2 Theme item selector now applies to videos, avatar and context Menus<br/>
+- Added min size to app icons in AppList<br/>
+- Added Steam Crossover support in MacOS<br/>
 # 0.3.5
 - Implemented own videocontrols<br/>
 - Flaskwebgui as default view for Linux<br/>

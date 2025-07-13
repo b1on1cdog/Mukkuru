@@ -257,6 +257,10 @@ if system == "Windows":
     compiler_flags.append(f"--windows-icon-from-ico={ICON_PATH}")
     if not args.debug:
         compiler_flags.append("--windows-console-mode=disable")
+    compiler_flags.append("--windows-company-name=Josue Alonso Rodriguez")
+    compiler_flags.append("--windows-product-name=Mukkuru")
+    compiler_flags.append(f"--windows-product-version={APP_VERSION}")
+    compiler_flags.append(f"--windows-file-version={APP_VERSION}")
 if system == "Darwin":
     compiler_flags.append("--macos-create-app-bundle")
     compiler_flags.append(f"--macos-app-icon={PNG_PATH}")
@@ -265,6 +269,8 @@ elif args.debug:
     compiler_flags.append("--debug")
     #compiler_flags.append("--experimental=allow-c-warnings")
     #os.environ["CFLAGS"] = "-Wall -Wextra -g -Wno-unused-but-set-variable"
+elif args.onedir:
+    compiler_flags.append("--standalone")
 else:
     compiler_flags.append("--onefile")
 
