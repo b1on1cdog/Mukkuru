@@ -33,8 +33,6 @@ Some others are going to receive occasional uploads</br>
 # To-do list
 - Add ability to download games</br>
 - Add joystick buttons customization<br/>
-- Add scanning animation <br/>
-- Option to display battery percentage<br/>
 - Allow loading external audio packs<br/>
 - Order recent played items in main screen<br/>
 - Screenshots in videoplayer<br/>

@@ -199,7 +199,14 @@ button {
     width: 100%;
     height: 100%;
 }
+#batteryPercent + .batteryState {
+    margin-left: 40px;
+}
 
+.wifiState + #batteryPercent {
+    margin-left: 20px;
+}
+/*deprecated*/
 .wifiState + .batteryState {
     margin-left: 50px;
 }
@@ -229,6 +236,14 @@ button {
     position: absolute;
     top: 0;
     right: 0;
+}
+
+#batteryPercent {
+    display: none;
+    position: relative;
+}
+.chargePercent {
+    font-size: 0.6em
 }
 
 .batteryCharging {
@@ -794,6 +809,20 @@ animation: footerButton-select - 1s ease-in-out infinite;
 }
 
 #videoPlayer.active {
+    display: block;
+}
+
+#loadingSpinner {
+    display: none;
+    width: 60px;
+    height: 60px;
+    /*bottom: 20vh;*/
+    top: 4vh;
+    margin-right: 1vw;
+    z-index: 1000;
+}
+
+#loadingSpinner.active {
     display: block;
 }
 

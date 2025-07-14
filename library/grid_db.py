@@ -57,7 +57,7 @@ def get_id_from_platform(platform_id, platform_name):
         print("Failed to decode JSON")
         return 0
 
-def find_image_url(game_id, image_format):
+def find_image_url(game_id, image_format, image_index = 0):
     ''' find square picture '''
     if image_format == "1:1":
         dimensions = "512x512,1024x1024"
@@ -74,8 +74,8 @@ def find_image_url(game_id, image_format):
     data = r.json()
     if data["success"]:
         try:
-            games = data["data"]
-            return games[0]["url"]
+            images = data["data"]
+            return images[image_index]["url"]
         except (KeyError, IndexError):
             return 0
     else:
@@ -101,7 +101,7 @@ def download_square_image(game_identifier, s_path):
     ''' download a 1:1 image '''
     return download_image(game_identifier, s_path, "1:1")
 
-def download_image(game_identifier, s_path, image_format):
+def download_image(game_identifier, s_path, image_format, image_index = 0):
     ''' find and download image from SteamGridDb '''  
     game_id = 0
     game_title = game_identifier.title
@@ -112,7 +112,7 @@ def download_image(game_identifier, s_path, image_format):
     if game_id == 0:
         print(f"Failed to find game {game_title}")
         return False
-    file_url = find_image_url(game_id, image_format)
+    file_url = find_image_url(game_id, image_format, image_index)
     if file_url == 0:
         print(f"Failed to find game asset : {game_title} [{image_format}]")
         return "Missing"

@@ -38,6 +38,7 @@
         "storage" : "Almacenamiento",
         "Name" : "Nombre",
         "showKeyGuide" : "Mostrar guia de botones",
+        "displayBatteryPercent" : "Mostrar porcentaje de bateria",
         "listStyle" : "Estilo de lista principal",
         "libraryStyle" : "Estilo de biblioteca",
         "uiSounds" : "Efectos de sonido del sistema",

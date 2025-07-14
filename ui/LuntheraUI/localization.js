@@ -88,6 +88,10 @@ function get_localization(){
     return response.json();
   }).then(function(data) {
     localization = data;
+    if (localization["available"] == false) {
+      localizationReady();
+      return;
+    }
     translateAll(data);
   });
 }
@@ -108,6 +112,7 @@ function allowRendering(reload = false) {
         backend_log("reloading....");
         location.reload();
       }
+      localizationReady();
     } else {
     
     swapText("options-keyText", translation["Options"]);

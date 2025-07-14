@@ -169,7 +169,9 @@ async function hardwareStatusUpdate(){
       } else {
           const batteryLevel =  document.getElementsByClassName("batteryLevel")[0];
           const batteryState = document.getElementsByClassName("batteryState")[0];
+          const batteryPercent = document.getElementById("batteryPercent");
           batteryLevel.style.width = "" + (100-battery.percent) + "%";
+          batteryPercent.innerHTML = Math.trunc(battery.percent) + '<span class="chargePercent">%</span>';
           if ("power_plugged" in battery && battery.power_plugged) {
             batteryCharging = document.getElementsByClassName("batteryCharging")[0];
             if (!batteryCharging.classList.contains("active")) {
@@ -520,6 +522,29 @@ function fetch_videos(){
 
 // end video_parser.js
 
+async function reloadGameThumbnails(){
+  loadingSpinner = document.getElementById("loadingSpinner");
+  backend_log("reloading game thumbnails...");
+  if (!loadingSpinner.classList.contains("active")){
+    loadingSpinner.classList.add("active");
+  }
+
+  const library_response = await fetch("/library/get");
+  if (!library_response.ok) {
+    throw new Error(`HTTP ${network_resp.status}`);
+  }
+  game_library = await library_response.json();
+  all_games = document.querySelectorAll('.gameLauncher, .appLauncher');
+  all_games.forEach((element) => {
+  AppID = element.dataset.gameid;
+  if (game_library[AppID]["Thumbnail"]){
+      thumbnail = element.querySelectorAll('.gameLauncher-thumbnail, .appLauncher-thumbnail')[0];
+      thumbnail.src = './thumbnails/'+AppID+'.jpg';
+    }
+  });
+  backend_log("reload done");
+}
+
 async function isAlive(){
     if (aliveFails > 1) {
       return;
@@ -544,6 +569,16 @@ async function isAlive(){
             fetch_videos();
             break;
           case "playAudio":
+            break;
+          case "reloadGameThumbnails":
+            reloadGameThumbnails();
+            break;
+          case "ScanFinished":
+            reloadGameThumbnails();
+            setTimeout(() => {
+              backend_log("scan done, removing loading spinner");
+              document.getElementById("loadingSpinner").classList.remove("active");
+            }, "2500");
             break;
           default:
             break;
@@ -667,6 +702,7 @@ async function serverHandle(action){
 }
 
 function exitMukkuru(){
+  localStorage.clear();
   fetch("/app/exit").then(function(response) {
     return 0;
   });

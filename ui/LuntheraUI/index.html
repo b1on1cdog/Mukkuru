@@ -122,6 +122,9 @@ document.addEventListener('DOMContentLoaded', () => {
         isAlive();
     }, 3000);
     showKeyGuide(userConfiguration["showKeyGuide"]);
+    if (userConfiguration["displayBatteryPercent"]) {
+        document.getElementById("batteryPercent").style.display = "block";
+    }
     allowRendering();
     const bg = document.getElementsByClassName("homeMenu")[0].style.backgroundColor;
     sendBackgroundColorToParent(bg);
@@ -129,6 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
     (async () => {
     await isLocalizationReady;
     if (isUserGestureRequired) {
+        backend_log("running in kiosk mode, showing overlay...");
         document.getElementById('overlay').style.display = 'flex';
         overlayMessage = document.getElementById('overlay-message');
         overlayMessage.dataset.original = overlayMessage.innerText;
@@ -408,10 +412,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     document.getElementById("back-keyGuide").style.display = "none";
     document.addEventListener('click', (e) => {
+        backend_log("user gesture no longer required, reason: click");
         userGestureNoLongerRequired();
     }, { once: true });
     window.addEventListener('message', (event) => { 
         if (event.data == "userGestureNoLongerRequired") {
+            backend_log("user gesture no longer required, reason: parent message");
             userGestureNoLongerRequired();
         }
      }, {once:true})
@@ -447,8 +453,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         ctxMenu = document.getElementsByClassName("contextualMenu active")[0];
 
-
         if (isUserGestureRequired && keyBindings[e.key] == "confirm") {
+            backend_log("user gesture no longer required, reason: confirmed");
             userGestureNoLongerRequired();
             return;
         } else if (isUserGestureRequired) {
@@ -775,6 +781,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 </a>
             </div>
             <div class="statusBar">
+                <svg id="loadingSpinner" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid" width="200" height="200" style="shape-rendering: auto; background: transparent;" xmlns:xlink="http://www.w3.org/1999/xlink"><g><circle stroke-linecap="round" fill="none" stroke-dasharray="50.26548245743669 50.26548245743669" stroke="#fe718d" stroke-width="6" r="32" cy="50" cx="50">
+                    <animateTransform values="0 50 50;360 50 50" keyTimes="0;1" dur="1s" repeatCount="indefinite" type="rotate" attributeName="transform"></animateTransform>
+                </circle><g></g></g></svg>
                 <div class="timeState">
                     <div class="currentTime">
                         <span class="timeHour">8</span><span class="timeState-separator">:</span><span class="timeMinute">17</span>
@@ -783,6 +792,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="wifiState">
                     <svg class="wifiState-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M1 9l2 2a12.73 12.73 0 0 1 18 0l2-2A15.57 15.57 0 0 0 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z" fill="#2E2E2E"/></svg>
                 </div>
+                <div id="batteryPercent"></div>
                 <div class="batteryState">
                     <div class="batteryLevel" style="width: 0%;"></div>
                     <div class="batteryCharging">

@@ -1,5 +1,14 @@
 # Changelog
 -----------------
+# 0.3.7
+- Added option to display battery percent <br/>
+- Added small spinning animation when library scan is in progress<br/>
+- Thumbnails will now be updated without requiring menu reload<br/>
+- Fixed non-flatpak firefox not closing<br/>
+- Fixed art blacklist code<br/>
+- Solved dashboard undefined text in english<br/>
+- Solved overlay not being displayed when using english<br/>
+- Fixed third-party.md links<br/>
 # 0.3.6
 - non-steam games that are not from heroic/lutris can now run<br/>
 - added executable metadata for windows build<br/>

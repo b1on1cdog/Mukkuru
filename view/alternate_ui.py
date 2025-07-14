@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import tempfile
 import uuid
+import time
 from urllib.parse import urlparse
 from flaskwebgui import FlaskUI, close_application
 
@@ -14,6 +15,8 @@ from utils.hardware_if import kill_executable_by_path
 
 FLASKWEBGUI_USED_PORT = None
 FLASKWEBGUI_BROWSER_PROCESS = None
+
+FIREFOX_PROCESS = None
 
 linux_browser_paths = [
     r"/usr/bin/google-chrome",
@@ -62,9 +65,18 @@ def terminate_firefox():
     if is_flatpak:
         proc_flags = ["flatpak"]
         proc_flags.extend(["kill", "org.mozilla.firefox"])
+        print("killing flatpak firefox")
         subprocess.run(proc_flags, check=False)
     else:
-        kill_executable_by_path(firefox_executable, force=False)
+        print(f"killing {firefox_executable}")
+        if FIREFOX_PROCESS is not None:
+            FIREFOX_PROCESS.terminate()
+            time.sleep(2)
+            # in this house we do not negotiate with processes, either they close or they are closed
+            FIREFOX_PROCESS.kill()
+            FIREFOX_PROCESS.wait()
+        else:
+            print("process not found")
 
 def search_firefox():
     ''' Search for firefox install '''
@@ -89,7 +101,8 @@ def run_firefox(url, profile_dir = None):
         proc_flags.extend(["--profile", profile_dir])
     proc_flags.append("-private-window")
     proc_flags.append(url)
-    subprocess.run(proc_flags, check=False)
+    global FIREFOX_PROCESS
+    FIREFOX_PROCESS = subprocess.Popen(proc_flags)
 
 def find_browser_path():
     ''' look for an installed browser '''

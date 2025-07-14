@@ -55,7 +55,7 @@ log.setLevel(logging.CRITICAL)
 mukkuru_env = {}
 
 COMPILER_FLAG = False
-APP_VERSION = "0.3.6"
+APP_VERSION = "0.3.7"
 BUILD_VERSION = None
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
@@ -305,26 +305,44 @@ def open_store(storefront):
     else:
         print(f"unknown storefront {storefront}")
 
-def fetch_artwork(app_id, game, b1, b2, b3):
+def fetch_artwork(app_id, game, b1, b2, b3, use_alt_images):
     ''' handle artwork '''
+    blacklist_1 = []
+    blacklist_2 = []
+    blacklist_3 = []
+    hero_index = 0
+    boxart_index = 0
+    logo_index = 0
+    if app_id in use_alt_images:
+        alt_option = use_alt_images[app_id]
+        option_boxart = 1 << 0  # 0001 = 1
+        option_hero = 1 << 1  # 0010 = 2
+        option_logo = 1 << 2  # 0100 = 4
+        if alt_option & option_boxart:
+            boxart_index = 1
+        if alt_option & option_hero:
+            hero_index = 1
+        if alt_option & option_logo:
+            logo_index = 1
+        print(f"using alternate image for {game['AppName']}")
     thumbnail = os.path.join(mukkuru_env["root"], "thumbnails", f'{app_id}.jpg')
     game_source = game["Source"]
     game_identifier = grid_db.GameIdentifier(game["AppName"], app_id, game_source)
     if not Path(thumbnail).is_file() and app_id not in b1:
-        if grid_db.download_image(game_identifier, thumbnail,"1:1") == "Missing":
-            b1.append(app_id)
+        if grid_db.download_image(game_identifier, thumbnail,"1:1", boxart_index) == "Missing":
+            blacklist_1.append(app_id)
     hero = os.path.join(mukkuru_env["root"], "hero", f'{app_id}.png')
     if not Path(hero).is_file() and app_id not in b2:
-        if grid_db.download_image(game_identifier, hero, "hero") == "Missing":
-            b2.append(app_id)
+        if grid_db.download_image(game_identifier, hero, "hero", hero_index) == "Missing":
+            blacklist_2.append(app_id)
     logo = os.path.join(mukkuru_env["root"], "logo", f'{app_id}.png')
     if not Path(logo).is_file() and app_id not in b3:
-        if grid_db.download_image(game_identifier, logo,"logo") == "Missing":
-            b3.append(app_id)
+        if grid_db.download_image(game_identifier, logo,"logo", logo_index) == "Missing":
+            blacklist_3.append(app_id)
     result = {}
-    result["1"] = b1
-    result["2"] = b2
-    result["3"] = b3
+    result["1"] = blacklist_1
+    result["2"] = blacklist_2
+    result["3"] = blacklist_3
     return result
 
 @app.route('/library/artwork/scan')
@@ -335,33 +353,38 @@ def scan_artwork(games = None):
     blacklist1 = config["boxartBlacklist"]
     blacklist2 = config["heroBlacklist"]
     blacklist3 = config["logoBlacklist"]
+    use_alt_images = config["useAlternativeImage"]
     if games is None:
         games = get_games(True)
     results = {}
-    counter = 0
     with ThreadPoolExecutor(max_workers=config["cores"]*2) as executor:
         future_to_key = {
-            executor.submit(fetch_artwork, k, v, blacklist1, blacklist2, blacklist3): k
+            executor.submit(fetch_artwork, k, v, blacklist1, blacklist2,
+                            blacklist3, use_alt_images): k
             for k, v in games.items()
         }
+        counter = 0
         for future in as_completed(future_to_key):
             k = future_to_key[future]
             try:
                 results[k] = future.result()
-                blacklist1.extend(results[k]["0"])
-                blacklist2.extend(results[k]["1"])
-                blacklist3.extend(results[k]["2"])
-                counter = counter +1
+                blacklist1.extend(results[k]["1"])
+                blacklist2.extend(results[k]["2"])
+                blacklist3.extend(results[k]["3"])
+                counter = counter + 1
                 if counter % 12 == 0:
+                    set_alive_status({"command": "reloadGameThumbnails"})
                     scan_thumbnails(games)
             except (KeyError, OSError, IndexError, FileNotFoundError) as e:
                 results[k] = {"error": str(e)}
+                print(f"scan_arwork error: {str(e)}")
     config["boxartBlacklist"] = blacklist1
     config["heroBlacklist"] = blacklist2
     config["logoBlacklist"] = blacklist3
     update_config(config)
     #clear_possible_mismatches(games)
     scan_thumbnails(games)
+    set_alive_status({"command": "ScanFinished"})
     return "200"
 
 def get_localization(raw = False):
@@ -422,7 +445,7 @@ def get_media():
 
 @app.route('/video/set', methods = ['POST'])
 def set_videos():
-    '''update videos json from request'''        
+    '''update videos json from request'''
     if request.method == 'POST':
         videos = request.get_json()
         video.update_videos(mukkuru_env["video.json"], videos)
@@ -437,6 +460,20 @@ def set_video_thumbnail(video_id):
         video.update_thumbnail(mukkuru_env["video.json"], video_id, thumbnail)
         return "200"
     return "400"
+
+def get_game_properties(app_id):
+    ''' get game specific properties '''
+    user_config = get_config(True)
+    game_property = {
+        "isFavorite" : False,
+        "isHidden" : False,
+        "useAlternativeImage" : 0,
+        "useAlternativeHero" : False
+    }
+    game_properties = user_config["gameProperties"]
+    if app_id in game_properties:
+        return game_properties[app_id]
+    return game_property
 
 @lru_cache(maxsize=2)
 def get_config(raw = False):
@@ -453,6 +490,7 @@ def get_config(raw = False):
             "musicSources" : [os.path.join(mukkuru_env["root"], "music")],
             "pictureSources" : [os.path.join(mukkuru_env["root"], "pictures")],
             "protonConfig" : {},
+            "useAlternativeImage" : { "1149550" : 1 },
             "librarySource" : 3,
             "darkMode" : False,
             "startupGameScan" : False,
@@ -468,6 +506,7 @@ def get_config(raw = False):
             "cores" : 6,
             "alwaysShowBottomBar" : True,
             "uiSounds" : "Switch",
+            "gameProperties" : {},
             "boxartBlacklist" : [],
             "logoBlacklist" : [],
             "heroBlacklist" : [],
@@ -585,7 +624,7 @@ def scan_games():
     games = library_scan(int(options))
     #game_library.update(games)
     threading.Thread(target=scan_artwork, args=(games,)).start()
-    time.sleep(8)
+    time.sleep(5)
     for k, _ in games.items(): #games.keys
         thumbnail_path = os.path.join(mukkuru_env["root"], "thumbnails", f'{k}.jpg')
         if not Path(thumbnail_path).is_file():
@@ -753,11 +792,6 @@ def static_file(path):
         img.save(buf, format="PNG")
         buf.seek(0)
         return send_file(buf, mimetype="image/png")
-   # if path.startswith("video/"):
-   #     video_path = os.path.join(mukkuru_env["root"], "video")
-    #    video_file = path.replace("video/", "")
-    #    return send_from_directory(video_path, video_file)
-  #  print(f"path -> {path}")
     return send_from_directory(serve_path, path)
 
 @app.route('/frontend/video/<source>/<filename>', methods=["GET", "DELETE"])
