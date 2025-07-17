@@ -1,5 +1,7 @@
 :root {
     --dark-footer-button-bg: "#4E4E4E";
+    --game-title-scrolling-text: 1;
+    --dark-mode-select-border: #0b0b0b;
 }
 
 *, *::before, *::after {
@@ -89,7 +91,7 @@ button {
 }
 
 .userList-user::after {
-    content: attr(title);
+    content: attr(data-username);
     position: absolute;
     top: calc(100% + 8px);
     font-size: 20px;
@@ -806,10 +808,31 @@ animation: footerButton-select - 1s ease-in-out infinite;
     position: fixed;
     border: none;
     outline: none;
+    transition: transform 100ms ease;
 }
 
 #videoPlayer.active {
     display: block;
+}
+
+#videoPlayer.screenshot-bounce {
+  transform: scale(1.05);
+}
+
+#flash {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: white;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 80ms ease;
+  z-index: 6005;
+}
+#flash.active {
+  opacity: 1;
 }
 
 #loadingSpinner {

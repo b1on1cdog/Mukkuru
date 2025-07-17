@@ -29,13 +29,14 @@ async function loadSound(name, url) {
 
 async function initSounds() {
   const soundFiles = {
-    'tick': './assets/audio/Tick.wav',
-    'select': './assets/audio/Select.wav',
-    'home': './assets/audio/Home.wav',
-    'border': './assets/audio/Border.wav',
-    'enter-back': './assets/audio/Enter & Back.wav',
-    'run': './assets/audio/Run.wav',
-    'settings': './assets/audio/Settings.wav',
+    'tick': './assets/audio/tick',
+    'select': './assets/audio/select',
+    'home': './assets/audio/home',
+    'border': './assets/audio/border',
+    'enter-back': './assets/audio/back',
+    'run': './assets/audio/run',
+    'settings': './assets/audio/settings',
+    'shot' : './assets/audio/shot',
   };
   
   await Promise.all(Object.keys(soundFiles).map(name => 
@@ -275,18 +276,29 @@ function closeCTX(){
 
 let videoTimeUpdateIntervalId;
 let videoTimeDisplayTimeoutId;
+let videos = { };
 
-function playVideo(videoFile){
+function find_videoId(video_url){
+  const videoId = Object.keys(videos).find(
+    key => videos[key].url === video_url
+  );
+  return videoId;
+}
+
+function playVideo(videoId, startDuration = 0){
   isVideoPlayer = true;
   video = document.getElementById("videoPlayer");
   video.classList.add("active");
-  
+
 /*
   var source = document.createElement('source');
   source.setAttribute('src', videoFile);
   source.setAttribute('type', 'video/mp4');
   video.appendChild(source);
 */
+  videoId = videoId.replace("video_", "");
+  videoFile = videos[videoId].url;
+  video.dataset.video_id = videoId;
   video.src = videoFile;
   video.load();
   video.play();
@@ -301,7 +313,7 @@ function playVideo(videoFile){
     }
     videoTime.innerText = formatDuration(video.currentTime) + "/" + formatDuration(video.duration);
   }, "1000");
-  
+  video.currentTime = startDuration;
 }
 
 function closeVideo(){
@@ -309,6 +321,18 @@ function closeVideo(){
   video = document.getElementById("videoPlayer");
   video.classList.remove("active");
   video.pause();
+  /*
+  we need to register the time before closing the video
+  To-do: make sure we are using right video (ex: PlayVideo remote command bypasses currentMedia)
+  */
+  if ("video_id" in video.dataset && video.currentTime > 30){
+    video_id = video.dataset.video_id;
+    backend_log(video_id);
+    videos[video_id]["resume"] = video.currentTime;
+    document.getElementById("video_"+video_id).dataset.resume = video.currentTime
+    send_videos_metadata(videos);
+  }
+  
   video.currentTime = 0;
   hideUI(false);
   if (videoTimeUpdateIntervalId != undefined){
@@ -325,6 +349,8 @@ function formatDuration(totalSeconds) {
   return hrs > 0 ? `${hrs}:${min}:${sec}` : `${min}:${sec}`;
 }
 
+
+// video_parser.js
 
 function videoControl(action){
   video = document.getElementById("videoPlayer");
@@ -351,6 +377,10 @@ function videoControl(action){
         video.pause();
       }
       break;
+    case "options":
+      playSound("shot");
+      take_video_screenshot();
+      break;
     default:
       break;
   }
@@ -365,9 +395,6 @@ function videoControl(action){
     }, "3500");
 }
 
-// video_parser.js
-
-let videos = { };
 
 function send_videos_metadata(){
     fetch("/video/set", {
@@ -413,6 +440,44 @@ function send_video_thumbnail(thumbnail, video_id){
       });
 }
 
+function draw_video_png(vid){
+    const c  = document.createElement('canvas');
+    c.width  = vid.videoWidth;
+    c.height = vid.videoHeight;
+    c.getContext('2d').drawImage(vid, 0, 0);
+    const png = c.toDataURL('image/png');
+    return png;
+}
+
+
+function simulateScreenshotEffect(vid) {
+  vid.classList.add("screenshot-bounce");
+
+  const flash = document.getElementById("flash");
+  flash.classList.add("active");
+
+  setTimeout(() => {
+    vid.classList.remove("screenshot-bounce");
+    flash.classList.remove("active");
+  }, 100);
+}
+
+function take_video_screenshot(){
+    vid = document.getElementById("videoPlayer");
+    screenshot = draw_video_png(vid);
+    simulateScreenshotEffect(vid);
+    fetch("/video/screenshot/", {
+      method: "POST",
+      body: JSON.stringify(screenshot),
+      headers: {
+        "Content-type": "application/json; charset=UTF-8"
+      }
+      }).then((response) => {
+        
+      });
+}
+
+
 async function get_video_metadata(video_url, vid){
     console.log("processing metadata for " + video_url);
     vid.id = 'metadata-video';
@@ -428,11 +493,8 @@ async function get_video_metadata(video_url, vid){
 
     await new Promise(r => vid.onseeked = r);
 
-    const c  = document.createElement('canvas');
-    c.width  = vid.videoWidth;
-    c.height = vid.videoHeight;
-    c.getContext('2d').drawImage(vid, 0, 0);
-    const png = c.toDataURL('image/png');
+    png = draw_video_png(vid);
+
     vid.pause();
     metadata = {
         "duration" : vid.duration,
@@ -477,13 +539,15 @@ async function update_videos_metadata(vids){
     vid.remove();
 }
 
-function fetch_videos(){
-    document.querySelectorAll('.videoLauncher').forEach(el => el.remove());
-    fetch("/media/get").then(function(response) {
-        return response.json();
-    }).then(function(data) {
+  async function fetch_videos(autoplay_video = ""){
+        document.querySelectorAll('.videoLauncher').forEach(el => el.remove());
+        response = await fetch("/media/get");
+        if (!response.ok) {
+            throw new Error(`HTTP ${network_resp.status}`);
+        }
+        data = await response.json();
         videos = data["videos"];
-       // console.log(data);
+  
         update_videos_metadata(videos);
         mediaList = document.getElementsByClassName("mediaList")[0];
         for (const id in videos){
@@ -497,6 +561,9 @@ function fetch_videos(){
             }*/
             videoLauncher.id = "video_" + id;
             videoLauncher.dataset.play = video.url;
+            if ("resume" in video) {
+              videoLauncher.dataset.resume = video.resume;
+            }
             const videoTitle = document.createElement('div');
             videoTitle.className = "video-title";
             videoTitle.textContent = video.file
@@ -516,8 +583,17 @@ function fetch_videos(){
               videoLauncher.scrollIntoView({ behavior: "instant", block: "center" });
             });
         }
-
-    });
+        if (autoplay_video != ""){
+          videoUri = encodeURI(autoplay_video);
+          backend_log("trying to find videoId for "+videoUri)
+          videoId = find_videoId(videoUri);
+          if (videoId == undefined) {
+            backend_log("Unable to autoplay media")
+          } else {
+            playVideo(videoId);
+          }
+          
+        }
 }
 
 // end video_parser.js
@@ -562,8 +638,7 @@ async function isAlive(){
         const value = message["value"] ?? "";
         switch (command) {
           case "playVideo":
-            playVideo(value);
-            fetch_videos();
+            fetch_videos(value);
             break;
           case "reloadVideos":
             fetch_videos();
@@ -761,7 +836,13 @@ function mediaControl(action) {
     case "confirm":
       switch (mediaItems[currentMedia].className){
         case "videoLauncher":
-          playVideo(mediaItems[currentMedia].dataset.play);
+          const resume = ("resume" in mediaItems[currentMedia].dataset);
+          if (resume) {
+            document.getElementById("resumeContextMenu").classList.add("active");
+            isContextMenu = true;
+            return;
+          }
+          playVideo(mediaItems[currentMedia].id);
           break;
         default:
           playSound("border");

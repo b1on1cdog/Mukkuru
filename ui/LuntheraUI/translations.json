@@ -66,6 +66,8 @@
         "emptyMessage" : "No hay nada que mostrar aqui",
         "deleteVideoOption" : "Eliminar video",
         "pressToStart" : "Presiona 'Aceptar' para continuar",
-        "showLicenses" : "Licencia"
+        "showLicenses" : "Licencia",
+        "resumeMediaOption" : "Continuar donde lo deje",
+        "restartMediaOption" : "Reproducir desde el principio"
     }
 }

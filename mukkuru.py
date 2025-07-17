@@ -1,18 +1,16 @@
 # Copyright (c) 2025 b1on1cdog
 # Licensed under the MIT License
 """ Mukkuru, cross-platform game launcher """
+#pylint: disable=C0413
 import os
 import json
 from pathlib import Path
-from functools import lru_cache
 import stat
 import subprocess
 import base64
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import sys
-import hashlib
 import logging
 import platform
 import shutil
@@ -23,17 +21,24 @@ from waitress.server import create_server
 from flask import Flask, request, jsonify
 from flask import send_from_directory, send_file
 
-from library import grid_db, video
-from library.steam import get_non_steam_games, get_steam_games, get_steam_env
-from library.steam import read_steam_username, download_steam_avatar
-from library.steam import get_proton_list, get_crossover_env, get_crossover_steam
-
-from library.egs import get_egs_games, read_heroic_username
-
+import utils.core as core
 from utils import hardware_if
 from utils.css_preprocessor import CssPreprocessor
+core.APP_DIR = os.path.dirname(os.path.abspath(__file__))
+from utils.core import mukkuru_env, COMPILER_FLAG, FRONTEND_MODE
+from utils.core import APP_PORT, SERVER_PORT, APP_VERSION, APP_DIR
+from utils.core import app_version, get_config, backend_log, set_alive_status
+from utils.core import update_config
 
-FRONTEND_MODE = "PYWEBVIEW"
+from library import video
+from library.games import get_games, scan_games, scan_thumbnails, get_username
+from library.steam import get_steam_env
+from library.steam import  download_steam_avatar
+
+from controller.license import license_controller
+from controller.hardware import hardware_controller
+from controller.library import library_controller
+from controller.dashboard import dashboard_blueprint
 
 if FRONTEND_MODE == "PYWEBVIEW":
     from view.pywebview import Frontend
@@ -41,91 +46,21 @@ elif FRONTEND_MODE == "WEF":
     from view.wef_view import Frontend
 elif FRONTEND_MODE == "FLASKUI":
     from view.alternate_ui import Frontend
-    # Darwin, Windows, Linux: Chrome, Brave, Edge
-    # Linux: Chromium
 else:
     print("FATAL: Unknown webview, unable to produce interface")
     os._exit(0)
 
 app = Flask(__name__)
+app.register_blueprint(license_controller)
+app.register_blueprint(hardware_controller)
+app.register_blueprint(library_controller)
+
 wserver = Flask(__name__)
+wserver.register_blueprint(dashboard_blueprint)
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.CRITICAL)
 
-mukkuru_env = {}
-
-COMPILER_FLAG = False
-APP_VERSION = "0.3.7"
-BUILD_VERSION = None
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
-APP_PORT = 49347
-SERVER_PORT = 49351
 sserver = create_server(wserver, host="0.0.0.0", port=SERVER_PORT)
-
-@lru_cache(maxsize=1)
-def app_version():
-    ''' generate 6 MD5 digits to use as build number '''
-    if COMPILER_FLAG is False:
-        backend_log("Calculating build version at runtime....")
-        path = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(__file__)
-        hasher = hashlib.md5()
-        with open(path, 'rb') as f:
-            for chunk in iter(lambda: f.read(4096), b''):
-                hasher.update(chunk)
-        full_md5 = hasher.hexdigest()
-        build_version = full_md5[-6:]
-    else:
-        build_version = BUILD_VERSION
-    return f"Mukkuru v{APP_VERSION} build-{build_version}"
-
-
-def library_scan(options):
-    '''
-    Scan library for games
-    1 - Steam
-    2 - Non-Steam
-    4 - EGS
-    '''
-    option_steam = 1 << 0  # 0001 = 1
-    option_nonsteam = 1 << 1  # 0010 = 2
-    option_egs = 1 << 2  # 0100 = 4
-
-    steam = get_steam_env()
-    crossover_steam = get_crossover_steam()
-    games = {}
-    if steam is not None:
-        if options & option_steam:
-            steam_games = get_steam_games(steam)
-            games.update(steam_games)
-        if steam["shortcuts"] is not None and (options & option_nonsteam):
-            non_steam_games = get_non_steam_games(steam)
-            games.update(non_steam_games)
-    if crossover_steam is not None:
-        if options & option_steam:
-            steam_games = get_steam_games(crossover_steam)
-            games.update(steam_games)
-        if steam["shortcuts"] is not None and (options & option_nonsteam):
-            non_steam_games = get_non_steam_games(crossover_steam)
-            games.update(non_steam_games)
-    if options & option_egs:
-        egs_games = get_egs_games()
-        games.update(egs_games)
-    return games
-
-@app.route("/license")
-def get_licenses():
-    """ Get third-party licenses """
-    licenses = {}
-    license_dir = os.path.join(APP_DIR, "docs", "license")
-    license_files = list(Path(license_dir).glob("*.txt"))
-    for license_file in license_files:
-        product_name = license_file.name.replace(".txt", "")
-        licenses[product_name] = license_file.resolve().read_text()
-    return jsonify(licenses)
-
-def has_required_keys(json_data, required):
-    ''' Returns whether json has required keys '''
-    return set(required.keys()).issubset(json_data)
 
 def is_valid_json(filepath, template = None):
     ''' Returns True if JSON is valid, otherwise returns False '''
@@ -133,12 +68,12 @@ def is_valid_json(filepath, template = None):
         with open(filepath, 'r', encoding='utf-8') as f:
             data = json.load(f)
             if template is not None:
-                return has_required_keys(data, required=template)
+                return set(template.keys()).issubset(data)
         return True
     except (json.JSONDecodeError, OSError):
         return False
 
-def get_themes(raw = False):
+def get_themes():
     ''' Return a list of themes '''
     themes_dir = os.path.join(mukkuru_env["root"], "themes")
     theme_manifests = []
@@ -157,18 +92,14 @@ def get_themes(raw = False):
             theme_manifests.append(theme_manifest)
     for theme_manifest in theme_manifests:
         with open(theme_manifest, 'r', encoding='utf-8') as f:
-            #themes.append(json.load(f))
             manifest = json.load(f)
             themes[Path(theme_manifest).parent.name] = manifest
-    if raw is True:
         return themes
-    return json.dumps(themes)
 
-#@lru_cache(maxsize=1)
 def get_theme(selected = None):
     ''' Return css of selected theme '''
     builtin_themes = ["Switch", "Switch 2", "PS5"]
-    config = get_config(True)
+    config = get_config()
     if selected is None:
         selected = config["theme"]
 
@@ -186,7 +117,7 @@ def get_theme(selected = None):
         return css
     backend_log(f"loading user theme {selected}")
     themes_dir = os.path.join(mukkuru_env["root"], "themes")
-    themes = get_themes(True)
+    themes = get_themes()
     theme = themes[selected]
     css = ""
     if theme["style_overwrite"] is False:
@@ -203,24 +134,6 @@ def get_theme(selected = None):
         css = default_css
     return css
 
-@app.route("/hardware/network")
-def connection_status():#segmentation fault
-    ''' returns a json with connection status'''
-    status = hardware_if.connection_status()
-    return json.dumps(status)
-@app.route("/hardware/battery")
-def battery_info():
-    ''' Return a JSON containing battery details '''
-    response = json.dumps(hardware_if.get_battery())
-    return response
-
-@app.route("/hardware")
-def harware_info():
-    ''' get hardware info as a json '''
-    hardware_info = hardware_if.get_info()
-    hardware_info["app_version"] = app_version()
-    return json.dumps(hardware_info)
-
 @app.route('/app/exit')
 def quit_app():
     ''' exit mukkuru '''
@@ -231,61 +144,11 @@ def quit_app():
     #if os.environ.get("XDG_SESSION_DESKTOP", "").lower() == "gamescope":
     os._exit(0)
 
-@app.route('/library/proton')
-def get_proton():
-    ''' list proton builds http '''
-    return jsonify(get_proton_list())
-
-@app.route('/library/launch/<app_id>')
-def launch_app(app_id):
-    '''launches an app using its appID'''
-    process_env = os.environ.copy()
-    games = get_games(True)
-    game_path = games[app_id]["Exe"].strip('"')
-    working_dir = None
-    backend_log(f'Launching game: {game_path} using {games[app_id]["LaunchOptions"]}')
-    if "flatpak" in game_path:
-        pass
-    else:
-        game_path = f'"{game_path}"'
-    launch_command = f'{game_path} {games[app_id]["LaunchOptions"]}'
-    #if '%command%' in games[app_id]["LaunchOptions"]:
-    #    launch_command = games[app_id]["LaunchOptions"].replace('%command', game_path)
-    if "Type" in games[app_id] and games[app_id]["Type"] == "CROSSOVER":
-        process_env = get_crossover_env()
-        launch_command = f"wine --cx-app {launch_command}"
-        working_dir = process_env["CX_DISK"]
-    backend_log(f"using {launch_command}")
-    subprocess.run(launch_command,
-                   stderr=subprocess.DEVNULL,
-                   stdout=subprocess.DEVNULL,
-                   cwd=working_dir,
-                   env=process_env, shell=True, check=False)
-    user_config = get_config(True)
-    if user_config["lastPlayed"] != app_id:
-        user_config["lastPlayed"] = app_id
-        update_config(user_config)
-    #os.environ.pop("STEAM_COMPAT_DATA_PATH", None)
-    #os.environ.pop("STEAM_COMPAT_CLIENT_INSTALL_PATH", None)
-    return "200"
-
-def copy_file(source, destination):
-    ''' copy a file from "source" to "destination" '''
-    with open(source, 'rb') as src, open(destination,'wb') as dst:
-        dst.write(src.read())
-
-def sha256_hash_file(filepath, chunk_size=8192):
-    ''' get sha256 of file, processed as chunks to prevent memory overuse '''
-    sha256 = hashlib.sha256()
-    with open(filepath, 'rb') as f:
-        for chunk in iter(lambda: f.read(chunk_size), b''):
-            sha256.update(chunk)
-    return sha256.hexdigest()
-
 @app.route('/favicon.ico')
 def favicon():
     ''' favicon image '''
     return send_from_directory(os.path.join(APP_DIR, "ui"), 'mukkuru.ico')
+
 @app.route('/store/<storefront>')
 def open_store(storefront):
     ''' Launch the desired game storefront '''
@@ -305,91 +168,9 @@ def open_store(storefront):
     else:
         print(f"unknown storefront {storefront}")
 
-def fetch_artwork(app_id, game, b1, b2, b3, use_alt_images):
-    ''' handle artwork '''
-    blacklist_1 = []
-    blacklist_2 = []
-    blacklist_3 = []
-    hero_index = 0
-    boxart_index = 0
-    logo_index = 0
-    if app_id in use_alt_images:
-        alt_option = use_alt_images[app_id]
-        option_boxart = 1 << 0  # 0001 = 1
-        option_hero = 1 << 1  # 0010 = 2
-        option_logo = 1 << 2  # 0100 = 4
-        if alt_option & option_boxart:
-            boxart_index = 1
-        if alt_option & option_hero:
-            hero_index = 1
-        if alt_option & option_logo:
-            logo_index = 1
-        print(f"using alternate image for {game['AppName']}")
-    thumbnail = os.path.join(mukkuru_env["root"], "thumbnails", f'{app_id}.jpg')
-    game_source = game["Source"]
-    game_identifier = grid_db.GameIdentifier(game["AppName"], app_id, game_source)
-    if not Path(thumbnail).is_file() and app_id not in b1:
-        if grid_db.download_image(game_identifier, thumbnail,"1:1", boxart_index) == "Missing":
-            blacklist_1.append(app_id)
-    hero = os.path.join(mukkuru_env["root"], "hero", f'{app_id}.png')
-    if not Path(hero).is_file() and app_id not in b2:
-        if grid_db.download_image(game_identifier, hero, "hero", hero_index) == "Missing":
-            blacklist_2.append(app_id)
-    logo = os.path.join(mukkuru_env["root"], "logo", f'{app_id}.png')
-    if not Path(logo).is_file() and app_id not in b3:
-        if grid_db.download_image(game_identifier, logo,"logo", logo_index) == "Missing":
-            blacklist_3.append(app_id)
-    result = {}
-    result["1"] = blacklist_1
-    result["2"] = blacklist_2
-    result["3"] = blacklist_3
-    return result
-
-@app.route('/library/artwork/scan')
-def scan_artwork(games = None):
-    ''' scan for games artwork '''
-    backend_log("scanning for new artwork..")
-    config = get_config(True)
-    blacklist1 = config["boxartBlacklist"]
-    blacklist2 = config["heroBlacklist"]
-    blacklist3 = config["logoBlacklist"]
-    use_alt_images = config["useAlternativeImage"]
-    if games is None:
-        games = get_games(True)
-    results = {}
-    with ThreadPoolExecutor(max_workers=config["cores"]*2) as executor:
-        future_to_key = {
-            executor.submit(fetch_artwork, k, v, blacklist1, blacklist2,
-                            blacklist3, use_alt_images): k
-            for k, v in games.items()
-        }
-        counter = 0
-        for future in as_completed(future_to_key):
-            k = future_to_key[future]
-            try:
-                results[k] = future.result()
-                blacklist1.extend(results[k]["1"])
-                blacklist2.extend(results[k]["2"])
-                blacklist3.extend(results[k]["3"])
-                counter = counter + 1
-                if counter % 12 == 0:
-                    set_alive_status({"command": "reloadGameThumbnails"})
-                    scan_thumbnails(games)
-            except (KeyError, OSError, IndexError, FileNotFoundError) as e:
-                results[k] = {"error": str(e)}
-                print(f"scan_arwork error: {str(e)}")
-    config["boxartBlacklist"] = blacklist1
-    config["heroBlacklist"] = blacklist2
-    config["logoBlacklist"] = blacklist3
-    update_config(config)
-    #clear_possible_mismatches(games)
-    scan_thumbnails(games)
-    set_alive_status({"command": "ScanFinished"})
-    return "200"
-
 def get_localization(raw = False):
     ''' Returns a localization dictionary '''
-    user_config = get_config(True)
+    user_config = get_config()
     language = user_config["language"]
     loc_path = f'{APP_DIR}/ui/{user_config["interface"]}/translations.json'
     with open(Path(loc_path),encoding='utf-8') as f:
@@ -409,36 +190,12 @@ def localize():
     ''' get a json with current selected language strings'''
     return get_localization()
 
-#This one must receive POST data
-@app.route('/library/add')
-def add_game():
-    '''add a game manually'''
-    #update_games(game_library)
-    return "Not implemented"
-def update_games(games):
-    '''save game library'''
-    with open(mukkuru_env["library.json"], 'w', encoding='utf-8') as f:
-        json.dump(games, f)
-
-@app.route('/library/get')
-def get_games(raw = False):
-    '''get game library as json'''
-    try:
-        with open(mukkuru_env["library.json"], encoding='utf-8') as f:
-            games = json.load(f)
-    except FileNotFoundError:
-        games = {}
-        update_games(games)
-    if raw is False:
-        return json.dumps(games)
-    return games
-
 @app.route('/media/get')
 def get_media():
     ''' Get all Multimedia '''
     media = {}
     backend_log("fetching media...")
-    user_config = get_config(True)
+    user_config = get_config()
     video_manifest = mukkuru_env["video.json"]
     media["videos"] = video.get_videos(user_config["videoSources"], video_manifest)
     return json.dumps(media)
@@ -452,87 +209,22 @@ def set_videos():
         return "200"
     return "400"
 
-@app.route('/video/thumbnail/<video_id>', methods = ['POST'])
-def set_video_thumbnail(video_id):
-    '''update video thumbnail from request'''        
-    if request.method == 'POST':
-        thumbnail = request.get_json()
-        video.update_thumbnail(mukkuru_env["video.json"], video_id, thumbnail)
-        return "200"
-    return "400"
-
-def get_game_properties(app_id):
-    ''' get game specific properties '''
-    user_config = get_config(True)
-    game_property = {
-        "isFavorite" : False,
-        "isHidden" : False,
-        "useAlternativeImage" : 0,
-        "useAlternativeHero" : False
-    }
-    game_properties = user_config["gameProperties"]
-    if app_id in game_properties:
-        return game_properties[app_id]
-    return game_property
-
-@lru_cache(maxsize=2)
-def get_config(raw = False):
-    ''' get user configuration'''
-    user_config = {
-            "loop" : False,
-            "skipNoArt" : False,
-            "displayBatteryPercent" : False,
-            "maxGamesInHomeScreen" : 12,
-            "interface" : "LuntheraUI",
-            "enableServer" : False,
-            "autoPlayMedia" : False,
-            "videoSources" : [os.path.join(mukkuru_env["root"], "video")],
-            "musicSources" : [os.path.join(mukkuru_env["root"], "music")],
-            "pictureSources" : [os.path.join(mukkuru_env["root"], "pictures")],
-            "protonConfig" : {},
-            "useAlternativeImage" : { "1149550" : 1 },
-            "librarySource" : 3,
-            "darkMode" : False,
-            "startupGameScan" : False,
-            "safeMode" : False,
-            "12H" : True,
-            "fullScreen" : False,
-            "language" : "EN",
-            "blacklist" : [],
-            "favorite" : [],
-            "lastPlayed" : "",
-            "showKeyGuide" : True,
-            "theme" : "Switch",
-            "cores" : 6,
-            "alwaysShowBottomBar" : True,
-            "uiSounds" : "Switch",
-            "gameProperties" : {},
-            "boxartBlacklist" : [],
-            "logoBlacklist" : [],
-            "heroBlacklist" : [],
-        }
-
-    while "config.json" not in mukkuru_env:
-        time.sleep(0.1)
-
-    if not Path(mukkuru_env["config.json"]).is_file():
-        backend_log("No config.json")
-        with open(mukkuru_env["config.json"], 'w', encoding='utf-8') as f:
-            json.dump(user_config, f)
-    with open(mukkuru_env["config.json"], encoding='utf-8') as f:
-        configuration = json.load(f)
-        for key, value in user_config.items():
-            if key not in configuration:
-                configuration[key] = value
-            user_config = configuration
-    if raw is False:
-        return json.dumps(user_config)
-    return user_config
+@app.route('/audios/get')
+def get_audio_packs():
+    ''' get audio pack'''
+    user_config = get_config()
+    audio_packs = []
+    builtin_sfx = os.path.join(APP_DIR, "ui", user_config["interface"], "assets", "audio")
+    user_sfx = os.path.join(mukkuru_env["root"], "sfx")
+    audio_packs.extend(os.listdir(builtin_sfx))
+    audio_packs.extend(os.listdir(user_sfx))
+    return jsonify(audio_packs)
 
 @app.route('/themes/get')
 def get_user_themes():
     ''' get_themes() http controller, returns a json '''
-    return get_themes()
+    themes = get_themes()
+    return jsonify(themes)
 
 @app.route('/theme/<theme_id>/<asset>')
 def get_theme_asset(theme_id, asset):
@@ -544,7 +236,7 @@ def get_theme_asset(theme_id, asset):
 @app.route('/config/get')
 def get_user_configuration():
     ''' get_config() http controller, returns a json '''
-    return get_config()
+    return jsonify(get_config())
 
 @app.route('/config/set', methods = ['GET', 'POST', 'DELETE'])
 def set_config():
@@ -554,7 +246,7 @@ def set_config():
         update_config(user_config)
         return "200"
     if request.method == 'GET':
-        return get_config()
+        return jsonify(get_config())
     if request.method == 'DELETE':
         return "500"
     return "400"
@@ -604,42 +296,10 @@ def delete_data(selection):
         pass
     return "200"
 
-def update_config(user_config):
-    ''' update user configuration '''
-    # clear cached config as the value was updated
-    get_config.cache_clear()
-    with open(mukkuru_env['config.json'] , 'w', encoding='utf-8') as f:
-        json.dump(user_config, f)
-
 @app.route('/alive')
 def ping_request():
     '''reply with "ok", its purpose is making sure backend is running'''
     return get_alive_status(), 200
-
-@app.route('/library/scan')
-def scan_games():
-    ''' scan for games, download artwork if available '''
-    user_config = get_config(True)
-    options = user_config["librarySource"]
-    games = library_scan(int(options))
-    #game_library.update(games)
-    threading.Thread(target=scan_artwork, args=(games,)).start()
-    time.sleep(5)
-    for k, _ in games.items(): #games.keys
-        thumbnail_path = os.path.join(mukkuru_env["root"], "thumbnails", f'{k}.jpg')
-        if not Path(thumbnail_path).is_file():
-            games[k]["Thumbnail"] = False
-        else:
-            games[k]["Thumbnail"] = True
-    update_games(games)
-    return json.dumps(games)
-
-def backend_log(message):
-    ''' print message and save to file '''
-    print(message)
-    if "log" in mukkuru_env:
-        with open(mukkuru_env["log"], 'a', encoding='utf-8') as f:
-            f.write(f"{message}\n")
 
 @wserver.route('/log/<message>')
 @app.route('/log/<message>')
@@ -651,25 +311,6 @@ def log_message(message):
     return "200"
 
 # To-do: allow custom specified username from userConfiguration
-@app.route('/username')
-def get_user():
-    ''' Gets username '''
-    return get_username()
-
-@lru_cache(maxsize=1)
-def get_username():
-    '''Get username'''
-    failover_user = os.environ.get('USER', os.environ.get('USERNAME'))
-    steam = get_steam_env()
-    if steam is None:
-        heroic_user = read_heroic_username()
-        if heroic_user is None:
-            return failover_user
-
-    username = read_steam_username(steam["config.vdf"])
-    if username is None:
-        return failover_user
-    return username
 
 @app.route('/frontend/')
 def main_web():
@@ -681,99 +322,45 @@ def main_uri():
     ''' redirect to homepage '''
     return app.redirect(location=f'http://localhost:{APP_PORT}/frontend/')
 
-@wserver.route('/<path:path>')
-def server_file(path):
-    ''' returns dashboard static files '''
-    user_config = get_config(True)
-    serve_path = os.path.join(APP_DIR, "ui", user_config["interface"])
-    return send_from_directory(serve_path, path)
-
-@wserver.route('/upload', methods=['POST'])
-def upload():
-    ''' receive files as chunks from dashboard uploads '''
-    file = request.files['chunk']
-    filename = request.form['filename']
-    chunk_index = int(request.form['chunkIndex'])
-    chunk_size = int(request.form['chunkSize'])
-    total_chunks = int(request.form['totalChunks'])
-
-    video_files = ["mp4", "m4v"]
-    image_files = ["png", "jpg", "webm"]
-    music_files = ["mp3", "m4a"]
-    #allowed_files = []
-    # To-do: allow user to store these files in another drive
-    # To-do: allow users to move and/or store files in OS user folder
-    # To-do: restrict what file formats can be received
-    cmd = None
-    alt_cmd = None
-    value = None
-    file_extension = Path(filename).suffix.replace(".", "")
-    user_config = get_config(True)
-    if file_extension in video_files:
-        upload_folder = user_config["videoSources"][0]
-        cmd = "playVideo"
-        alt_cmd = "reloadVideos"
-        value = f"video/0/{filename}"
-    elif file_extension in image_files:
-        upload_folder = os.path.join(mukkuru_env["root"], "pictures")
-        cmd = "openPicture"
-        alt_cmd = "reloadPictures"
-        value = f"pictures/0/{filename}"
-    elif file_extension in music_files:
-        upload_folder = os.path.join(mukkuru_env["root"], "music")
-        cmd = "playAudio"
-        alt_cmd = "reloadAudios"
-        value = f"music/0/{filename}"
-    else:
-        upload_folder = os.path.join(mukkuru_env["root"], "miscellaneous")
-
-    save_path = os.path.join(upload_folder, filename)
-    os.makedirs(upload_folder, exist_ok=True)
-
-    if chunk_index == 0:
-        backend_log(f"downloading {filename}")
-        if Path(save_path).exists():
-            os.remove(save_path)
-
-    with open(save_path, 'ab') as f:
-        f.seek(chunk_index * chunk_size)
-        f.write(file.read())
-    if (chunk_index + 1) == total_chunks and cmd is not None:
-        user_config = get_config(True)
-        status = {}
-        if user_config["autoPlayMedia"]:
-            status["command"] = cmd
-        else:
-            status["command"] = alt_cmd
-        status["value"] = value
-        set_alive_status(status)
-    return 'Chunk received', 200
-
 @wserver.route('/')
 @wserver.route('/index.html')
 def server_main():
     ''' returns main dashboard page'''
-    user_config = get_config(True)
+    user_config = get_config()
     serve_path = os.path.join(APP_DIR, "ui", user_config["interface"])
     return send_from_directory(serve_path, "dashboard.html")
 
 @app.route('/frontend/<path:path>')
 def static_file(path):
     ''' serve asset '''
-    user_config = get_config(True)
+    user_config = get_config()
     serve_path = os.path.join(APP_DIR, "ui", user_config["interface"])
     if path == "assets/avatar":
-        avatar_file = os.path.join(mukkuru_env["artwork"], "Avatar", f"{get_user()}.jpg")
-        avatar_png = os.path.join(mukkuru_env["artwork"], "Avatar", f"{get_user()}.png")
+        avatar_file = os.path.join(mukkuru_env["artwork"], "Avatar", f"{get_username()}.jpg")
+        avatar_png = os.path.join(mukkuru_env["artwork"], "Avatar", f"{get_username()}.png")
         if Path(avatar_file).is_file():
-            return send_from_directory(mukkuru_env["artwork"], f"Avatar/{get_user()}.jpg")
+            return send_from_directory(mukkuru_env["artwork"], f"Avatar/{get_username()}.jpg")
         elif Path(avatar_png).is_file():
-            return send_from_directory(mukkuru_env["artwork"], f"Avatar/{get_user()}.png")
+            return send_from_directory(mukkuru_env["artwork"], f"Avatar/{get_username()}.png")
         else:
             return send_from_directory(serve_path, os.path.join("assets","avatar_man.png"))
     if path.startswith("assets/audio/"):
+        user_sfx = os.path.join(mukkuru_env["root"], "sfx")
+        user_audios = os.listdir(user_sfx)
         audio_file = path.replace("assets/audio/", "")
         new_path = f'assets/audio/{user_config["uiSounds"]}/{audio_file}'
+        if user_config["uiSounds"] in user_audios:
+            serve_path = user_sfx
+            new_path = new_path.replace("assets/audio/", "")
+        ogg_file = f'{new_path}.ogg'
+        wav_file = f'{new_path}.wav'
+        mp3_file = f'{new_path}.mp3'
+        if Path(os.path.join(serve_path, ogg_file)).exists():
+            new_path = ogg_file
+        elif Path(os.path.join(serve_path, wav_file)).exists():
+            new_path = wav_file
+        elif Path(os.path.join(serve_path, mp3_file)).exists():
+            new_path = mp3_file
         return send_from_directory(serve_path, new_path)
     if path.startswith("thumbnails/") or path.startswith("hero/"):
         return send_from_directory(mukkuru_env["root"], path, mimetype='image/jpeg')
@@ -794,48 +381,10 @@ def static_file(path):
         return send_file(buf, mimetype="image/png")
     return send_from_directory(serve_path, path)
 
-@app.route('/frontend/video/<source>/<filename>', methods=["GET", "DELETE"])
-def video_serve(source, filename):
-    '''serve video files'''
-    user_config = get_config(True)
-    video_source = user_config["videoSources"][int(source)]
-    if request.method == 'DELETE':
-        video_path = os.path.join(video_source, filename)
-        th = f"{os.path.splitext(filename)[0]}-thumbnail.png"
-        th_path = os.path.join(video_source, th)
-        os.remove(video_path)
-        os.remove(th_path)
-        return "200"
-    return send_from_directory(video_source, filename)
-
-@app.route('/frontend/music/<source>/<filename>')
-def music_serve(source, filename):
-    '''serve music files'''
-    user_config = get_config(True)
-    music_path = user_config["musicSources"][int(source)]
-    return send_from_directory(music_path, filename)
-
-@app.route('/frontend/picture/<source>/<filename>')
-def picture_serve(source, filename):
-    '''serve music files'''
-    user_config = get_config(True)
-    pic_path = user_config["pictureSources"][int(source)]
-    return send_from_directory(pic_path, filename)
-
-def scan_thumbnails(games):
-    '''update the thumbnail status for all games'''
-    for k in games.keys():
-        thumbnail_path = os.path.join(mukkuru_env["root"], "thumbnails", f'{k}.jpg')
-        if not Path(thumbnail_path).is_file():
-            games[k]["Thumbnail"] = False
-        else:
-            games[k]["Thumbnail"] = True
-    update_games(games)
-
 @app.route('/config/fullscreen')
 def is_fullscreen():
     ''' show whether app should be in fullscreen '''
-    user_config = get_config(True)
+    user_config = get_config()
     return user_config["fullScreen"]
 
 @app.route('/server/<action>', methods = ['POST', 'GET'])
@@ -861,7 +410,7 @@ def init_server(action):
 def start_app(is_server = False):
     ''' init server '''
     try:
-        user_config = get_config(True)
+        user_config = get_config()
         cores = user_config["cores"]
         if is_server:
             sserver.adj.core_count = cores
@@ -926,10 +475,6 @@ def get_alive_status():
         set_alive_status(default)
     return response
 
-def set_alive_status(value):
-    ''' set alive status, this will be periodically read from frontend '''
-    mukkuru_env["alive"] = value
-
 def main():
     ''' start of app execution '''
     system = platform.system()
@@ -952,7 +497,7 @@ def main():
     mukkuru_env["update"] = os.path.join(mukkuru_env["root"], "update")
     # Instead of writing another executable, this one will conditionally
     # act as the updater
-    if Path(mukkuru_env["update"]).is_dir():
+    if Path(mukkuru_env["update"]).is_dir() and COMPILER_FLAG:
         process_update()
 
     needed_dirs = [
@@ -968,6 +513,7 @@ def main():
         os.path.join(mukkuru_env["root"], "hero"),
         os.path.join(mukkuru_env["root"], "themes"),
         os.path.join(mukkuru_env["root"], "plugins"),
+        os.path.join(mukkuru_env["root"], "sfx"),
     ]
 
     set_alive_status({"Status": "OK" })
@@ -976,11 +522,11 @@ def main():
         if not os.path.isdir(needed_dir):
             os.mkdir(needed_dir)
 
-    user_config = get_config(True)
+    user_config = get_config()
     if not Path(mukkuru_env["library.json"]).is_file():
         backend_log("No library.json")
     else:
-        games = get_games(True)
+        games = get_games()
         scan_thumbnails(games)
     if user_config["startupGameScan"] is True:
         backend_log("[debug] startupGameScan: True, starting library scan")

@@ -1,14 +1,19 @@
 :root {
   --footer-button-bg: rgba(0, 0, 0, 0);
   --dark-footer-button-bg: unset;
+  --dark-mode-accent-color: #fff;
   --hide-bottom-bar: 1;
   --display-hero: 1;
   --applist-columns: 5;
+  --game-title-scrolling-text: 0;
+  --use-glass: 1;
+  --all-software-thumbnail: "assets/img/all-software-2.png";
 }
 
 html {
     --select-light: #ffffffec;
     --select-dark: #b7b7b7;
+    --accent-color: #2E2E2E;
 }
 .gameLauncher {
     height: 140px;

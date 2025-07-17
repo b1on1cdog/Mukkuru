@@ -43,6 +43,11 @@ const SOURCE_OPTIONS = {
 
 let tabOptions = {};
 
+const blistOptions = {
+    "theme" : ["Switch", "Switch 2", "PS5"],
+    "uiSounds" : ["Switch", "PS5"]
+}
+
 function getSelectedOptions(bitmask) {
   return Object.entries(SOURCE_OPTIONS)
     .filter(([_, value]) => bitmask & value)
@@ -145,6 +150,16 @@ function addUserThemes(){
     });
 }
 
+function addUserAudios(){
+    fetch("/audios/get").then(function(response) {
+        return response.json();
+    }).then(function(data) {
+        backend_log("updating audios...");
+        blistOptions.uiSounds = data;
+        backend_log("new audios" + JSON.stringify(data));
+    })
+};
+
 function refreshOptions() {
     document.querySelectorAll(".options").forEach((item, index) => {
         options = item.querySelectorAll(".menu-option");
@@ -193,6 +208,7 @@ fetch("/config/get").then(function(response) {
         showKeyGuide(userConfiguration["showKeyGuide"]);
         refreshOptions();
         addUserThemes();
+        addUserAudios();
         menuItems[0].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
         tabOptions[0][0].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
         allowRendering();
@@ -249,12 +265,6 @@ const optionRangeMin = {
 const optionRangeMax = {
     "maxGamesInHomeScreen" : 24
 }
-
-const blistOptions = {
-    "theme" : ["Switch", "Switch 2", "PS5"],
-    "uiSounds" : ["Switch", "PS5"]
-}
-
 
 //
 
@@ -414,7 +424,7 @@ document.addEventListener('keydown', (e) => {
                 menuItems[selectedTab].className = "menu-tab marked";
                 showPreviousSeparator(false);
                 showNextSeparator(false);
-                playSound("tick");
+                playSound("select");
                 break;
             
             case 'confirm':
@@ -423,7 +433,7 @@ document.addEventListener('keydown', (e) => {
                 //Trigger ArrowRight
                 break;
             }
-            playSound("enter-back");
+            playSound("tick");
             elem = tabOptions[selectedTab][selectedOption];
                 //elem = tabOptions[selectedTab][selectedOption];
             if (elem.dataset.hasOwnProperty("call")) {
@@ -520,7 +530,7 @@ document.addEventListener('keydown', (e) => {
                     showPreviousSeparator(true);
                     showNextSeparator(true);
                 }
-                playSound("tick");
+                playSound("select");
                 break;
             
             case 'up':
@@ -561,7 +571,7 @@ document.addEventListener('keydown', (e) => {
                 showPreviousSeparator(false);
                 showNextSeparator(false);
             }
-                playSound("tick");
+                playSound("select");
                 break;
             case 'down':
                 if (lockedOption) {
@@ -610,11 +620,12 @@ document.addEventListener('keydown', (e) => {
                     showPreviousSeparator(false);
                     showNextSeparator(false);
             }
-                playSound("tick");
+                playSound("select");
                 break;
             case 'back':
                 //tabOptions[selectedTab].getElementsByClassName("parent")
                 if (previousPages.length > 0) {
+                    playSound("enter-back");
                     openPreviousPage();
                     return;
                 }
@@ -641,7 +652,6 @@ document.addEventListener('keydown', (e) => {
             </div>
             <div class="separator"></div>
         </div>
-
         <main class="settings-body">
             
             <div class="menu">

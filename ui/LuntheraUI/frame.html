@@ -18,7 +18,7 @@
         height: 100vh;
         border: none;
         cursor: none;
-  }
+    }
         </style>
 </head>
 <body>
@@ -33,6 +33,7 @@ window.addEventListener('message', (event) => {
 let once = false;
 document.addEventListener('DOMContentLoaded', () => {
     const frame = document.getElementById("main").contentWindow;
+    
     document.addEventListener('keydown', (e) => {
         switch (keyBindings[e.key]){
             case "confirm":
@@ -40,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     once = true;
                     frame.focus();
                     frame.document.documentElement.click();
+                    data = {}
                     frame.postMessage(data, "userGestureNoLongerRequired");
                 }
                 break;

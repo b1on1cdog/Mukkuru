@@ -1,16 +1,18 @@
-'''module for Mukkuru video handling'''
+# Copyright (c) 2025 b1on1cdog
+# Licensed under the MIT License
+'''module for Mukkuru video library'''
 import re
 import os
 import hashlib
 import json
 import base64
 from pathlib import Path
+from datetime import datetime
 from urllib.parse import quote
 from collections import defaultdict
 
 # To-do list
 # Store playing video duration, user might want to resume it later
-# there should be a list [] of user video sources in mukkuru config.json
 SHOWS_PATTERN = re.compile(
     r"""
     ^(?P<title>.+?)
@@ -103,6 +105,17 @@ def update_thumbnail(video_manifest_path, video_id, thumbnail):
     thumbnail_b64 = thumbnail.replace("data:image/png;base64,", "")
     image_data = base64.b64decode(thumbnail_b64)
     with open(videos[video_id]["thumbnail"], "wb") as f:
+        f.write(image_data)
+
+def save_screenshot(save_path, screenshot):
+    ''' saves a picture '''
+    picture_b64 = screenshot.replace("data:image/png;base64,", "")
+    image_data = base64.b64decode(picture_b64)
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    pic_name = f"screenshot_{timestamp}.png"
+    if not Path(save_path).is_dir():
+        os.mkdir(save_path)
+    with open(os.path.join(save_path, pic_name), "wb") as f:
         f.write(image_data)
 
 def update_videos(video_manifest_path, videos):

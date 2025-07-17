@@ -1,11 +1,10 @@
 # Copyright (c) 2025 b1on1cdog
 # Licensed under the MIT License
-''' compile script for Mukkuru, written by b1on1cdog '''
+''' compile script for Mukkuru '''
 import sys
 import platform
 import os
 import subprocess
-import hashlib
 import shutil
 from pathlib import Path
 import argparse
@@ -35,7 +34,6 @@ if Path("compiler.json").is_file():
         compiler_config = json.load(conf)
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
-
 USE_WEF = args.wef
 
 def unix_path(path):
@@ -93,7 +91,6 @@ requirements = requirements + ["setuptools"]
 
 if system == "Linux":
     requirements = requirements + ["patchelf", "flaskwebgui"]
-#    USE_WEF = True
 
 if USE_WEF is False and "flaskwebgui" not in requirements:
     requirements = requirements + ["pywebview"]
@@ -103,22 +100,23 @@ AARCH = {'x86_64': 'x86_64',
          'aarch64': 'arm64'}.get(platform.machine(), platform.machine())
 SRC_FILE = "mukkuru.py"
 SRC_OUT = f"mukkuru-{system.lower()}-{AARCH}.py"
+CORE_FILE = os.path.join("utils", "core.py")
 OUTPUT_DIR = "build"
 OUTPUT_FILE = f"mukkuru-{system.lower()}-{AARCH}"
 ICON_PATH = os.path.join("ui", "mukkuru.ico")
 PNG_PATH = os.path.join("ui", "mukkuru.png")
 VENV = os.path.join(".venv", f"{system.lower()}-{AARCH}")
 SRC_CONTENT = None
+CORE_CONTENT = None
 
-with open(SRC_FILE, 'r', encoding='utf-8') as sr_file:
-    SRC_CONTENT = sr_file.read()
+with open(CORE_FILE, 'r', encoding='utf-8') as cr_file:
+    CORE_CONTENT = cr_file.read()
 
-if SRC_CONTENT is None:
+if CORE_CONTENT is None:
     print("unable to read main file, exiting....")
     exit(0)
 
-APP_VERSION = re.search(r'APP_VERSION\s*=\s*["\'](.*?)["\']', SRC_CONTENT).group(1)
-#OUTPUT_FILE = f"{OUTPUT_FILE}-{APP_VERSION}"
+APP_VERSION = re.search(r'APP_VERSION\s*=\s*["\'](.*?)["\']', CORE_CONTENT).group(1)
 
 venv_python = os.path.join(VENV, 'bin', 'python')
 
@@ -149,51 +147,6 @@ def add_package(packages, python_executable = sys.executable):
     if result.returncode != 0:
         print(f"failed to install dep {result}")
         exit(-1)
-
-def build_version():
-    ''' generate 6 MD5 digits to use as build number '''
-    hasher = hashlib.md5()
-    with open(SRC_FILE, 'rb') as f:
-        for chunk in iter(lambda: f.read(4096), b''):
-            hasher.update(chunk)
-        return hasher.hexdigest()[-6:]
-
-def patch_source_code(mukkuru_src):
-    ''' Do temporal changes to source code  '''
-    mukkuru_src = mukkuru_src.replace("COMPILER_FLAG = False", "COMPILER_FLAG = True")
-    mukkuru_src = mukkuru_src.replace("BUILD_VERSION = None",f'BUILD_VERSION = "{build_version()}"')
-    frontend = "Default"
-    if "pywebview" in requirements:
-        #mukkuru_src = mukkuru_src.replace("USE_PYWEBVIEW = False","USE_PYWEBVIEW = True")
-        frontend = "PYWEBVIEW"
-    if "flaskwebgui" in requirements:
-        frontend = "FLASKUI"
-    if USE_WEF:
-        frontend = "WEF"
-    if frontend != "Default":
-        mukkuru_src = re.sub(r'(FRONTEND_MODE\s*=\s*)["\'].*?["\']', fr'\1"{frontend}"',mukkuru_src)
-    with open(SRC_OUT, "w", encoding='utf-8') as f:
-        f.write(mukkuru_src)
-
-def certifi_patch():
-    '''temporal patch due to Nuitka issue #3514, no longer used, kept for future reference'''
-    python_name = f"python{sys.version_info.major}.{sys.version_info.minor}"
-    certifi_core = os.path.join(VENV, "lib", python_name, "site-packages", "certifi", "core.py")
-    if system == "Windows":
-        certifi_core = os.path.join(VENV, "Lib", "site-packages", "certifi", "core.py")
-    if not Path(certifi_core).is_file():
-        print("certifi_core not found")
-        return
-    original = "if sys.version_info >= (3, 11):"
-    replacement = f"if ({sys.version_info.major}, {sys.version_info.minor}):"
-    with open(certifi_core, 'r', encoding='utf-8') as file_r:
-        content = file_r.read()
-        if original in content:
-            content = content.replace(original, replacement)
-            with open(certifi_core, 'w', encoding='utf-8') as ww:
-                print("patching certifi/core.py...")
-                ww.write(content)
-
 # FUNCTIONS END
 
 if args.docker:
@@ -247,7 +200,7 @@ if args.alt:
     if not args.debug:
         compiler_flags.append("--noconsole")
     compiler_flags.append(SRC_OUT)
-    patch_source_code(SRC_CONTENT)
+    shutil.copy(SRC_FILE, SRC_OUT)
     invoke(compiler_flags, venv_python)
     os.remove(SRC_OUT)
     os._exit(0)
@@ -267,8 +220,6 @@ if system == "Darwin":
 elif args.debug:
     compiler_flags.append("--standalone")
     compiler_flags.append("--debug")
-    #compiler_flags.append("--experimental=allow-c-warnings")
-    #os.environ["CFLAGS"] = "-Wall -Wextra -g -Wno-unused-but-set-variable"
 elif args.onedir:
     compiler_flags.append("--standalone")
 else:
@@ -281,19 +232,14 @@ compiler_flags.append(f"--include-data-dir={UI_SOURCE}={UI_SOURCE}")
 compiler_flags.append(f"--include-data-dir={LICENSE_SOURCE}=docs")
 compiler_flags.append(SRC_OUT)
 compiler_flags.append(f"--output-filename={OUTPUT_FILE}")
-#compiler_flags.append("-o")
-#compiler_flags.append(os.path.join(OUTPUT_DIR, OUTPUT_FILE))
 
 if True and not Path(OUTPUT_DIR).is_dir():
     os.mkdir(OUTPUT_DIR)
 compiler_flags.append(f"--output-dir={OUTPUT_DIR}")
-
-patch_source_code(SRC_CONTENT)
-
+shutil.copy(SRC_FILE, SRC_OUT)
 if args.run:
     invoke([SRC_OUT], venv_python)
 else:
     invoke(compiler_flags, venv_python)
 os.remove(SRC_OUT)
-
 # end compile.py

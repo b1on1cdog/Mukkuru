@@ -1,8 +1,8 @@
 # Mukkuru
 -----------------
 Cross-Platform customizable game launcher written in Python, optimized for GamePads.<br/>
-This is still in early stages and is not yet suitable for final use.<br/>
-
+> [!IMPORTANT]
+> Mukkuru is still at early stages; some features might have bugs and/or security flaws, use at your own discretion.<br/>
 # License
 Mukkuru is [licensed under MIT](LICENSE)<br/>
 See [third-party.md](docs/third-party.md) for third-party files license terms.<br/>
@@ -10,11 +10,13 @@ See [third-party.md](docs/third-party.md) for third-party files license terms.<b
 # Current features
 - SW, SW2, PS5 like themes<br/>
 - Import custom user themes<br/>
-- Dark mode<br/>
+- Dark mode and light mode<br/>
 - Scan games from Steam Library<br/>
 - Scan games from Epic Games Library and Heroic<br/>
 - WebUI to transfer videos from another device<br/>
+- Video playback and take video screenshots with a single button<br/>
 - Automatically download boxarts from SteamGridDB<br/>
+- Multi-language (currently only English and Spanish) <br/>
 - Linux, Windows and MacOS Support<br/>
 - Strict static analysis compliance<br/>
 - Plug and play compile environment<br/>
@@ -31,13 +33,14 @@ Some others are going to receive occasional uploads</br>
 [Read changelog.md](docs/changelog.md)
 
 # To-do list
-- Add ability to download games</br>
-- Add joystick buttons customization<br/>
-- Allow loading external audio packs<br/>
+- Add button to transfer mukkuru media and misc files to user folders<br/>
+- Hide option to show battery percent in devices without battery<br/>
+- Add option to read current version changelog in settings/about<br/>
 - Order recent played items in main screen<br/>
-- Screenshots in videoplayer<br/>
-- Videoplayback controls from webui dashboard<br/>
-- Additional webui to manipulate Mukkuru config from another device <br/>
+- Add support for non-flatpak Heroic and MacOS Heroic<br/>
+- Add support for crossover EGS in MacOS<br/>
+- More webui features: <br/>
+    - Videoplayback control<br/>
     - Drag and drop wallpaper change <br/>
     - Menu to organize games, mark as favorite, blacklist, etc <br/>
     - Option to setup SteamGridDB api <br/>
@@ -46,8 +49,10 @@ Some others are going to receive occasional uploads</br>
 - Plugin support, with a plugin storefront<br/>
     - The first plugin might be one to patch VNs<br/>
 - Game provider install helper (Steam, Heroic, etc)<br/>
+- Update Mukkuru from app<br/>
+- Add joystick buttons customization<br/>
 - Support for linux box86 in arm64<br/>
-- User friendly installer<br/>
+- Add ability to download games</br>
 
 # Known issues
 - Sometimes context menus do not disappear when they should <br/>

@@ -1,6 +1,7 @@
 :root {
     --footer-button-bg: rgba(0, 0, 0, 0);
     --dark-footer-button-bg: unset;
+    --all-software-thumbnail: "assets/img/all-software-2.png";
 }
 .footerNavigation {
     background-color: var(--select-border);

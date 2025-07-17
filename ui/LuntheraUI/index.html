@@ -44,7 +44,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         isUserGestureRequired = window.self !== window.top;
     }
-
     /*
         Mukkuru should have it's own game source, since some users might want games outside
         from Steam or they might want to include/exclude some games from it
@@ -54,8 +53,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const displayHero = styles.getPropertyValue('--display-hero').trim() == "1";
     const hideBottomBar = styles.getPropertyValue('--hide-bottom-bar').trim() == "1";
     const footerButtonBg = styles.getPropertyValue('--footer-button-bg').trim();
+    const darkModeAccentColor = styles.getPropertyValue('--dark-mode-accent-color').trim();
+    const darkModeSelectBorder = styles.getPropertyValue('--dark-mode-select-border').trim();
     const darkFooterButtonBg = styles.getPropertyValue('--dark-footer-button-bg').trim();
+    const allSoftwareThumbnailURL = styles.getPropertyValue('--all-software-thumbnail').trim().slice(1, -1);
+    backend_log(allSoftwareThumbnailURL);
     listColumns = Number(styles.getPropertyValue('--applist-columns').trim());
+    const useGlass = styles.getPropertyValue('--use-glass').trim() == "1";
     const appListCols = (listColumns == 0 || isNaN(listColumns) )?6:listColumns;
     backend_log("Using "+appListCols+" columns")
     if (footerButtonBg != "") {
@@ -76,13 +80,10 @@ document.addEventListener('DOMContentLoaded', () => {
             backend_log(`[debug] config init failed ${userConfiguration} ${userConfiguration.length}`);
         }
 
-        listStyle = userConfiguration["theme"];
         if (userConfiguration["darkMode"] == true) {
-        
         /*
         We will get the colors from CSS, this way if colors need to be changed in future,
         only css modifications are needed.
-        To-do: migrate darkMode to CSS
         */
         if (localStorage.getItem("darkMode") != "true") {
             backend_log("[debug] new session with darkMode enabled");
@@ -91,12 +92,15 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             backend_log("[debug] using existing session");
         }
-        document.documentElement.style.setProperty("--select-border", "#0b0b0b");
-        document.getElementsByClassName("homeMenu")[0].style.setProperty("--bg-color", darkColor);
-        if (darkFooterButtonBg != ""){
-            document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = darkFooterButtonBg); // this one must be slightly different to background 
+
+        if (darkModeSelectBorder != "") {
+            document.documentElement.style.setProperty("--select-border", darkModeSelectBorder);
         }
 
+        document.getElementsByClassName("homeMenu")[0].style.setProperty("--bg-color", darkColor);
+        if (darkFooterButtonBg != ""){
+            document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = darkFooterButtonBg); //this one must be slightly different to background
+        }
         document.querySelectorAll(".footerButton-icon").forEach((element) => {
             if (element instanceof SVGElement) {
                 element.getElementsByTagName("path")[0].style.fill = lightColor;
@@ -105,13 +109,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementsByClassName("controllerState-type")[0].getElementsByTagName("svg")[0].getElementsByTagName("path")[0].style.fill = lightColor;
         document.getElementsByClassName("wifiState-icon")[0].getElementsByTagName("path")[0].style.fill = lightColor;
         document.querySelectorAll(".keyGuide-icon").forEach((element) => element.getElementsByTagName("path")[0].style.fill = lightColor);
-        if (listStyle == "PS5") {
-            document.documentElement.style.setProperty("--accent-color", "#fff")
+        if (darkModeAccentColor != "") {
+            document.documentElement.style.setProperty("--accent-color", darkModeAccentColor);
         }
-
-    } else if (listStyle == "PS5") {
-        //document.documentElement.style.setProperty("--accent-color", "#4e0915");
-        document.documentElement.style.setProperty("--accent-color", "#2E2E2E");
     }
 
     clockUpdate(userConfiguration["12H"]);
@@ -219,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         button.appendChild(title);
         button.appendChild(thumbnail);
-        if (userConfiguration["theme"] == "PS5") {
+        if (useGlass) {
             const glass = document.createElement('div');
             glass.className = 'glass-effect';
             button.appendChild(glass);
@@ -260,12 +260,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const thumbnail = document.createElement('img');
         thumbnail.className = 'gameLauncher-icon';
-        if (userConfiguration["theme"] == "PS5" || userConfiguration["theme"] == "Switch 2") {
-            thumbnail.src = "assets/img/all-software-2.png";
+
+        if (allSoftwareThumbnailURL != "") {
+            thumbnail.src = allSoftwareThumbnailURL;
         } else {
             thumbnail.src = "assets/img/all-software.png";
         }
-        //
+
         const title = document.createElement('div');
         title.className = 'gameLauncher-title';
         title.id = "allSoftware-title";
@@ -361,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetch("/username").then(function(response) {
         return response.text();
     }).then(function(data) {
-        profileRow[0].title = data;
+        profileRow[0].dataset.username = data;
     }).catch(function(err) {
         console.log('Fetch Error :-S', err);
     });
@@ -738,7 +739,9 @@ document.addEventListener('DOMContentLoaded', () => {
             showBottomBar(true);
         }
 
-        if (currentRow == 1 && userConfiguration["theme"] == "Switch"){
+        const scrollingText = styles.getPropertyValue('--game-title-scrolling-text').trim() == "1";
+
+        if (currentRow == 1 && scrollingText){
         let launchers = (currentRow == 1)?gameLaunchers:appLaunchers;
         let titleDOM = (currentRow == 1)?".gameLauncher-title":".appLauncher-title";
 
@@ -771,12 +774,13 @@ document.addEventListener('DOMContentLoaded', () => {
 </head>
 <body>
     <video id="videoPlayer" disablepictureinpicture controlsList="nofullscreen disablepictureinpicture noremoteplayback"></video>
+    <div id="flash"></div>
     <div id="videoTime">00:00/00:00</div>
     <article class="homeMenu pending">
         <header class="homeHeader">
             <div class="background-layer" id="bg"></div>
             <div class="userList">
-                <a href="#" class="userList-user" title="User">
+                <a href="#" class="userList-user" data-username="User">
                     <img class="userList-icon" src="./assets/avatar" alt="User Picture">
                 </a>
             </div>
@@ -843,6 +847,10 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="contextualMenu" id="videoContextMenu">
             <div class="contextItem selected" id="deleteVideoOption" data-loc="id" data-trm="swapText" onclick='deleteVideo(mediaItems[currentMedia])'>Delete video</div>
         </div>
+        <div class="contextualMenu" id="resumeContextMenu">
+            <div class="contextItem selected" id="resumeMediaOption" data-loc="id" data-trm="swapText" onclick='playVideo(mediaItems[currentMedia].id, mediaItems[currentMedia].dataset.resume)'>Resume from where i left it</div>
+            <div class="contextItem" id="restartMediaOption" data-loc="id" data-trm="swapText" onclick='playVideo(mediaItems[currentMedia].id)'>Start from beginning</div>
+        </div>
         <div class="contextualMenu" id="emptyContext" style="opacity: 0.9;">
             <div id="emptyMessage" data-loc="id" data-trm="swapText" style="margin: 50px 50px 50px 50px">There's nothing to display here</div>
         </div>
@@ -860,10 +868,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="32px" height="32px">
                     <path xmlns="http://www.w3.org/2000/svg" fill="currentColor" fill-rule="evenodd" d="M38.25 24a13.5 13.5 0 0 1-25.83 5.502l-4.173 1.695A18.003 18.003 0 0 0 42.75 24 18 18 0 0 0 10.5 13.002V7.5H6v12l2.25 2.25h10.5v-4.5h-5.694A13.5 13.5 0 0 1 38.25 24" clip-rule="evenodd"></path>
                 </svg>Restart Mukkuru</div>
-                            <!-- div class="contextItem" id="restartDeviceBtn" data-loc="restartDevice" data-trm="swapText" onclick="restartDevice()">Restart device</div -->
-
-            <!-- div class="contextItem" id="shutdownDeviceBtn" data-loc="shutdownDevice" data-trm="swapText" onclick="shutdownDevice()">Shutdown device</div -->
-            <!-- div class="contextItem" id="restartDeviceBtn" data-loc="restartDevice" data-trm="swapText" onclick="restartDevice()">Restart device</div -->
         </div>
         <footer class="homeFooter pending">
             <div class="controllerState">

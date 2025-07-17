@@ -11,8 +11,6 @@ import time
 from urllib.parse import urlparse
 from flaskwebgui import FlaskUI, close_application
 
-from utils.hardware_if import kill_executable_by_path
-
 FLASKWEBGUI_USED_PORT = None
 FLASKWEBGUI_BROWSER_PROCESS = None
 

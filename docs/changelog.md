@@ -1,5 +1,17 @@
 # Changelog
 -----------------
+# 0.3.8
+- Some theme logic was moved to CSS so it can be controlled from user themes<br/>
+- Fixed game scrolling title not stopping in SW2 Theme<br/>
+- Removed tooltip in top of username<br/>
+- It is now possible to load user audio effects<br/>
+- MP3 and OGG are now supported audio effects formats<br/>
+- Added an extra built-in ui audio effect called "original"<br/>
+- Distributed some mukkuru.py functions in other files to prevent too many lines in single file <br/>
+- Added screenshots when pressing "options" during video playback<br/>
+- Users can now resume video playback after closing video<br/>
+- Simplified compile.py, removing unused functions and migrating some logic to src files<br/>
+- "BUILD_VERSION" is removed, as it wasn't really relevant to users anyways<br/>
 # 0.3.7
 - Added option to display battery percent <br/>
 - Added small spinning animation when library scan is in progress<br/>
