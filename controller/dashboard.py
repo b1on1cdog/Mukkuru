@@ -14,8 +14,7 @@ dashboard_blueprint = Blueprint('library', __name__)
 @dashboard_blueprint.route('/<path:path>')
 def server_file(path):
     ''' returns dashboard static files '''
-    user_config = get_config()
-    serve_path = os.path.join(APP_DIR, "ui", user_config["interface"])
+    serve_path = os.path.join(APP_DIR, "ui")
     return send_from_directory(serve_path, path)
 
 @dashboard_blueprint.route('/upload', methods=['POST'])

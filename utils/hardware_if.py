@@ -136,6 +136,9 @@ def get_info():
     gpu = gpu.replace("Advanced Micro Devices, Inc. ", "")
     gpu = gpu.replace("[AMD/ATI] ", "")
     hardware_info["gpu"] = gpu
+    hardware_info["has_battery"] = True
+    if get_battery() is None:
+        hardware_info["has_battery"] = False
     return hardware_info
 
 def get_active_net_interfaces():

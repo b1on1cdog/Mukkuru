@@ -34,7 +34,6 @@ Some others are going to receive occasional uploads</br>
 
 # To-do list
 - Add button to transfer mukkuru media and misc files to user folders<br/>
-- Hide option to show battery percent in devices without battery<br/>
 - Add option to read current version changelog in settings/about<br/>
 - Order recent played items in main screen<br/>
 - Add support for non-flatpak Heroic and MacOS Heroic<br/>

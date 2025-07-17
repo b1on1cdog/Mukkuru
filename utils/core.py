@@ -12,7 +12,7 @@ import platform
 # Constants
 mukkuru_env = {}
 COMPILER_FLAG = getattr(sys, 'frozen', False)
-APP_VERSION = "0.3.8"
+APP_VERSION = "0.3.9"
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
@@ -47,7 +47,6 @@ def get_config():
             "skipNoArt" : False,
             "displayBatteryPercent" : False,
             "maxGamesInHomeScreen" : 12,
-            "interface" : "LuntheraUI",
             "enableServer" : False,
             "autoPlayMedia" : False,
             "videoSources" : [os.path.join(mukkuru_env["root"], "video")],

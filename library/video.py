@@ -11,8 +11,6 @@ from datetime import datetime
 from urllib.parse import quote
 from collections import defaultdict
 
-# To-do list
-# Store playing video duration, user might want to resume it later
 SHOWS_PATTERN = re.compile(
     r"""
     ^(?P<title>.+?)

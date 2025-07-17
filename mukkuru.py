@@ -32,8 +32,7 @@ from utils.core import update_config
 
 from library import video
 from library.games import get_games, scan_games, scan_thumbnails, get_username
-from library.steam import get_steam_env
-from library.steam import  download_steam_avatar
+from library.steam import get_steam_env, download_steam_avatar
 
 from controller.license import license_controller
 from controller.hardware import hardware_controller
@@ -103,7 +102,7 @@ def get_theme(selected = None):
     if selected is None:
         selected = config["theme"]
 
-    sys_themes_dir = os.path.join(f'{APP_DIR}/ui/{config["interface"]}', "assets", "css")
+    sys_themes_dir = os.path.join(f'{APP_DIR}/ui/', "assets", "css")
     default_theme_dir = os.path.join(sys_themes_dir, "style.css")
     default_css = Path(default_theme_dir).read_text(encoding='utf-8')
     # Not a user theme
@@ -172,7 +171,7 @@ def get_localization(raw = False):
     ''' Returns a localization dictionary '''
     user_config = get_config()
     language = user_config["language"]
-    loc_path = f'{APP_DIR}/ui/{user_config["interface"]}/translations.json'
+    loc_path = f'{APP_DIR}/ui/translations.json'
     with open(Path(loc_path),encoding='utf-8') as f:
         localization = json.load(f)
         if language in localization:
@@ -212,9 +211,8 @@ def set_videos():
 @app.route('/audios/get')
 def get_audio_packs():
     ''' get audio pack'''
-    user_config = get_config()
     audio_packs = []
-    builtin_sfx = os.path.join(APP_DIR, "ui", user_config["interface"], "assets", "audio")
+    builtin_sfx = os.path.join(APP_DIR, "ui", "assets", "audio")
     user_sfx = os.path.join(mukkuru_env["root"], "sfx")
     audio_packs.extend(os.listdir(builtin_sfx))
     audio_packs.extend(os.listdir(user_sfx))
@@ -326,15 +324,14 @@ def main_uri():
 @wserver.route('/index.html')
 def server_main():
     ''' returns main dashboard page'''
-    user_config = get_config()
-    serve_path = os.path.join(APP_DIR, "ui", user_config["interface"])
+    serve_path = os.path.join(APP_DIR, "ui")
     return send_from_directory(serve_path, "dashboard.html")
 
 @app.route('/frontend/<path:path>')
 def static_file(path):
     ''' serve asset '''
     user_config = get_config()
-    serve_path = os.path.join(APP_DIR, "ui", user_config["interface"])
+    serve_path = os.path.join(APP_DIR, "ui")
     if path == "assets/avatar":
         avatar_file = os.path.join(mukkuru_env["artwork"], "Avatar", f"{get_username()}.jpg")
         avatar_png = os.path.join(mukkuru_env["artwork"], "Avatar", f"{get_username()}.png")
