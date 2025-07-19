@@ -243,6 +243,7 @@ button {
 #batteryPercent {
     display: none;
     position: relative;
+    color: var(--main-color);
 }
 .chargePercent {
     font-size: 0.6em
