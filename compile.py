@@ -193,6 +193,10 @@ if args.alt:
         compiler_flags.append("--onedir")
     else:
         compiler_flags.append("--onefile")
+    if system != "Windows":
+        compiler_flags.append("--strip")
+    if not USE_WEF:
+        compiler_flags.extend(["--exclude-module", "tkinter"])
     compiler_flags.extend(["--add-data", f"{UI_SOURCE}:{UI_SOURCE}"])
     compiler_flags.extend(["--add-data", f"{LICENSE_SOURCE}:docs"])
     compiler_flags.extend(["--distpath", os.path.join(OUTPUT_DIR, "pack")])
@@ -218,16 +222,16 @@ if system == "Darwin":
     compiler_flags.append("--macos-create-app-bundle")
     compiler_flags.append(f"--macos-app-icon={PNG_PATH}")
 elif args.debug:
-    compiler_flags.append("--standalone")
     compiler_flags.append("--debug")
-elif args.onedir:
+if args.onedir:
     compiler_flags.append("--standalone")
 else:
     compiler_flags.append("--onefile")
 
 if system == "Linux":
     compiler_flags.append(f"--linux-icon={ICON_PATH}")
-compiler_flags.append("--enable-plugin=tk-inter")
+if USE_WEF:
+    compiler_flags.append("--enable-plugin=tk-inter")
 compiler_flags.append(f"--include-data-dir={UI_SOURCE}={UI_SOURCE}")
 compiler_flags.append(f"--include-data-dir={LICENSE_SOURCE}=docs")
 compiler_flags.append(SRC_OUT)
@@ -242,4 +246,14 @@ if args.run:
 else:
     invoke(compiler_flags, venv_python)
 os.remove(SRC_OUT)
+
+if system == "Darwin" and not args.run:
+    app_input = os.path.join(OUTPUT_DIR, f"{OUTPUT_FILE}.app")
+    app_dmg = app_input.replace(".app", ".dmg")
+    dmg_create_command = []
+    dmg_create_command.extend(["create", "-volname", "Mukkuru"])
+    dmg_create_command.extend(["-srcfolder", app_input])
+    dmg_create_command.extend(["-volname", "Mukkuru"])
+    dmg_create_command.extend(["-ov", "-format", "UDZO", app_dmg])
+    invoke(dmg_create_command, "hdiutil")
 # end compile.py

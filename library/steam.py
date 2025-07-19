@@ -436,8 +436,7 @@ def get_steam_env():
             print("Steam not in common path, reading registry as a failover...")
             vsk = r"SOFTWARE\WOW6432Node\Valve\Steam"
             steam["path"] = read_registry_value(0, vsk, "InstallPath")
-        steam["libraryFile"] = os.path.join(steam["path"],
-                                                           "steamapps", "libraryfolders.vdf")
+        steam["libraryFile"] = os.path.join(steam["path"], "steamapps", "libraryfolders.vdf")
         shortcut_path = os.path.join(steam["path"],"userdata", "*", "config", "shortcuts.vdf")
         steam["shortcuts"] = map_shortcuts_path(shortcut_path)
         steam["launchPath"] = os.path.join(steam["path"], "Steam.exe")

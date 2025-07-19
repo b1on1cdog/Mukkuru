@@ -11,9 +11,8 @@ import platform
 
 # Constants
 mukkuru_env = {}
-COMPILER_FLAG = getattr(sys, 'frozen', False)
+COMPILER_FLAG = getattr(sys, 'frozen', False) or "__compiled__" in globals()
 APP_VERSION = "0.3.9"
-
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
 SERVER_PORT = 49351
@@ -52,6 +51,8 @@ def get_config():
             "videoSources" : [os.path.join(mukkuru_env["root"], "video")],
             "musicSources" : [os.path.join(mukkuru_env["root"], "music")],
             "pictureSources" : [os.path.join(mukkuru_env["root"], "pictures")],
+            "saveScreenshot" : 0,
+            "useAllVideoSources" : False,
             "protonConfig" : {},
             "useAlternativeImage" : { "1149550" : 1 },
             "librarySource" : 3,
@@ -74,6 +75,7 @@ def get_config():
             "logoBlacklist" : [],
             "heroBlacklist" : [],
             "configVersion" : APP_VERSION,
+            "repos" : [ "https://repo.panyolsoft.com/" ],
         }
 
     while "config.json" not in mukkuru_env:
@@ -105,3 +107,9 @@ def set_alive_status(value):
 #def add_alive_command(value):
 #    ''' adds a command to alive status '''
 #    mukkuru_env["alive"]["commands"]
+
+def format_executable(executable):
+    ''' appends .exe if Windows, otherwise return parameter as-is '''
+    if platform.system() == "Windows":
+        executable = f"{executable}.exe"
+    return executable

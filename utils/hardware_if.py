@@ -8,6 +8,8 @@ import os
 import re
 from functools import lru_cache
 import math
+import signal
+import time
 
 import psutil
 import distro
@@ -104,6 +106,10 @@ def get_info():
 
     hardware_info["computer_name"] = platform_info.node
     hardware_info["arch"] = platform_info.machine
+
+    if hardware_info["arch"] == "AMD64":
+        hardware_info["arch"] = "x86_64"
+
     hardware_info["os"] = platform_info.system
 
     hardware_info["distro"] = hardware_info["os"]
@@ -220,7 +226,7 @@ def is_using_wireless():
             return False
 
 def wireless_signal():
-    '''Get the signal of Wi-Fi'''
+    '''Get the signal of Wi-Fi (Not implemented yet)'''
     return 100
 
 def get_battery():
@@ -249,3 +255,30 @@ def kill_executable_by_path(target_path, force=True):
             # Skip processes that vanished or we can't touch
             continue
     return killed
+
+def kill_process_on_port(port):
+    ''' kill any executable using this port '''
+    for conn in psutil.net_connections(kind="inet"):
+        if conn.laddr.port == port and conn.status == psutil.CONN_LISTEN:
+            pid = conn.pid
+            if pid:
+                print(f"Killing PID {pid} on port {port}")
+                try:
+                    os.kill(pid, signal.SIGTERM)  # or signal.SIGKILL
+                    return True
+                except OSError as e:
+                    print(f"Failed to kill PID {pid}: {e}")
+                    return False
+    print(f"No process found listening on port {port}")
+    return False
+
+def wait_for_server(host, port, timeout=5.0):
+    ''' waits for a server to start listening '''
+    start = time.time()
+    while time.time() - start < timeout:
+        try:
+            with socket.create_connection((host, port), timeout=0.2):
+                return True
+        except (OSError, ConnectionRefusedError):
+            time.sleep(0.1)
+    return False

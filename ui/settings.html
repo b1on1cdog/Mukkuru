@@ -45,7 +45,8 @@ let tabOptions = {};
 
 const blistOptions = {
     "theme" : ["Switch", "Switch 2", "PS5"],
-    "uiSounds" : ["Switch", "PS5"]
+    "uiSounds" : ["Switch", "PS5"],
+    "saveScreenshot" : ["Mukkuru", "User"]
 }
 
 function getSelectedOptions(bitmask) {
@@ -109,9 +110,13 @@ function addUserThemes(){
     fetch("/themes/get").then(function(response) {
         return response.json();
     }).then(function(data) {
+        //to-do: provide failover image as alt, to prevent empty image overlap
+        if (!data) {
+            backend_log("No user themes available")
+            return
+        }
         backend_log(JSON.stringify(data))
         themeTab = document.getElementById("options-3")
-        //to-do: provide failover image as alt, to prevent empty image overlap
         Object.entries(data).forEach(([key, value]) => {
             theme = value;
             backend_log("adding "+key +" to themes list");
@@ -194,7 +199,11 @@ fetch("/config/get").then(function(response) {
         } else if (option.innerHTML.includes("[BNUMBER]")) {
             option.innerHTML = option.textContent.replace("[BNUMBER]", `<span class="toggle-chars">${userConfiguration[option.id]}</span>`  );
         } else if (option.innerHTML.includes("[BLIST]")) {
-            option.innerHTML = option.textContent.replace("[BLIST]", `<span class="toggle-chars">${userConfiguration[option.id]}</span>`  );
+            optionValue = userConfiguration[option.id];
+            if (typeof optionValue == "number" && option.id in blistOptions) {
+                optionValue = blistOptions[option.id][optionValue];
+            }
+            option.innerHTML = option.textContent.replace("[BLIST]", `<span class="toggle-chars">${optionValue}</span>`  );
         }
         document.getElementById("options-0").style.display = "";
 });
@@ -220,7 +229,7 @@ fetch("/hardware").then(function(response) {
         return response.json();
     }).then(function(data) {
         hardwareInformation = data
-        archInfo = document.getElementById("arch");
+        //archInfo = document.getElementById("arch");
         gpuInfo = document.getElementById("gpu_name");
         cpuInfo = document.getElementById("cpu_name");
         distroInfo = document.getElementById("distro");
@@ -229,7 +238,6 @@ fetch("/hardware").then(function(response) {
         document.getElementById("total_ram").innerText = "RAM: " + hardwareInformation["total_ram"] + "GiB";
         patchHTML("storage", "unknown", hardwareInformation["disk_total"] + "Gb");
         patchHTML("computer_name", "unknown", hardwareInformation["computer_name"]);
-        archInfo.innerText = "Arch: " + hardwareInformation["arch"];
         cpu = hardwareInformation["cpu"];
         gpu = hardwareInformation["gpu"]
         cpu = cpu.replace(" Processor", "");
@@ -239,7 +247,7 @@ fetch("/hardware").then(function(response) {
             gpuInfo.style.display = "none";
         }
         distroInfo.innerText = "OS: " + hardwareInformation["distro"];
-        versionInfo.innerText = hardwareInformation["app_version"];
+        versionInfo.innerText = hardwareInformation["app_version"] + " (" + hardwareInformation["arch"] +")";
         } catch (err) {
             backend_log(err);
             gpuInfo.style.display = "none";
@@ -276,10 +284,15 @@ function changeLockedValue(position) {
     elem = tabOptions[selectedTab][selectedOption];
     keyName = elem.id;
     value = userConfiguration[keyName];
+    isList = typeof value == "number" && keyName in blistOptions;
+
+    if (isList) {
+        value = blistOptions[keyName][value];
+    }
 
     prefix = "< ";
     postfix = " >";
-    if (typeof(value) == 'number') {
+    if (typeof(value) == 'number' ) {
     if (value+position == optionRangeMin[keyName]) {
         prefix = "";
     } else if (value+position == optionRangeMax[keyName]) {
@@ -329,8 +342,14 @@ function changeLockedValue(position) {
             playSound("border");
             return;
         }
-        value = blistOptions[keyName][current_position];
-        userConfiguration[keyName] = value;
+        if (!isList) {
+            value = blistOptions[keyName][current_position];
+            userConfiguration[keyName] = value;
+        } else {
+            userConfiguration[keyName] = current_position;
+            value = blistOptions[keyName][current_position];
+        }
+
         elem.querySelector('.toggle-chars').textContent = prefix + value + postfix;
         playSound("tick");
     }
@@ -410,11 +429,15 @@ async function createLicenseScreen(){
 document.addEventListener('keydown', (e) => {
     e.preventDefault();
     if (homeMenu.style.opacity < 1) {
-            return;
+        return;
     }
+    ctxMenu = document.getElementsByClassName("contextualMenu active")[0];
 
         switch(keyBindings[e.key]) {
             case 'right':
+                if (isContextMenu) {
+                    return;
+                }
                 if (lockedOption) {
                     changeLockedValue(1);
                     break;
@@ -432,6 +455,12 @@ document.addEventListener('keydown', (e) => {
                 break;
             
             case 'confirm':
+            if (isContextMenu) {
+                selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
+                selectedContext.click();
+                playSound("tick");
+                return;
+            }
             if (isTab) {
                 playSound("select");
                 //Trigger ArrowRight
@@ -448,6 +477,9 @@ document.addEventListener('keydown', (e) => {
                         case "deleteData":
                             deleteData("all");
                             break;
+                        case "moveDownloads":
+                            move_files("misc");
+                            break;
                         case "clearArtBlacklist":
                             clearArtBlacklist();
                             break;
@@ -456,6 +488,10 @@ document.addEventListener('keydown', (e) => {
                             break;
                         case "showLicense":
                             showLicense(elem.dataset.param1);
+                            break;
+                        case "updateMukkuru":
+                            updateMukkuru();
+                            break;
                         case "click":
                             elem.click();
                             break;
@@ -514,6 +550,9 @@ document.addEventListener('keydown', (e) => {
             break;
 
             case 'left':
+                if (isContextMenu) {
+                    return;
+                }
                 if (isTab) {
                     playSound("border");
                     break;
@@ -538,6 +577,9 @@ document.addEventListener('keydown', (e) => {
                 break;
             
             case 'up':
+                 if (isContextMenu) {
+                    return;
+                }
                 if (lockedOption) {
                     changeLockedValue(0);
                 }
@@ -555,7 +597,6 @@ document.addEventListener('keydown', (e) => {
                 menuItems[selectedTab].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
                 selectedOption = 0;
             } else {
-
                 if (isScrollable) {
                     scrollableItem.scrollBy(0, -100);
                     return;
@@ -578,6 +619,9 @@ document.addEventListener('keydown', (e) => {
                 playSound("select");
                 break;
             case 'down':
+                if (isContextMenu) {
+                    return;
+                }
                 if (lockedOption) {
                     changeLockedValue(0);
                 }
@@ -627,6 +671,10 @@ document.addEventListener('keydown', (e) => {
                 playSound("select");
                 break;
             case 'back':
+                if (isContextMenu) {
+                    close_context_menu();
+                    return;
+                }
                 //tabOptions[selectedTab].getElementsByClassName("parent")
                 if (previousPages.length > 0) {
                     playSound("enter-back");
@@ -748,9 +796,24 @@ document.addEventListener('keydown', (e) => {
                 </div>
                 <div class="options" id="options-5" style="display:none;">
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="clearArtBlacklist" data-loc="clearArtBlacklist" data-trm="swapText" data-call="clearArtBlacklist">Clear art blacklist</div>
+                    <div class="menu-option" id="saveScreenshot" data-loc="id" data-trm="swapTGL">Screenshot destination [BLIST]</div>
                     <div class="option-separator"></div>
-                    <div class="option-description" id="clear-blacklist-desc" data-trm="swapText" data-loc="clear-blacklist-desc">Allows to retry download of arts marked as unavailable</div>
+                    <div class="option-description" id="data-folder-desc" data-trm="swapText" data-loc="id">"Mukkuru" means Mukkuru data folder<br>"User" references a folder in home directory</div>
+
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="useAllVideoSources" data-loc="id" data-trm="swapTGL">Use all video sources [BTOGGLE]</div>
+                    <div class="option-separator"></div>
+                    <div class="option-description" id="all-videos-sources-desc" data-trm="swapText" data-loc="id">Reads videos from user video folder</div>
+                    
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="moveDownloads" data-loc="id" data-trm="swapTGL" data-call="moveDownloads">Move files to Downloads</div>
+                    <div class="option-separator"></div>
+                    <div class="option-description" id="move-downloads-desc" data-trm="swapText" data-loc="id">Moves files from Mukkuru Data to Downloads folder (Media files are excluded)</div>
+
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="clearArtBlacklist" data-loc="id" data-trm="swapText" data-call="clearArtBlacklist">Clear art blacklist</div>
+                    <div class="option-separator"></div>
+                    <div class="option-description" id="clear-blacklist-desc" data-trm="swapText" data-loc="id">Allows to retry download of arts marked as unavailable</div>
 
                     <div class="option-separator"></div>
                     <div class="menu-option" id="clearArt" data-loc="clearArt" data-trm="swapText" data-call="deleteArt">Clear downloaded art</div>
@@ -758,33 +821,37 @@ document.addEventListener('keydown', (e) => {
 
                     <div class="menu-option" id="clearData" data-loc="clearData" data-trm="swapText" data-call="deleteData">Wipe Mukkuru data</div>
                     <div class="option-separator"></div>
+                    <div class="spacer" style="min-height:150px"></div>
                 </div>
                 <div class="options" id="options-6" style="display:none;">
                     <div class="option-separator"></div>
-                    <div class="menu-option" id="showLicenses" data-loc="id" data-trm="swapText" data-call="createLicenseScreen">License</div>
+                    <div class="menu-option" id="updateMukkuru" data-loc="id" data-trm="swapText" data-call="updateMukkuru">Update</div>
                     <div class="option-separator"></div>
+
                     <div id="about-text" class="option-description" style="font-size: 28px;color: rgba(30, 39, 50, 0.747)">
-                    <div id="hardwareInfo" data-trm="swapTGL" data-loc="hardwareInfo">Hardware Information</div>
-                    <div>---------------</div>
                     <div id="computer_name" data-loc="Name" data-trm="patchHTML" data-patch="Name">Name: unknown</div>
-                    <div id="arch">Arch: unknown</div>
                     <div id="distro">OS: unknown</div>
                     <div id="cpu_name">CPU: unknown</div>
                     <div id="gpu_name">GPU: unknown</div>
                     <div id="total_ram">RAM: unknown</div>
                     <div id="storage" data-loc="storage" data-trm="patchHTML" data-patch="Storage">Storage: unknown</div>
                     <br>
-                    <div>https://github.com/b1on1cdog/mukkuru</div>
-                    <br>
                     <div id="app_version">Crash loading hardware info</div>
                     <div>Made with ♥ by b1on1cdog</div>
+                    <div>https://github.com/b1on1cdog/mukkuru</div>
                     </div>
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="showLicenses" data-loc="id" data-trm="swapText" data-call="createLicenseScreen">License</div>
                     <div class="option-separator"></div>
                 </div>
             </div>
 
             </div>
         </main>
+        <div class="contextualMenu" id="messageContext" style="opacity: 0.9;">
+            <div id="messageBox"style="margin: 50px 50px 50px 50px">There's nothing to display here</div>
+            <div class="contextItem selected" id="messageAccept" onclick='close_context_menu(false)'>Confirm</div>
+        </div>
         <footer class="homeFooter">
             <div class="controllerState">
                 <div class="controllerState-type">

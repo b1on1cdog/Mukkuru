@@ -9,6 +9,7 @@ import platform
 import subprocess
 
 from view.wef_bundle import download_wef, pick_wef, complain
+from utils.core import format_executable
 
 class Frontend():
     ''' Frontend class '''
@@ -21,9 +22,7 @@ class Frontend():
         self.ready = True
         self.wef_retry = True
         self.proc = None
-        exec_name = "wef_bundle"
-        if platform.system() == "Windows":
-            exec_name = exec_name + ".exe"
+        exec_name = format_executable("wef_bundle")
         self.exec = os.path.join(self.wef, exec_name)
 
         if Path(embedded_wef).is_dir():

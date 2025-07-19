@@ -68,6 +68,17 @@
         "pressToStart" : "Presiona 'Aceptar' para continuar",
         "showLicenses" : "Licencia",
         "resumeMediaOption" : "Continuar donde lo deje",
-        "restartMediaOption" : "Reproducir desde el principio"
+        "restartMediaOption" : "Reproducir desde el principio",
+        "updateMukkuru" : "Actualizar",
+        "updateUnsupported" : "Esta app de Mukkuru no soporta actualizaciones",
+        "alreadyUpToDate" : "Cuentas con la ultima version de Mukkuru",
+        "saveScreenshot" : "Destino de screenshots",
+        "data-folder-desc" : " \"Mukkuru\": carpeta de datos Mukkuru\n\"User\": directorio en la carpeta de usuario",
+        "moveDownloads" : "Mover archivos a Descargas",
+        "move-downloads-desc" : "Mueve los archivos de la carpeta de datos de Mukkuru a la carpeta de Descargas (archivos multimedia excluidos)",
+        "filesMoveSuccess" : "Archivos movidos exitosamente",
+        "filesMoveMissing" : "No hay archivos que mover",
+        "useAllVideoSources" : "Usar todas las fuentes de videos",
+        "all-videos-sources-desc"  : "Accede a los videos del directorio de usuario"
     }
 }

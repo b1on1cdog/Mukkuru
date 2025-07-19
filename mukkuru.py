@@ -5,7 +5,6 @@
 import os
 import json
 from pathlib import Path
-import stat
 import subprocess
 import base64
 import threading
@@ -22,13 +21,14 @@ from flask import Flask, request, jsonify
 from flask import send_from_directory, send_file
 
 import utils.core as core
-from utils import hardware_if
+from utils import hardware_if, updater, test
 from utils.css_preprocessor import CssPreprocessor
 core.APP_DIR = os.path.dirname(os.path.abspath(__file__))
 from utils.core import mukkuru_env, COMPILER_FLAG, FRONTEND_MODE
-from utils.core import APP_PORT, SERVER_PORT, APP_VERSION, APP_DIR
+from utils.core import APP_PORT, SERVER_PORT, APP_DIR
 from utils.core import app_version, get_config, backend_log, set_alive_status
-from utils.core import update_config
+from utils.core import update_config, format_executable
+from utils.bootstrap import get_userprofile_folder
 
 from library import video
 from library.games import get_games, scan_games, scan_thumbnails, get_username
@@ -196,7 +196,10 @@ def get_media():
     backend_log("fetching media...")
     user_config = get_config()
     video_manifest = mukkuru_env["video.json"]
-    media["videos"] = video.get_videos(user_config["videoSources"], video_manifest)
+    video_sources = user_config["videoSources"].copy()
+    if not user_config["useAllVideoSources"]:
+        video_sources = [video_sources[0]]
+    media["videos"] = video.get_videos(video_sources, video_manifest)
     return json.dumps(media)
 
 @app.route('/video/set', methods = ['POST'])
@@ -260,8 +263,7 @@ def restart_app():
 def terminate_wef():
     ''' closes wef_bundle'''
     wef_bundle = os.path.join(mukkuru_env["root"], "wef_bundle", "wef_bundle")
-    if platform.system() == "Windows":
-        wef_bundle = wef_bundle+".exe"
+    wef_bundle = format_executable(wef_bundle)
     hardware_if.kill_executable_by_path(wef_bundle)
 
 @app.route('/clear/<selection>', methods = ['POST'])
@@ -309,7 +311,6 @@ def log_message(message):
     return "200"
 
 # To-do: allow custom specified username from userConfiguration
-
 @app.route('/frontend/')
 def main_web():
     ''' homePage '''
@@ -378,6 +379,12 @@ def static_file(path):
         return send_file(buf, mimetype="image/png")
     return send_from_directory(serve_path, path)
 
+@app.route('/app/update')
+def start_app_update():
+    ''' downloads update if available '''
+    ret = updater.download_mukkuru_update()
+    return ret
+
 @app.route('/config/fullscreen')
 def is_fullscreen():
     ''' show whether app should be in fullscreen '''
@@ -404,6 +411,47 @@ def init_server(action):
         sserver = create_server(wserver, host="0.0.0.0", port=SERVER_PORT)
     return "200"
 
+def get_destination_map():
+    ''' returns a dictinary with user folders '''
+    user_config = get_config()
+    destination_map = {
+        "video" : user_config["videoSources"][1],
+        "misc" : get_userprofile_folder("Downloads"),
+        "music" : user_config["musicSources"][1],
+        "pictures" : user_config["pictureSources"][1]
+    }
+    return destination_map
+
+@app.route("/app/user_dirs")
+def get_user_dirs():
+    ''' retrieves a dictionary with user_dirs '''
+    destination_map = get_destination_map()
+    return jsonify(destination_map)
+
+@app.route('/app/move/<folder>', methods = ['POST'])
+def move_files_controller(folder):
+    ''' move files between folders '''
+    user_config = get_config()
+    source_map = {
+        "video" : user_config["videoSources"][0],
+        "misc" : os.path.join(mukkuru_env["root"], "miscellaneous"),
+        "music" : user_config["musicSources"][0],
+        "pictures" : user_config["pictureSources"][0]
+    }
+    if folder not in source_map:
+        return "Invalid option"
+    destination_map = get_destination_map()
+    source_folder = source_map[folder]
+    destination_folder = destination_map[folder]
+    loc = localize()
+    if len(os.listdir(source_folder)) == 0:
+        return loc.get("filesMoveMissing", "There are no files to move"), 404
+    for item in os.listdir(source_folder):
+        source_path = os.path.join(source_folder, item)
+        destination_path = os.path.join(destination_folder, item)
+        shutil.move(source_path, destination_path)
+    return loc.get("filesMoveSuccess", "Files moved successfully"), 200
+
 def start_app(is_server = False):
     ''' init server '''
     try:
@@ -421,49 +469,6 @@ def start_app(is_server = False):
         if not is_server:
             quit_app()
 
-def close_update(m = None):
-    ''' called when update is completed or aborted '''
-    update_file = os.path.join(mukkuru_env["update"], "update")
-    if platform.system() == "Windows":
-        update_file = update_file + ".exe"
-    if Path(update_file).resolve() == Path(sys.executable).resolve():
-        #We are running from update itself, we cannot delete the update here
-        e_path = None
-        if "MUKK_EXECUTABLE" in os.environ:
-            e_path = os.environ["MUKK_EXECUTABLE"]
-        if m is not None and "executable" in "m":
-            e_path = m["executable"]
-        if e_path is not None:
-            subprocess.Popen([e_path])
-        os._exit(0)
-    shutil.rmtree(mukkuru_env["update"])
-    return
-
-def process_update():
-    '''We have an update we need to handle'''
-    update_manifest = os.path.join(mukkuru_env["update"], "update.json")
-    if not Path(update_manifest).is_file():
-        # We cannot proceed without a manifest, aborting
-        return close_update()
-    update_file = os.path.join(mukkuru_env["update"], "update")
-    if platform.system() == "Windows":
-        update_file = update_file + ".exe"
-    with open(update_manifest, encoding='utf-8', mode='r') as manifest_file:
-        manifest = json.loads(manifest_file)
-        if not "version" in manifest:
-            # Bad update, aborting
-            return close_update(manifest)
-        if manifest["version"] == APP_VERSION:
-            # already updated
-            shutil.rmtree(mukkuru_env["update"])
-            return close_update(manifest)
-        executable = manifest["executable"]
-        shutil.copy(update_file, executable)
-        if platform.system() != "Windows":
-            current_permissions = os.stat(executable).st_mode
-            os.chmod(manifest["executable"], current_permissions | stat.S_IXUSR)
-        close_update(manifest)
-
 def get_alive_status():
     ''' get alive status'''
     default = {"Status": "OK" }
@@ -472,11 +477,24 @@ def get_alive_status():
         set_alive_status(default)
     return response
 
+def fix_file_sources():
+    ''' add user dirs to file sources '''
+    user_config = get_config()
+    if len(user_config["pictureSources"]) == 1:
+        user_config["pictureSources"].append(get_userprofile_folder("Pictures"))
+    if len(user_config["videoSources"]) == 1:
+        user_config["videoSources"].append(get_userprofile_folder("Videos"))
+    if len(user_config["musicSources"]) == 1:
+        user_config["musicSources"].append(get_userprofile_folder("Music"))
+    get_config.cache_clear()
+    if user_config != get_config():
+        backend_log("Adding user paths...")
+        update_config(user_config)
+
 def main():
     ''' start of app execution '''
     system = platform.system()
     backend_log(f"Running on {system}")
-    backend_log(f'Using { FRONTEND_MODE } for rendering')
     if system == 'Windows':
         mukkuru_env["root"] = os.path.join(os.environ.get('APPDATA'), "Mukkuru")
     elif system == 'Linux':
@@ -491,11 +509,20 @@ def main():
     mukkuru_env["artwork"] = os.path.join(mukkuru_env["root"], "artwork")
     mukkuru_env["log"] = os.path.join(mukkuru_env["root"], "mukkuru.log")
     mukkuru_env["app_path"] = APP_DIR
-    mukkuru_env["update"] = os.path.join(mukkuru_env["root"], "update")
-    # Instead of writing another executable, this one will conditionally
-    # act as the updater
-    if Path(mukkuru_env["update"]).is_dir() and COMPILER_FLAG:
-        process_update()
+    if len(sys.argv) >= 2:
+        print("Running in test mode")
+        arg = sys.argv[1]
+        if arg == "--test":
+            test.run_tests()
+            return
+    backend_log(f'Using { FRONTEND_MODE } for rendering')
+    backend_log(f"COMPILER_FLAG: {COMPILER_FLAG}")
+    hardware_if.kill_process_on_port(APP_PORT)
+    # Instead of writing another executable, this one will conditionally act as updater
+    if "MUKKURU_UPDATE" in os.environ and COMPILER_FLAG:
+        updater.process_update()
+    elif COMPILER_FLAG:
+        Path(os.path.join(mukkuru_env["root"], format_executable("update"))).unlink(missing_ok=True)
 
     needed_dirs = [
         mukkuru_env["root"],
@@ -510,6 +537,7 @@ def main():
         os.path.join(mukkuru_env["root"], "hero"),
         os.path.join(mukkuru_env["root"], "themes"),
         os.path.join(mukkuru_env["root"], "plugins"),
+        os.path.join(mukkuru_env["root"], "tools"),
         os.path.join(mukkuru_env["root"], "sfx"),
     ]
 
@@ -529,9 +557,10 @@ def main():
         backend_log("[debug] startupGameScan: True, starting library scan")
         threading.Thread(target=scan_games).start()
     download_steam_avatar(mukkuru_env["artwork"])
+    fix_file_sources()
     if threading.current_thread() is threading.main_thread():
         threading.Thread(target=start_app).start()
-        time.sleep(2)
+        hardware_if.wait_for_server("localhost", APP_PORT)
         Frontend(is_fullscreen(), app_version(), mukkuru_env).start()
     else:
         start_app()

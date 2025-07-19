@@ -809,8 +809,6 @@ function handleAutoPlay(action = "update"){
   }
 }
 
-
-
 function mediaControl(action) {
   prevMedia = currentMedia;
   switch (action) {
@@ -881,4 +879,54 @@ function userGestureNoLongerRequired() {
     overlayMessage = document.getElementById('overlay-message');
     overlayMessage.innerText = overlayMessage.dataset.original;
   }
+}
+
+async function openThirdPartyStore(store) {
+  response = await fetch("/store/steam");
+  responseJson = await response.json();
+  //window.location.reload();
+}
+
+
+function close_context_menu(play_sound = true){
+  isContextMenu = false;
+  currentContext = 0;
+  //restart selected position
+  selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
+  selectedContext.classList.remove("selected");
+  firstContext = ctxMenu.getElementsByClassName("contextItem")[0];
+  firstContext.classList.add("selected");
+  elements = document.getElementsByClassName("contextualMenu active");
+  Array.prototype.forEach.call(elements, function(element) {
+     element.classList.remove("active");
+  });
+  if (play_sound){
+    playSound("enter-back");
+  }
+}
+
+function open_context_menu(contextMenuName){
+  isContextMenu = true;
+  document.getElementById(contextMenuName).classList.add("active");
+  //refreshCtxMenu();
+  playSound("select");
+}
+
+async function updateMukkuru() {
+  response = await fetch("/app/update");
+  response_text = await response.text();
+  if (response_text == "up-to-date") {
+    document.getElementById("messageBox").innerText = "Mukkuru is already up-to-date";
+    open_context_menu("messageContext");
+  } else if (response_text == "unsupported") {
+    document.getElementById("messageBox").innerText = "This Mukkuru app does not support updates";
+    open_context_menu("messageContext");
+  }
+}
+
+async function move_files(transfer_type) {
+  response = await fetch("/app/move/"+ transfer_type, {method:"POST"});
+  response_text = await response.text();
+  document.getElementById("messageBox").innerText = response_text;
+  open_context_menu("messageContext");
 }

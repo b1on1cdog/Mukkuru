@@ -1,5 +1,18 @@
 # Changelog
 -----------------
+# 0.3.9
+- Display battery percent option is now hidden in devices without battery<br/>
+- Removed "interface" config key, as it was never needed in first place<br/>
+- Added a context Menu when pressing Store button<br/>
+- "AMD64" is now renamed to "x86_64"<br/>
+- Settings/About will display arch in app version<br/>
+- Added sound when closing context menu<br/>
+- Added function to update app from settings/about<br/>
+- Trying to open a new instance of Mukkuru will now terminate the old one<br/>
+- Improved app starting speed<br/>
+- Added button to move files from misc to user downloads <br/>
+- Added option to select user pictures as screenshots destination<br/>
+- Added option to load videos from user video directory <br/>
 # 0.3.8
 - Some theme logic was moved to CSS so it can be controlled from user themes<br/>
 - Fixed game scrolling title not stopping in SW2 Theme<br/>
@@ -7,7 +20,7 @@
 - It is now possible to load user audio effects<br/>
 - MP3 and OGG are now supported audio effects formats<br/>
 - Added an extra built-in ui audio effect called "original"<br/>
-- Distributed some mukkuru.py functions in other files to prevent too many lines in single file <br/>
+- Distributed some mukkuru.py functions in other files to prevent too many lines in single file<br/>
 - Added screenshots when pressing "options" during video playback<br/>
 - Users can now resume video playback after closing video<br/>
 - Simplified compile.py, removing unused functions and migrating some logic to src files<br/>

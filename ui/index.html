@@ -643,13 +643,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         playSound("enter-back");
                         break;
                         case 1:
-                            /* This should provide a contextual menu asking user for storefront to open*/
-                            fetch("/store/steam").then(function(response) {
-                                return response.json();
-                            }).then(function(data){
-                                window.location.reload();
-                            });
-                            playSound("run");
+                            isContextMenu = true;
+                            document.getElementById("storeContextMenu").classList.add("active");
+                            refreshCtxMenu();
+                            playSound("select");
                             break;
                         case 2:
                             if (mediaItems.length == 0) {
@@ -702,17 +699,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             case "back":
                 if (isContextMenu) {
-                    isContextMenu = false;
-                    currentContext = 0;
-                    //restart selected position
-                    selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
-                    selectedContext.classList.remove("selected");
-                    firstContext = ctxMenu.getElementsByClassName("contextItem")[0];
-                    firstContext.classList.add("selected");
-                    elements = document.getElementsByClassName("contextualMenu active");
-                    Array.prototype.forEach.call(elements, function(element) {
-                        element.classList.remove("active");
-                    });
+                    close_context_menu();
                     return;
                 }
                 if (currentRow == 3){
@@ -854,6 +841,14 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="contextualMenu" id="emptyContext" style="opacity: 0.9;">
             <div id="emptyMessage" data-loc="id" data-trm="swapText" style="margin: 50px 50px 50px 50px">There's nothing to display here</div>
         </div>
+        <div class="contextualMenu" id="storeContextMenu">
+            <div class="contextItem selected" id="steamContext" onclick='openThirdPartyStore("steam")'>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="32px" height="32px">
+                    <path xmlns="http://www.w3.org/2000/svg" fill="currentColor" d="M24.008 4C13.508 4 4.896 12.1 4.08 22.394l10.72 4.432a5.6 5.6 0 0 1 3.186-.984q.158.002.314.01l4.768-6.904v-.098c0-4.16 3.38-7.54 7.54-7.54s7.54 3.384 7.54 7.544-3.384 7.542-7.54 7.542h-.174l-6.794 4.852.006.266a5.65 5.65 0 0 1-5.65 5.66 5.68 5.68 0 0 1-5.55-4.546L4.77 29.45C7.146 37.844 14.854 44 24.01 44c11.044 0 19.996-8.954 19.996-20S35.052 4 24.008 4m-9.852 29.334a4.25 4.25 0 0 0 2.188 2.082 4.252 4.252 0 0 0 3.268-7.844 4.24 4.24 0 0 0-3.13-.05l2.538 1.05a3.126 3.126 0 0 1 1.68 4.092 3.126 3.126 0 0 1-4.088 1.686zm21.48-14.49a5.03 5.03 0 0 0-5.026-5.024 5.028 5.028 0 0 0 0 10.05 5.026 5.026 0 0 0 5.024-5.026zM30.62 15.06a3.778 3.778 0 1 1-.004 7.548 3.778 3.778 0 0 1 .004-7.548"></path>
+                </svg>&nbsp;Steam
+            </div>
+            <div class="contextItem" id="mukkuruStoreContext" onclick=''>Mukkuru</div>
+        </div>
         <div class="contextualMenu" id="controlContextMenu">
             <img id="dashboardQR" src="web/qrcode" width="50%" height="50%" style="display: none;">
             <div class="contextItem selected" id="sOption" onclick='serverHandle("auto")'>Enable server</div>
@@ -863,11 +858,11 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="contextItem selected" id="exitMukkuruBtn" data-loc="exitMukkuru" data-trm="patchHTML" data-patch="Exit Mukkuru" onclick="exitMukkuru()">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="32px" height="32px">
                     <path xmlns="http://www.w3.org/2000/svg" fill="currentColor" fill-rule="evenodd" d="M8 30h4v10h24V8H12v10H8V6a2 2 0 0 1 2-2h28a2 2 0 0 1 2 2v36a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2zm12-8v-6l10 8-10 8v-6H4v-4z"></path>
-                </svg>Exit Mukkuru</div>
+                </svg>&nbsp;Exit Mukkuru</div>
                 <div class="contextItem" id="restartAppBtn" data-loc="restartMukkuru" data-trm="patchHTML" data-patch="Restart Mukkuru" onclick="restartMukkuru()">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="32px" height="32px">
                     <path xmlns="http://www.w3.org/2000/svg" fill="currentColor" fill-rule="evenodd" d="M38.25 24a13.5 13.5 0 0 1-25.83 5.502l-4.173 1.695A18.003 18.003 0 0 0 42.75 24 18 18 0 0 0 10.5 13.002V7.5H6v12l2.25 2.25h10.5v-4.5h-5.694A13.5 13.5 0 0 1 38.25 24" clip-rule="evenodd"></path>
-                </svg>Restart Mukkuru</div>
+                </svg>&nbsp;Restart Mukkuru</div>
         </div>
         <footer class="homeFooter pending">
             <div class="controllerState">

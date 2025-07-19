@@ -8,16 +8,17 @@ Mukkuru is [licensed under MIT](LICENSE)<br/>
 See [third-party.md](docs/third-party.md) for third-party files license terms.<br/>
 
 # Current features
+- Linux, Windows and MacOS Support<br/>
 - SW, SW2, PS5 like themes<br/>
 - Import custom user themes<br/>
 - Dark mode and light mode<br/>
-- Scan games from Steam Library<br/>
-- Scan games from Epic Games Library and Heroic<br/>
+- Steam Library games scan<br/>
+- Epic Games Library and Heroic games scan<br/>
+- MacOS Crossover Steam in Apple Silicon supported<br/>
 - WebUI to transfer videos from another device<br/>
 - Video playback and take video screenshots with a single button<br/>
 - Automatically download boxarts from SteamGridDB<br/>
 - Multi-language (currently only English and Spanish) <br/>
-- Linux, Windows and MacOS Support<br/>
 - Strict static analysis compliance<br/>
 - Plug and play compile environment<br/>
 
@@ -33,22 +34,24 @@ Some others are going to receive occasional uploads</br>
 [Read changelog.md](docs/changelog.md)
 
 # To-do list
-- Add button to transfer mukkuru media and misc files to user folders<br/>
+- Add button to transfer mukkuru media to user folders<br/>
+- Add button to delete all video thumbnails<br/>
 - Add option to read current version changelog in settings/about<br/>
 - Order recent played items in main screen<br/>
 - Add support for non-flatpak Heroic and MacOS Heroic<br/>
 - Add support for crossover EGS in MacOS<br/>
 - More webui features: <br/>
     - Videoplayback control<br/>
-    - Drag and drop wallpaper change <br/>
+    - Play Mukkuru videos from webui <br/>
+    - Wallpaper change <br/>
     - Menu to organize games, mark as favorite, blacklist, etc <br/>
+    - Upload game boxart <br/>
     - Option to setup SteamGridDB api <br/>
     - Must also support plugins <br/>
     - (Optional) chunk checksum validation to prevent file corruption in upload <br/>
 - Plugin support, with a plugin storefront<br/>
     - The first plugin might be one to patch VNs<br/>
 - Game provider install helper (Steam, Heroic, etc)<br/>
-- Update Mukkuru from app<br/>
 - Add joystick buttons customization<br/>
 - Support for linux box86 in arm64<br/>
 - Add ability to download games</br>

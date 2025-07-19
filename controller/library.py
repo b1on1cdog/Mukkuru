@@ -67,7 +67,8 @@ def add_video_screenshot():
     if request.method == 'POST':
         screenshot = request.get_json()
         user_config = get_config()
-        pic_path = user_config["pictureSources"][0]
+        save_index = user_config["saveScreenshot"]
+        pic_path = user_config["pictureSources"][save_index]
         video.save_screenshot(pic_path, screenshot)
         return "200"
     return "400"

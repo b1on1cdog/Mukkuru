@@ -191,28 +191,7 @@ root {
     margin-left: 68px;
     padding: 16px 20px;
 }
-  /*
-  
-  .menu-option + .separator {
-      height: 1px;
-      background-color: #ddd;
-      margin: 8px 0;
-      margin-left: 10%;
-  }
-  
-  
-  .menu-option.selected::before {
-      content: "";
-      position: absolute;
-      left: 6px;
-      top: 6px;
-      bottom: 6px;
-      width: 4px;
-      background-color: #0066cc;
-      border-radius: 0 1px 1px 0;
-  }
-      */
-  
+
 .menu-option.selected {
     border: 5px solid transparent;
     border-radius: 1px;

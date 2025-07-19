@@ -6,6 +6,7 @@ import re
 import unicodedata
 import requests
 from PIL import Image
+from utils.bootstrap import download_file
 
 API_KEY = ""
 # API_URL = "https://www.steamgriddb.com/api/v2/"
@@ -80,12 +81,6 @@ def find_image_url(game_id, image_format, image_index = 0):
             return 0
     else:
         return 0
-
-def download_file(url, path):
-    ''' download file from url '''
-    with open(path, 'wb') as out_file:
-        content = requests.get(url, stream=True, timeout=20).content
-        out_file.write(content)
         #r=requests.get(url, headers={"Authorization":f'Bearer {API_KEY}'}, timeout=20)
 
 def sanitize_filename_ascii(name, max_length=255):
