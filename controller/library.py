@@ -11,6 +11,7 @@ from library import video
 from utils.core import get_config, mukkuru_env
 
 library_controller = Blueprint('library', __name__)
+external_library = Blueprint('external_library', __name__)
 
 @library_controller.route('/library/proton')
 def get_proton():
@@ -24,6 +25,58 @@ def add_game():
     #update_games(game_library)
     return "Not implemented"
 
+@library_controller.route('/library/scan')
+def scan_games_controller():
+    ''' http controller for library.games scan_games()  '''
+    games = scan_games()
+    return jsonify(games)
+
+@library_controller.route('/library/artwork/scan')
+def scan_artwork_controller():
+    ''' calls artwork scan '''
+    scan_artwork()
+    return "200"
+@external_library.route('/library/apps')
+@library_controller.route('/library/get')
+def get_games_controller():
+    ''' calls get_games '''
+    games = get_games()
+    return jsonify(games)
+
+@external_library.route('/library/launch/<app_id>')
+@library_controller.route('/library/launch/<app_id>')
+def launch_app_controller(app_id):
+    ''' executes library.games.launch_app, returns 200 '''
+    launch_app(app_id)
+    return "200"
+
+@library_controller.route('/username')
+def get_username_controller():
+    ''' Gets username '''
+    return get_username()
+
+@library_controller.route('/video/thumbnail/<video_id>', methods = ['POST'])
+def set_video_thumbnail(video_id):
+    '''update video thumbnail from request'''
+    if request.method == 'POST':
+        thumbnail = request.get_json()
+        video.update_thumbnail(mukkuru_env["video.json"], video_id, thumbnail)
+        return "200"
+    return "400"
+
+@library_controller.route('/video/screenshot/', methods = ['POST'])
+def add_video_screenshot():
+    '''update video thumbnail from request'''
+    if request.method == 'POST':
+        screenshot = request.get_json()
+        user_config = get_config()
+        save_index = user_config["saveScreenshot"]
+        pic_path = user_config["pictureSources"][save_index]
+        video.save_screenshot(pic_path, screenshot)
+        return "200"
+    return "400"
+
+@external_library.route('/media/video/<source>/<filename>', methods=["GET"])
 @library_controller.route('/frontend/video/<source>/<filename>', methods=["GET", "DELETE"])
 def video_serve(source, filename):
     '''serve or delete video file'''
@@ -52,52 +105,14 @@ def picture_serve(source, filename):
     pic_path = user_config["pictureSources"][int(source)]
     return send_from_directory(pic_path, filename)
 
-@library_controller.route('/video/thumbnail/<video_id>', methods = ['POST'])
-def set_video_thumbnail(video_id):
-    '''update video thumbnail from request'''
-    if request.method == 'POST':
-        thumbnail = request.get_json()
-        video.update_thumbnail(mukkuru_env["video.json"], video_id, thumbnail)
-        return "200"
-    return "400"
-
-@library_controller.route('/video/screenshot/', methods = ['POST'])
-def add_video_screenshot():
-    '''update video thumbnail from request'''
-    if request.method == 'POST':
-        screenshot = request.get_json()
-        user_config = get_config()
-        save_index = user_config["saveScreenshot"]
-        pic_path = user_config["pictureSources"][save_index]
-        video.save_screenshot(pic_path, screenshot)
-        return "200"
-    return "400"
-
-@library_controller.route('/library/scan')
-def scan_games_controller():
-    ''' http controller for library.games scan_games()  '''
-    games = scan_games()
-    return jsonify(games)
-
-@library_controller.route('/library/artwork/scan')
-def scan_artwork_controller():
-    ''' calls artwork scan '''
-    scan_artwork()
-    return "200"
-
-@library_controller.route('/library/get')
-def get_games_controller():
-    ''' calls get_games '''
-    games = get_games()
-    return jsonify(games)
-
-@library_controller.route('/library/launch/<app_id>')
-def launch_app_controller(app_id):
-    ''' executes library.games.launch_app, returns 200 '''
-    launch_app(app_id)
-    return "200"
-
-@library_controller.route('/username')
-def get_username_controller():
-    ''' Gets username '''
-    return get_username()
+@library_controller.route('/media/get')
+def get_media():
+    ''' Get all Multimedia '''
+    media = {}
+    user_config = get_config()
+    video_manifest = mukkuru_env["video.json"]
+    video_sources = user_config["videoSources"].copy()
+    if not user_config["useAllVideoSources"]:
+        video_sources = [video_sources[0]]
+    media["videos"] = video.get_videos(video_sources, video_manifest)
+    return jsonify(media)

@@ -152,11 +152,13 @@ document.addEventListener('DOMContentLoaded', () => {
     //gameArr = Object.entries(data);
     gameArr = Object.entries(data);
     const favoriteGames = new Set(userConfiguration.favorite);
+    const recentPlayed = new Set(userConfiguration.recentPlayed);
 
     gameArray = [
-        ...gameArr.filter(([key]) => favoriteGames.has(key)),
-        ...gameArr.filter(([key, val]) => !favoriteGames.has(key) && val.Thumbnail === true),
-        ...gameArr.filter(([key, val]) => !favoriteGames.has(key) && val.Thumbnail !== true)
+        ...gameArr.filter(([key]) => recentPlayed.has(key)),
+        ...gameArr.filter(([key]) => favoriteGames.has(key) && !recentPlayed.has(key)),
+        ...gameArr.filter(([key, val]) => !recentPlayed.has(key) && !favoriteGames.has(key) && val.Thumbnail === true),
+        ...gameArr.filter(([key, val]) => !recentPlayed.has(key) && !favoriteGames.has(key) && val.Thumbnail !== true)
     ];
     
     gamesSkipped = 0;
@@ -164,17 +166,6 @@ document.addEventListener('DOMContentLoaded', () => {
     await isConfigReady;
 
     gameLimit = userConfiguration["maxGamesInHomeScreen"];
-
-    //make last played game displayed first
-    if (data[userConfiguration.lastPlayed] != undefined ) {
-        index = gameArray.findIndex(([key]) => key === userConfiguration.lastPlayed);
-        backend_log("lastPlayed game: "+userConfiguration.lastPlayed);
-        gameEl = gameArray[index];
-        delete gameArray[index];
-        gameArray.unshift(gameEl);
-    } else {
-        console.log(gameArray);
-    }
 
     gameArray.forEach((item) => {
         const AppID = item[0];
@@ -681,7 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             playSound("settings");
                             vanish(homeMenu);
                             sleep(500).then(() => {
-                                window.location.replace("/frontend/settings.html")
+                                window.location.replace("/frontend/settings")
                             });    
                             break;
                         case 5:
@@ -847,7 +838,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <path xmlns="http://www.w3.org/2000/svg" fill="currentColor" d="M24.008 4C13.508 4 4.896 12.1 4.08 22.394l10.72 4.432a5.6 5.6 0 0 1 3.186-.984q.158.002.314.01l4.768-6.904v-.098c0-4.16 3.38-7.54 7.54-7.54s7.54 3.384 7.54 7.544-3.384 7.542-7.54 7.542h-.174l-6.794 4.852.006.266a5.65 5.65 0 0 1-5.65 5.66 5.68 5.68 0 0 1-5.55-4.546L4.77 29.45C7.146 37.844 14.854 44 24.01 44c11.044 0 19.996-8.954 19.996-20S35.052 4 24.008 4m-9.852 29.334a4.25 4.25 0 0 0 2.188 2.082 4.252 4.252 0 0 0 3.268-7.844 4.24 4.24 0 0 0-3.13-.05l2.538 1.05a3.126 3.126 0 0 1 1.68 4.092 3.126 3.126 0 0 1-4.088 1.686zm21.48-14.49a5.03 5.03 0 0 0-5.026-5.024 5.028 5.028 0 0 0 0 10.05 5.026 5.026 0 0 0 5.024-5.026zM30.62 15.06a3.778 3.778 0 1 1-.004 7.548 3.778 3.778 0 0 1 .004-7.548"></path>
                 </svg>&nbsp;Steam
             </div>
-            <div class="contextItem" id="mukkuruStoreContext" onclick=''>Mukkuru</div>
+            <!--div class="contextItem" id="mukkuruStoreContext" onclick='window.location.replace("/frontend/store")'>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="40px" height="40px"><g xmlns="http://www.w3.org/2000/svg" fill="none" transform="scale(1.6)"><path d="M24 0v24H0V0zM12.593 23.258l-.011.002-.071.035-.02.004-.014-.004-.071-.035q-.016-.005-.024.005l-.004.01-.017.428.005.02.01.013.104.074.015.004.012-.004.104-.074.012-.016.004-.017-.017-.427q-.004-.016-.017-.018m.265-.113-.013.002-.185.093-.01.01-.003.011.018.43.005.012.008.007.201.093q.019.005.029-.008l.004-.014-.034-.614q-.005-.019-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014-.034.614q.001.018.017.024l.015-.002.201-.093.01-.008.004-.011.017-.43-.003-.012-.01-.01z"></path><path fill="currentColor" d="M2 9a3 3 0 0 1 3-3h2.853c.297 0 .48-.309.366-.583A2.5 2.5 0 0 1 8.083 5c-.331-1.487.792-3 2.417-3 1.626 0 2.748 1.513 2.417 3a2.5 2.5 0 0 1-.136.417c-.115.274.069.583.366.583H15a3 3 0 0 1 3 3v1.853c0 .297.308.48.583.366.135-.056.273-.104.417-.136 1.487-.331 3 .791 3 2.417s-1.513 2.748-3 2.417a2.5 2.5 0 0 1-.417-.136c-.274-.115-.583.069-.583.366V19a3 3 0 0 1-3 3h-1.893c-.288 0-.473-.291-.39-.566q.063-.21.085-.434a2.31 2.31 0 1 0-4.604 0q.021.224.086.434c.082.275-.103.566-.39.566H5a3 3 0 0 1-3-3v-2.893c0-.288.291-.473.566-.39q.21.063.434.085a2.31 2.31 0 1 0 0-4.604q-.224.021-.434.086c-.275.082-.566-.103-.566-.39z"></path></g>
+                </svg>Mukkuru
+            </div -->
         </div>
         <div class="contextualMenu" id="controlContextMenu">
             <img id="dashboardQR" src="web/qrcode" width="50%" height="50%" style="display: none;">

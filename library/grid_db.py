@@ -12,6 +12,10 @@ API_KEY = ""
 # API_URL = "https://www.steamgriddb.com/api/v2/"
 API_URL = "https://api.panyolsoft.com/steamgriddb/"
 
+# To-do list
+# We need to load steamgriddb api if user provided their own key
+# We need to add handling for cases where service is down or there's no internet
+
 class GameIdentifier(object):
     ''' This object will have the required information to identify a game '''
     def __init__(self, title, app_id, platform):

@@ -930,3 +930,50 @@ async function move_files(transfer_type) {
   document.getElementById("messageBox").innerText = response_text;
   open_context_menu("messageContext");
 }
+
+
+function showPreviousSeparator(state){
+    if (tabOptions[selectedTab][selectedOption].previousElementSibling != null && tabOptions[selectedTab][selectedOption].previousElementSibling.className == "option-separator") {
+        tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = state?"":"none";
+    }
+}
+
+function showNextSeparator(state){
+    if (tabOptions[selectedTab][selectedOption].nextElementSibling != null && tabOptions[selectedTab][selectedOption].nextElementSibling.className == "option-separator") {
+        tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = state?"":"none";
+    }
+}
+
+function refreshOptions() {
+    document.querySelectorAll(".options").forEach((item, index) => {
+        options = item.querySelectorAll(".menu-option");
+        tabOptions[index] = options;
+});
+}
+
+let previousPages = [];
+let isScrollable = false;
+let scrollableItem = null;
+
+function openNextPage(newScreen){
+    absoluteTab = document.getElementById("options-"+selectedTab);
+    previousPages.push(absoluteTab.cloneNode(true));
+    absoluteTab.replaceChildren(newScreen);
+    //scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
+    refreshOptions();
+}
+function openPreviousPage(){
+    absoluteTab = document.getElementById("options-"+selectedTab);
+    const previousPage = previousPages.pop();
+    absoluteTab.replaceChildren(...previousPage.childNodes);
+    refreshOptions();
+    isScrollable = false;
+    selectedOption = 0;
+    document.querySelectorAll(".menu-option.selected").forEach((element) => element.classList.remove("selected"));
+    document.querySelectorAll(".option-separator").forEach((element) => element.style.display = "");
+    if (!isTab){
+        showPreviousSeparator(false);
+        tabOptions[selectedTab][selectedOption].classList.add("selected");
+        showNextSeparator(false);
+    }
+}

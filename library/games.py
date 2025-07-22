@@ -3,9 +3,8 @@
 ''' Mukkuru games module '''
 import os
 import json
-import time
-import threading
 import subprocess
+import queue
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
@@ -15,6 +14,23 @@ from library.steam import get_steam_env, get_crossover_steam, get_crossover_env
 from library.steam import get_steam_games, get_non_steam_games, read_steam_username
 from library import grid_db
 from library.egs import get_egs_games, read_heroic_username
+
+artwork_queue = queue.Queue()
+
+def artwork_worker():
+    ''' Processes artwork queue '''
+    while True:
+        print("arwork_work init")
+        games = artwork_queue.get()
+        print("received queue")
+        if games is None:
+            break
+        try:
+            scan_artwork(games)
+        except (queue.Empty) as e:
+            print("Worker error:", e)
+        finally:
+            artwork_queue.task_done()
 
 def library_scan(options):
     '''
@@ -34,16 +50,16 @@ def library_scan(options):
         if options & option_steam:
             steam_games = get_steam_games(steam)
             games.update(steam_games)
-        if steam["shortcuts"] is not None and (options & option_nonsteam):
+        if (options & option_nonsteam) and steam["shortcuts"] is not None:
             non_steam_games = get_non_steam_games(steam)
             games.update(non_steam_games)
     if crossover_steam is not None:
         if options & option_steam:
-            steam_games = get_steam_games(crossover_steam)
-            games.update(steam_games)
-        if steam["shortcuts"] is not None and (options & option_nonsteam):
-            non_steam_games = get_non_steam_games(crossover_steam)
-            games.update(non_steam_games)
+            crossover_steam_games = get_steam_games(crossover_steam)
+            games.update(crossover_steam_games)
+        if (options & option_nonsteam) and crossover_steam["shortcuts"] is not None:
+            crossover_non_steam_games = get_non_steam_games(crossover_steam)
+            games.update(crossover_non_steam_games)
     if options & option_egs:
         egs_games = get_egs_games()
         games.update(egs_games)
@@ -69,16 +85,8 @@ def scan_games():
     user_config = get_config()
     options = user_config["librarySource"]
     games = library_scan(int(options))
-    #game_library.update(games)
-    threading.Thread(target=scan_artwork, args=(games,)).start()
-    time.sleep(5)
-    for k, _ in games.items(): #games.keys
-        thumbnail_path = os.path.join(mukkuru_env["root"], "thumbnails", f'{k}.jpg')
-        if not Path(thumbnail_path).is_file():
-            games[k]["Thumbnail"] = False
-        else:
-            games[k]["Thumbnail"] = True
-    update_games(games)
+    artwork_queue.put(games)
+    scan_thumbnails(games)
     return games
 
 def fetch_artwork(app_id, game, b1, b2, b3, use_alt_images):
@@ -157,7 +165,6 @@ def scan_artwork(games = None):
     config["heroBlacklist"] = blacklist2
     config["logoBlacklist"] = blacklist3
     update_config(config)
-    #clear_possible_mismatches(games)
     scan_thumbnails(games)
     set_alive_status({"command": "ScanFinished"})
     return "200"
@@ -213,8 +220,11 @@ def launch_app(app_id):
                    cwd=working_dir,
                    env=process_env, shell=True, check=False)
     user_config = get_config()
-    if user_config["lastPlayed"] != app_id:
-        user_config["lastPlayed"] = app_id
+    recent_played = user_config["recentPlayed"]
+    if app_id not in recent_played:
+        recent_played.insert(0, app_id)
+        while len(recent_played) > 3:
+            recent_played.pop(3)
         update_config(user_config)
     #os.environ.pop("STEAM_COMPAT_DATA_PATH", None)
     #os.environ.pop("STEAM_COMPAT_CLIENT_INSTALL_PATH", None)

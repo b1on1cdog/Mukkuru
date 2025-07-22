@@ -234,6 +234,8 @@ def get_proton_list():
     ''' list proton builds '''
     proton_builds = []
     steam = get_steam_env()
+    if steam is None:
+        return proton_builds
     proton_root = os.path.join(steam["path"], "steamapps", "common")
     for proton_build in os.listdir(proton_root):
         if proton_build.startswith("Proton "):
@@ -295,7 +297,7 @@ def get_steam_avatar_from_cache(artwork_dir, steam_username):
     extension = None
     if not Path(avatarcache).is_dir():
         print("avatarcache dir not found")
-        return None
+        return False
     for file in os.listdir(avatarcache):
         if file.endswith(".png") or file.endswith(".jpg"):
             avatar_file = file
@@ -303,10 +305,11 @@ def get_steam_avatar_from_cache(artwork_dir, steam_username):
             break
     if avatar_file is None:
         print("avatarcache image not found")
-        return None
+        return False
     avatar_image = os.path.join(avatarcache, avatar_file)
     avatar_path = os.path.join(artwork_dir, "Avatar", steam_username + extension)
     copy_file(avatar_image, avatar_path)
+    return True
 
 def download_steam_avatar(artwork_dir):
     ''' (if not exists) downloads steam avatar picture '''
@@ -320,17 +323,29 @@ def download_steam_avatar(artwork_dir):
         return
     avatar_path = os.path.join(artwork_dir, "Avatar", steam_username+".jpg")
     avatar_path_alt = os.path.join(artwork_dir, "Avatar", steam_username+".png")
-    if Path(avatar_path).is_file() or Path(avatar_path_alt).is_file():
+    avatar_exists = Path(avatar_path).is_file() and os.path.getsize(avatar_path) > 0
+    alt_exists = Path(avatar_path_alt).is_file() and os.path.getsize(avatar_path_alt) > 0
+    if Path(avatar_path).is_file() and not avatar_exists:
+        os.remove(avatar_path)
+    if Path(avatar_path_alt).is_file() and not alt_exists:
+        os.remove(avatar_path_alt)
+    if avatar_exists or alt_exists:
         print("Avatar image exists, skipping...")
         return
-    r=requests.get(AVATAR_DOWNLOAD_URL.replace("[USERNAME]", steam_username), timeout=20)
-    avatar_url = r.text
-    if "http" in avatar_url:
-        print("downloading steam user avatar image...")
-        grid_db.download_file(avatar_url, avatar_path)
-    else:
-        print(f"Invalid avatar url: {avatar_url}")
-        get_steam_avatar_from_cache(artwork_dir, steam_username)
+    try:
+        local_success = get_steam_avatar_from_cache(artwork_dir, steam_username)
+        if local_success:
+            return
+        r=requests.get(AVATAR_DOWNLOAD_URL.replace("[USERNAME]", steam_username), timeout=20)
+        avatar_url = r.text
+        if "http" in avatar_url:
+            print("downloading steam user avatar image...")
+            grid_db.download_file(avatar_url, avatar_path)
+        else:
+            print(f"Invalid avatar url: {avatar_url}")
+    except(requests.exceptions.InvalidSchema, requests.exceptions.InvalidURL,
+           requests.exceptions.SSLError, requests.exceptions.HTTPError) as e:
+        print(f"Unable to download steam avatar: {e}")
 
 def read_registry_value(root, reg_key, reg_value):
     ''' [Windows only] read key from System Registry'''
@@ -380,6 +395,14 @@ def get_crossover_env():
     ''' get crossover environment variables '''
     crossenv = os.environ.copy()
     crossover_app = os.path.expanduser("~/Applications/CrossOver.app/")
+    if not Path(crossover_app).is_dir():
+        crossover_app = "/Applications/CrossOver.app/"
+        if Path(crossover_app).is_dir():
+            print("Using Crossover system install")
+        else:
+            print("Crossover is not installed")
+    else:
+        print("Using Crossover user install")
     cxroot = os.path.join(crossover_app, "Contents", "SharedSupport", "CrossOver")
     cxbottlepath = os.path.expanduser("~/Library/Application Support/CrossOver/Bottles")
     crossenv["PYTHONPATH"] = os.path.join(cxroot, "lib", "python")
@@ -393,7 +416,7 @@ def get_crossover_env():
     return crossenv
 
 def get_crossover_steam():
-    ''' gets steam paths for crossover install (Not implemented yet) '''
+    ''' gets steam paths for crossover install'''
     system = platform.system()
     steam = {}
     prefix = ""

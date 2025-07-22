@@ -66,17 +66,6 @@ function updateLibraryOptions(){
   });
 }
 
-function showPreviousSeparator(state){
-    if (tabOptions[selectedTab][selectedOption].previousElementSibling != null && tabOptions[selectedTab][selectedOption].previousElementSibling.className == "option-separator") {
-        tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = state?"":"none";
-    }
-}
-
-function showNextSeparator(state){
-    if (tabOptions[selectedTab][selectedOption].nextElementSibling != null && tabOptions[selectedTab][selectedOption].nextElementSibling.className == "option-separator") {
-        tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = state?"":"none";
-    }
-}
 
 function clearArtBlacklist(){
     userConfiguration["boxartBlacklist"] = [];
@@ -165,12 +154,6 @@ function addUserAudios(){
     })
 };
 
-function refreshOptions() {
-    document.querySelectorAll(".options").forEach((item, index) => {
-        options = item.querySelectorAll(".menu-option");
-        tabOptions[index] = options;
-});
-}
 
 let aboutScreen = undefined;
 
@@ -178,6 +161,7 @@ let aboutScreen = undefined;
 To-do: The vertical line must become cyan during dark mode
 */
 document.addEventListener('DOMContentLoaded', () => {
+
 const homeMenu = document.getElementsByClassName("homeMenu")[0];
 const menuItems = document.querySelectorAll('.menu-tab');
 const menuOptions = document.querySelectorAll('.menu-option');
@@ -241,8 +225,13 @@ fetch("/hardware").then(function(response) {
         cpu = hardwareInformation["cpu"];
         gpu = hardwareInformation["gpu"]
         cpu = cpu.replace(" Processor", "");
-        cpuInfo.innerText = "CPU: " + cpu;
-        gpuInfo.innerText = "GPU: " + gpu;
+        if (cpu == gpu) {
+            cpuInfo.innerText = "SOC: " + cpu;
+            gpuInfo.style.display = "none";
+        } else {
+            cpuInfo.innerText = "CPU: " + cpu;
+            gpuInfo.innerText = "GPU: " + gpu;
+        }
         if (gpu.includes("Unknown")) {
             gpuInfo.style.display = "none";
         }
@@ -268,8 +257,6 @@ lockedOption = false;
 
 let isTab = true;
 
-// Options optimization
-
 const optionRangeMin = {
     "maxGamesInHomeScreen" : 6
 }
@@ -277,8 +264,6 @@ const optionRangeMin = {
 const optionRangeMax = {
     "maxGamesInHomeScreen" : 24
 }
-
-//
 
 function changeLockedValue(position) {
     elem = tabOptions[selectedTab][selectedOption];
@@ -373,32 +358,6 @@ async function showLicense(licenseKey){
     isScrollable = true;
     scrollableItem = document.getElementsByClassName("menu-options")[0];
 }
-let previousPages = [];
-let isScrollable = false;
-let scrollableItem = null;
-
-function openNextPage(newScreen){
-    absoluteTab = document.getElementById("options-"+selectedTab);
-    previousPages.push(absoluteTab.cloneNode(true));
-    absoluteTab.replaceChildren(newScreen);
-    //scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
-    refreshOptions();
-}
-function openPreviousPage(){
-    absoluteTab = document.getElementById("options-"+selectedTab);
-    const previousPage = previousPages.pop();
-    absoluteTab.replaceChildren(...previousPage.childNodes);
-    refreshOptions();
-    isScrollable = false;
-    selectedOption = 0;
-    document.querySelectorAll(".menu-option.selected").forEach((element) => element.classList.remove("selected"));
-    document.querySelectorAll(".option-separator").forEach((element) => element.style.display = "");
-    if (!isTab){
-        showPreviousSeparator(false);
-        tabOptions[selectedTab][selectedOption].classList.add("selected");
-        showNextSeparator(false);
-    }
-}
 
 async function createLicenseScreen(){
     const response = await fetch("/license");
@@ -463,12 +422,10 @@ document.addEventListener('keydown', (e) => {
             }
             if (isTab) {
                 playSound("select");
-                //Trigger ArrowRight
                 break;
             }
             playSound("tick");
             elem = tabOptions[selectedTab][selectedOption];
-                //elem = tabOptions[selectedTab][selectedOption];
             if (elem.dataset.hasOwnProperty("call")) {
                     switch (elem.dataset.call) {
                         case "deleteArt":
@@ -530,6 +487,7 @@ document.addEventListener('keydown', (e) => {
         }
 
             setTimeout(() => {
+            
             fetch("/config/set", {
                     method: "POST",
                     body: JSON.stringify(userConfiguration),
@@ -562,10 +520,8 @@ document.addEventListener('keydown', (e) => {
                     break;
                 }
                 isTab = true;
-                //menuItems[selectedTab].className = "menu-tab selected";
                 menuItems[selectedTab].classList.add("selected");
                 tabOptions[selectedTab].forEach((item) => {
-                    //item.className = "menu-option";
                     item.classList.remove("selected");
                 });
                 currentOption = tabOptions[selectedTab][selectedOption];
@@ -636,9 +592,7 @@ document.addEventListener('keydown', (e) => {
                 }
                 
                 menuItems[selectedTab].className = "menu-tab";
-               // menuItems[selectedTab].classList.remove("selected");
                 selectedTab++;
-                //menuItems[selectedTab].classList.add("selected");
                 menuItems[selectedTab].className = "menu-tab selected";
                 menuItems[selectedTab].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
                 selectedOption = 0;
@@ -675,7 +629,6 @@ document.addEventListener('keydown', (e) => {
                     close_context_menu();
                     return;
                 }
-                //tabOptions[selectedTab].getElementsByClassName("parent")
                 if (previousPages.length > 0) {
                     playSound("enter-back");
                     openPreviousPage();
@@ -706,7 +659,7 @@ document.addEventListener('keydown', (e) => {
         </div>
         <main class="settings-body">
             
-            <div class="menu">
+            <div class="menu" id="settings-menu">
                 <div id="sourcesTab" data-loc="LibrarySources" data-trm="swapText" class="menu-tab">Sources</div>
                 <div id="libraryTab" class="menu-tab" data-loc="Library" data-trm="swapText">Library</div>
                 <div id="navigationTab" class="menu-tab" data-loc="Navigation" data-trm="swapText">Navigation</div>
@@ -717,8 +670,9 @@ document.addEventListener('keydown', (e) => {
                 <div class="separator"></div>
                 <div id="aboutTab" class="menu-tab" data-loc="About" data-trm="swapText">About</div>
             </div>
+            
 
-            <div class="menu-options">
+            <div class="menu-options" id="settings-options">
                 <div class="options" id="options-0" style="display:none;">
                     <div class="option-description" id="librarySource-desc">Services chosen here will be used as library provider</div>
                     <div class="option-separator"></div>

@@ -12,7 +12,7 @@ import platform
 # Constants
 mukkuru_env = {}
 COMPILER_FLAG = getattr(sys, 'frozen', False) or "__compiled__" in globals()
-APP_VERSION = "0.3.9"
+APP_VERSION = "0.3.10"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
 SERVER_PORT = 49351
@@ -35,6 +35,7 @@ def backend_log(message):
     ''' print message and save to file '''
     print(message)
     if "log" in mukkuru_env:
+        os.makedirs(os.path.dirname(mukkuru_env["log"]), exist_ok=True)
         with open(mukkuru_env["log"], 'a', encoding='utf-8') as f:
             f.write(f"{message}\n")
 # Config
@@ -64,7 +65,7 @@ def get_config():
             "language" : "EN",
             "blacklist" : [],
             "favorite" : [],
-            "lastPlayed" : "",
+            "recentPlayed" : [],
             "showKeyGuide" : True,
             "theme" : "Switch",
             "cores" : 6,

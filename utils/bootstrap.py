@@ -133,3 +133,17 @@ def get_userprofile_folder(desired_dir):
                                  capture_output=True, text=True, check=False)
         return result.stdout.strip() if result.returncode == 0 else None
     return None
+
+
+def build_file_tree(root_path):
+    ''' return files and folders as a dictionary '''
+    tree = {}
+
+    for item in os.listdir(root_path):
+        item_path = os.path.join(root_path, item)
+        if os.path.isdir(item_path):
+            tree.setdefault("folders", []).append(item)
+        else:
+            tree.setdefault("files", []).append(item)
+
+    return tree

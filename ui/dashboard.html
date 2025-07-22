@@ -12,25 +12,118 @@ html {
     --font-sans: 'source-han-sans-simplified-c', sans-serif;
     --font-bold: var(--font-sans);
     --font-number: 'din-2014', sans-serif;
-    overflow: hidden;
+    background: linear-gradient(to bottom, #ffffff, #cfe1e4db);
     font-family: var(--font-sans);
     font-size: 20px;
 }
-.maingrid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(10%, 1fr));/*190px*/
+.maingrid, .downloadGrid, .appGrid {
+    display: none;
+    grid-template-columns: repeat(auto-fit, minmax(10%, 40vw));
     grid-template-rows: repeat(3, max-content);
-    margin: 40px;
-    gap: 40px;
+    margin: 2vw;
+    gap: 2vw;
     padding: 2vw;
+    transform: scale(1); 
+    overflow-y: auto;
+    overflow-x: hidden;
 }
+
+.downloadGrid {
+    gap: 1vh;
+    grid-template-columns: repeat(1, minmax(10%, 40vw));
+}
+.appGrid {
+    grid-template-columns: repeat(3, minmax(10%, 40vw));
+    gap: 1vw;
+    padding: 1vw;
+    margin: 1vw;
+}
+.maingrid.active, .downloadGrid.active, .appGrid.active {
+    display: grid;
+}
+
+.fileItem, .folderItem {
+    display: flex;
+    width: 80vw;
+    border-radius: 8px;
+    font-size: 3vh;
+    color: black;
+    justify-content: left;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #aaa;
+    background-color: aliceblue;
+    align-items: flex-start; /* or center */
+    flex-wrap: nowrap; 
+    cursor: pointer;
+}
+.fileImg {
+     flex-shrink: 0;
+     width: 4vh;
+     object-fit: cover;
+}
+
+.appItem {
+    max-width: 30vw;
+    aspect-ratio: 1;
+    height: auto;
+    outline: none;
+    position: relative;
+    border-radius: 6px;
+    border: 1px solid #aaa;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+.appItem.hidden {
+    filter: grayscale(90%) brightness(80%);
+}
+.favorite::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  background-image: url("data:image/svg+xml;utf8,<svg fill='red' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/></svg>");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.appThumbnail {
+    width: 100%;
+    border-radius: 2px;
+}
+
 .main-button {
     cursor: pointer;
-    width: 150px;
+    max-width: 440px;
+    min-width: 55px;
+}
+.main-button {
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    display: none;
+    align-items: center;
+    justify-content: left;
+}
+
+.main-button.active {
+    display: flex;
+}
+
+.button-title {
+    font-size:calc(6px + 1.5vw);
 }
 .main-button img {
-    width: 120px;
-    height: 120px;
+    aspect-ratio: 1;
+    max-width: 240px;
+    min-width: 30px;
+    max-height: 240px;
+    height: auto;
+    margin: 10%;
 }
 .progress {
     display: none;
@@ -57,18 +150,32 @@ html {
     background: linear-gradient(90deg,rgba(143, 242, 241, 1) 0%, rgba(167, 76, 252, 1) 44%, rgba(116, 86, 248, 1) 54%, rgba(255, 204, 204, 1) 100%);
     border-radius: 24px;
 }
-
     </style>
 </head>
 <body>
 
-<div class="maingrid">
-    <div class="main-button" id="uploadBtn">
-        <img src="assets/vector/file-export.svg" alt="File"></img>
+<div class="maingrid active">
+    <div class="main-button active" id="uploadBtn">
+        <img src="assets/vector/download-square.svg" alt="File" style="transform: rotate(180deg);"></img>
         <div class="button-title" id="uploadBtnTitle" data-loc="sendFile" data-trm="swapText">Send file</div>
         <input type="file" id="fileInput" hidden>
     </div>
-
+    <div class="main-button active" id="downloadBtn">
+        <img src="assets/vector/download-square.svg" ></img>
+        <div class="button-title" id="downloadBtnTitle" data-loc="id" data-trm="swapText">Download file</div>
+    </div>
+    <div class="main-button active" id="appsBtn">
+        <img src="assets/vector/app-folder.svg" alt="File"></img>
+        <div class="button-title" id="appsBtnTitle" data-loc="id" data-trm="swapText">App list</div>
+    </div>
+    <div class="main-button" id="convertBtn">
+        <img src="assets/vector/exchange.svg" alt="File"></img>
+        <div class="button-title" id="convertBtnTitle" data-loc="id" data-trm="swapText">Convert file</div>
+    </div>
+</div>
+<div class="appGrid">
+</div>
+<div class="downloadGrid">
 </div>
 <div class="progress" id="progress">
     <div id="progressBar" class="bar"></div>
@@ -76,15 +183,140 @@ html {
 
 <script>
 const CHUNK_SIZE = 4 * 1024 * 1024;
+let current_directory_path = "";
+
+function cdUp(path) {
+  const parts = path.split('/').filter(Boolean);
+  parts.pop();
+  return parts.length > 0 ? parts.join('/') + '/' : '';
+}
+
+async function loadConfiguration() {
+    configResp = await fetch("/config/get");
+    userConfiguration = await configResp.json();
+}
+
+async function listApps() {
+    maingrid = document.getElementsByClassName("maingrid")[0];
+    appGrid = document.getElementsByClassName("appGrid")[0];
+    appGrid.classList.add("active");
+    maingrid.classList.remove("active")
+    apps_response =  await fetch("/library/apps")
+    app_list = await apps_response.json();
+    for (const key in app_list) {
+        appDict = app_list[key];
+        appName = appDict["AppName"];
+        appId = key;
+        console.log("game key: " + key);
+        const app = document.createElement("a");
+        app.className = "appItem";
+        app.innerText = appName;
+        app.dataset.appid = appId;
+        app.addEventListener("click", () => {
+            fetch("/library/launch/"+app.dataset.appid);
+        });
+        const thumbnail = document.createElement('img');
+        thumbnail.src = './thumbnails/'+appId+'.jpg';
+        thumbnail.alt = appName;
+        thumbnail.className = "appThumbnail";
+        
+        if (userConfiguration["blacklist"].includes(appId)){
+            app.classList.add("hidden");
+        }
+        if (userConfiguration["favorite"].includes(appId)){
+            app.classList.add("favorite");
+        }
+        
+        app.insertBefore(thumbnail, app.firstChild);
+        appGrid.appendChild(app);
+    }
+}
+
+async function listFiles(new_path = null){
+    maingrid = document.getElementsByClassName("maingrid")[0];
+    downloadGrid = document.getElementsByClassName("downloadGrid")[0];
+    if (new_path != null){
+        if (new_path == "..") {
+            if (current_directory_path == "") {
+                maingrid.classList.add("active");
+                downloadGrid.classList.remove("active");
+                return;
+            }
+            current_directory_path = cdUp(current_directory_path);
+            console.log("returning to previous directory");
+        } else {
+            current_directory_path = current_directory_path + new_path + "/";
+        }
+    } 
+    document.querySelectorAll('.fileItem').forEach(element => element.remove());
+    document.querySelectorAll('.folderItem').forEach(element => element.remove());
+    dir_info = await fetch("/list/" + current_directory_path);
+    dir_dictionary = await dir_info.json()
+    downloadGrid.classList.add("active");
+    maingrid.classList.remove("active");
+
+    const backEl = document.createElement("a");
+    backEl.className = "folderItem";
+    backEl.innerText = translate_str("Back");
+    backEl.addEventListener("click", () => {
+        listFiles("..");
+    });
+    const backTb = document.createElement('img');
+    backTb.src = "assets/vector/return.svg";
+    backTb.className = "fileImg"
+    backEl.insertBefore(backTb, backEl.firstChild);
+    downloadGrid.appendChild(backEl);
+    
+    if ("folders" in dir_dictionary) {
+        dir_dictionary["folders"].forEach((element)  => {
+            const folder = document.createElement("a");
+            folder.className = "folderItem";
+            folder.innerText = element;
+            folder.dataset.path = element;
+            folder.addEventListener("click", () => {
+                listFiles(folder.dataset.path);
+            });
+            const thumbnail = document.createElement('img');
+            thumbnail.src = "assets/vector/folder-item.svg";
+            thumbnail.className = "fileImg"
+            folder.insertBefore(thumbnail, folder.firstChild);
+            downloadGrid.appendChild(folder);
+        });
+    }
+    if ("files" in dir_dictionary) {
+            dir_dictionary["files"].forEach((element) => {
+            const fileItem = document.createElement("a");
+            fileItem.className = "fileItem"
+            fileItem.innerText = element;
+           // fileItem.download = "";
+            fileItem.href = "download/" + current_directory_path + encodeURI(element);
+            fileItem.dataset.path = element;
+            
+            const thumbnail = document.createElement('img');
+            thumbnail.src = "assets/vector/file-item.svg";
+            thumbnail.className = "fileImg"
+            fileItem.insertBefore(thumbnail, fileItem.firstChild);
+            downloadGrid.appendChild(fileItem);
+        });
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     get_localization();
+    loadConfiguration();
     document.getElementById('uploadBtn').onclick = () => {
         document.getElementById('fileInput').click();
     };
     document.getElementById('fileInput').addEventListener('change', async function () {
         startUpload();
     });
+    document.getElementById("downloadBtn").addEventListener("click", () => {
+        listFiles();
+    });
+    document.getElementById("appsBtn").addEventListener("click", () => {
+        listApps();
+    });
+
 });
 
 function updatePb(percent) {

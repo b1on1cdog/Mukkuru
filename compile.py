@@ -27,6 +27,10 @@ parser.add_argument("--onedir", action="store_true")
 args = parser.parse_args()
 compiler_config = {}
 
+if system == "Darwin":
+    print("MacOS detected, adding --onedir")
+    args.onedir = True
+
 # to prevent contributors from commiting their env changes to github
 # project, they will ideally do those changes in compiler.json
 if Path("compiler.json").is_file():
@@ -221,6 +225,8 @@ if system == "Windows":
 if system == "Darwin":
     compiler_flags.append("--macos-create-app-bundle")
     compiler_flags.append(f"--macos-app-icon={PNG_PATH}")
+    compiler_flags.append('--company-name=Josue Alonso Rodriguez')
+    compiler_flags.append(f'--macos-app-version={APP_VERSION}')
 elif args.debug:
     compiler_flags.append("--debug")
 if args.onedir:
@@ -248,12 +254,37 @@ else:
 os.remove(SRC_OUT)
 
 if system == "Darwin" and not args.run:
-    app_input = os.path.join(OUTPUT_DIR, f"{OUTPUT_FILE}.app")
+    APP_NAME = f"{OUTPUT_FILE}.app"
+    app_input = os.path.join(OUTPUT_DIR, APP_NAME)
     app_dmg = app_input.replace(".app", ".dmg")
+
+    layout_abs = os.path.abspath(os.path.join(OUTPUT_DIR, "layout"))
+    os.makedirs(layout_abs, exist_ok=True)
+    layout_app_abs = os.path.join(layout_abs, "Mukkuru.app")
+    shutil.move(app_input, layout_app_abs)
     dmg_create_command = []
-    dmg_create_command.extend(["create", "-volname", "Mukkuru"])
-    dmg_create_command.extend(["-srcfolder", app_input])
-    dmg_create_command.extend(["-volname", "Mukkuru"])
-    dmg_create_command.extend(["-ov", "-format", "UDZO", app_dmg])
-    invoke(dmg_create_command, "hdiutil")
+
+    DMG_UTIL = shutil.which("create-dmg")
+    if DMG_UTIL is None:
+        DMG_UTIL = "hdiutil"
+        alias_create_command = ['-e']
+        SCRIPT1 = 'tell application "Finder" to make alias file'
+        SCRIPT2 = 'to (POSIX file "/Applications/")'
+        SCRIPT3 = f'at (POSIX file "{layout_abs}")'
+        alias_create_command.append(f'{SCRIPT1} {SCRIPT2} {SCRIPT3}")')
+        invoke(alias_create_command, "osascript")
+        dmg_create_command.extend(["create", "-volname", "Mukkuru"])
+        dmg_create_command.extend(["-srcfolder", layout_abs])
+        dmg_create_command.extend(["-ov", "-format", "UDZO", app_dmg])
+    else:
+        dmg_create_command.extend(["--volname" ,"Mukkuru"])
+        dmg_create_command.extend(["--window-size", "500", "300"])
+        dmg_create_command.extend(["--icon-size", "100"])
+        dmg_create_command.extend(["--icon", "Mukkuru.app", "100", "100"])
+        dmg_create_command.extend(["--app-drop-link", "350", "100"])
+       # dmg_create_command.extend(["--icon", "Applications", "350", "100"])
+        dmg_create_command.append("--no-internet-enable")
+        dmg_create_command.append(app_dmg)
+        dmg_create_command.append(layout_abs)
+    invoke(dmg_create_command, DMG_UTIL)
 # end compile.py

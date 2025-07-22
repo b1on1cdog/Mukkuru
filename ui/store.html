@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Mukkuru - Store</title>
+    <link rel="stylesheet" href="./assets/css/settings.css">
+    <script src="mukkuru.js"></script>
+    <script src="localization.js"></script>
+    <script>
+if (localStorage.getItem("darkMode") == "true") {
+    applyDarkMode();
+}
+
+function setDarkModeState(state){
+    localStorage.setItem("darkMode", state);
+    document.getElementsByClassName("homeMenu")[0].style.setProperty("--bg-color", state?darkColor:lightColor);
+    document.getElementsByClassName("controllerState-type")[0].getElementsByTagName("svg")[0].getElementsByTagName("path")[0].style.fill = state?lightColor:darkColor;
+    document.querySelectorAll(".keyGuide-icon").forEach((element) => element.getElementsByTagName("path")[0].style.fill = state?lightColor:darkColor);
+    const root = document.documentElement;
+    root.style.setProperty('--description-color', state?'#A7C4D9':"rgba(39, 51, 67, 0.747)");
+    if (state == true){
+        applyDarkMode();
+    } else {
+        document.documentElement.style.setProperty("--bg-color", lightColor);
+        document.documentElement.style.setProperty("--main-color", darkColor);
+    }
+}
+
+let tabOptions = {};
+
+/*
+To-do: The vertical line must become cyan during dark mode
+*/
+document.addEventListener('DOMContentLoaded', () => {
+
+const homeMenu = document.getElementsByClassName("homeMenu")[0];
+const menuItems = document.querySelectorAll('.menu-tab');
+const menuOptions = document.querySelectorAll('.menu-option');
+//menuItems[0].className = "menu-tab selected";
+menuItems[0].classList.add("selected");
+
+if (isFirefox || isKioskMode) {
+    document.getElementById("fullScreen").remove();
+    document.getElementById("fullScreen-separator").remove();
+}
+
+fetch("/config/get").then(function(response) {
+        return response.json();
+    }).then(function(data) {
+        userConfiguration = data;
+        menuOptions.forEach(option => {
+        document.getElementById("options-0").style.display = "";
+});
+        if (userConfiguration["darkMode"] == true) {
+            setDarkModeState(true);
+        } else {
+            setDarkModeState(false);
+            //localStorage.setItem("darkMode", false);
+        }
+        showKeyGuide(userConfiguration["showKeyGuide"]);
+        refreshOptions();
+        menuItems[0].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
+        tabOptions[0][0].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
+        allowRendering();
+});    
+
+
+/*
+fetch("/hardware").then(function(response) {
+        return response.json();
+    }).then(function(data) {
+        hardwareInformation = data
+        //archInfo = document.getElementById("arch");
+        gpuInfo = document.getElementById("gpu_name");
+        cpuInfo = document.getElementById("cpu_name");
+        distroInfo = document.getElementById("distro");
+        versionInfo = document.getElementById("app_version");
+        try {
+        document.getElementById("total_ram").innerText = "RAM: " + hardwareInformation["total_ram"] + "GiB";
+        patchHTML("storage", "unknown", hardwareInformation["disk_total"] + "Gb");
+        patchHTML("computer_name", "unknown", hardwareInformation["computer_name"]);
+        cpu = hardwareInformation["cpu"];
+        gpu = hardwareInformation["gpu"]
+        cpu = cpu.replace(" Processor", "");
+        cpuInfo.innerText = "CPU: " + cpu;
+        gpuInfo.innerText = "GPU: " + gpu;
+        if (gpu.includes("Unknown")) {
+            gpuInfo.style.display = "none";
+        }
+        distroInfo.innerText = "OS: " + hardwareInformation["distro"];
+        versionInfo.innerText = hardwareInformation["app_version"] + " (" + hardwareInformation["arch"] +")";
+        } catch (err) {
+            backend_log(err);
+            gpuInfo.style.display = "none";
+            distroInfo.style.display = "none";
+        }
+        if (hardwareInformation["has_battery"] == false) {    
+            document.getElementById("displayBatteryPercent").remove();
+            document.getElementById("dbp-separator").remove();
+        }
+        aboutId = "options-"+(Object.keys(tabOptions).length - 1);
+        aboutScreen = document.getElementById(aboutId);
+});
+*/
+
+selectedOption = 0;
+selectedTab = 0;
+lockedOption = false;
+
+let isTab = true;
+
+async function showLicense(licenseKey){
+    console.log("displaying " + licenseKey+" license....");
+    lastElement = (Object.keys(tabOptions).length - 1)
+    aboutId = "options-"+lastElement;
+
+    const licenseScreen = document.createElement("div");
+
+    const licenseDescription = document.createElement("div");
+    licenseDescription.className = "option-description";
+    licenseDescription.innerText = licenses[licenseKey];
+    licenseScreen.appendChild(licenseDescription);
+
+    openNextPage(licenseScreen);
+    isScrollable = true;
+    scrollableItem = document.getElementsByClassName("menu-options")[0];
+}
+
+async function createLicenseScreen(){
+    const response = await fetch("/license");
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+    licenses = await response.json();
+    const separator = document.createElement("div");
+    separator.className = "option-separator";
+    const licenseScreen = document.createElement("div");
+    licenseScreen.appendChild(separator);
+    for (const [key, value] of Object.entries(licenses)) {
+        const m_option = document.createElement("div");
+        m_option.className = "menu-option";
+        m_option.innerText = key;
+        m_option.dataset.call = "showLicense";
+        m_option.dataset.param1 = key;
+        licenseScreen.appendChild(m_option);
+        licenseScreen.appendChild(separator.cloneNode(true));
+    }
+    const spacer = document.createElement('div');
+    spacer.style.minHeight = "300px";
+    licenseScreen.appendChild(spacer);
+
+    openNextPage(licenseScreen);
+}
+
+document.addEventListener('keydown', (e) => {
+    e.preventDefault();
+    if (homeMenu.style.opacity < 1) {
+        return;
+    }
+    ctxMenu = document.getElementsByClassName("contextualMenu active")[0];
+
+        switch(keyBindings[e.key]) {
+            case 'right':
+                if (isContextMenu) {
+                    return;
+                }
+                if (isTab == false || tabOptions[selectedTab].length == 0) {
+                    playSound("border");
+                    break;
+                }
+                isTab = false;
+                tabOptions[selectedTab][selectedOption].classList.add("selected");
+                menuItems[selectedTab].className = "menu-tab marked";
+                showPreviousSeparator(false);
+                showNextSeparator(false);
+                playSound("select");
+                break;
+            
+            case 'confirm':
+            if (isContextMenu) {
+                selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
+                selectedContext.click();
+                playSound("tick");
+                return;
+            }
+            if (isTab) {
+                playSound("select");
+                //Trigger ArrowRight
+                break;
+            }
+            playSound("tick");
+            break;
+
+            case 'left':
+                if (isContextMenu) {
+                    return;
+                }
+                if (isTab) {
+                    playSound("border");
+                    break;
+                }
+                isTab = true;
+                menuItems[selectedTab].classList.add("selected");
+                tabOptions[selectedTab].forEach((item) => {
+                    item.classList.remove("selected");
+                });
+                currentOption = tabOptions[selectedTab][selectedOption];
+                if (currentOption != null) {
+                    showPreviousSeparator(true);
+                    showNextSeparator(true);
+                }
+                playSound("select");
+                break;
+            
+            case 'up':
+                 if (isContextMenu) {
+                    return;
+                }
+                if (isTab){
+                if (selectedTab == 0) {
+                    playSound("border");
+                    break;
+                }
+                while (previousPages.length > 0) {
+                    openPreviousPage();
+                }
+                menuItems[selectedTab].className = "menu-tab";
+                selectedTab--;
+                menuItems[selectedTab].className = "menu-tab selected";
+                menuItems[selectedTab].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
+                selectedOption = 0;
+            } else {
+                if (isScrollable) {
+                    scrollableItem.scrollBy(0, -100);
+                    return;
+                }
+
+                if (selectedOption == 0)
+                {
+                    playSound("border");
+                    break;
+                }
+                showPreviousSeparator(true);
+                showNextSeparator(true);
+                tabOptions[selectedTab][selectedOption].classList.remove("selected");
+                tabOptions[selectedTab][selectedOption].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
+                selectedOption--;
+                tabOptions[selectedTab][selectedOption].classList.add("selected");
+                showPreviousSeparator(false);
+                showNextSeparator(false);
+            }
+                playSound("select");
+                break;
+            case 'down':
+                if (isContextMenu) {
+                    return;
+                }
+                if (isTab){
+
+                if (selectedTab == menuItems.length - 1) {
+                    playSound("border");
+                    break;
+                }
+                while (previousPages.length > 0) {
+                    openPreviousPage();
+                }
+                
+                menuItems[selectedTab].className = "menu-tab";
+                selectedTab++;
+                menuItems[selectedTab].className = "menu-tab selected";
+                menuItems[selectedTab].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
+                selectedOption = 0;
+            } else {
+
+                if (isScrollable) {
+                    scrollableItem.scrollBy(0, 100);
+                    return;
+                }
+
+                if (selectedOption+1 == tabOptions[selectedTab].length)
+                {
+                    playSound("border");
+                    break;
+                }
+                    currentOption = tabOptions[selectedTab][selectedOption];
+                    if (currentOption == null) {
+                        playSound("border");
+                        return;
+                    }
+                    showPreviousSeparator(true);
+                    showNextSeparator(true);
+                    tabOptions[selectedTab][selectedOption].classList.remove("selected");
+                    selectedOption++;
+                    tabOptions[selectedTab][selectedOption].classList.add("selected");
+                    tabOptions[selectedTab][selectedOption].scrollIntoView({ behavior: "instant", block: "center" });
+                    showPreviousSeparator(false);
+                    showNextSeparator(false);
+            }
+                playSound("select");
+                break;
+            case 'back':
+                if (isContextMenu) {
+                    close_context_menu();
+                    return;
+                }
+                if (previousPages.length > 0) {
+                    playSound("enter-back");
+                    openPreviousPage();
+                    return;
+                }
+                goHome();
+                break;
+            default:
+                break;
+        }
+        document.querySelectorAll(".options").forEach((item) => {
+            item.style.display = "none";
+        });
+        document.getElementById(`options-${selectedTab}`).style.display = "";
+});
+});   
+
+</script>
+</head>
+<body>
+    <article class="homeMenu pending">
+        <div class="store-container">
+            <div class="header">
+                <div class="spacer" style="min-width:40px"></div>
+                <h2 id="store-header">Store</h2>
+            </div>
+            <div class="separator"></div>
+        </div>
+        <main class="store-body">
+            
+            <div class="menu" id="store-menu">
+                <div id="packagesTab" class="menu-tab" data-loc="Packages" data-trm="swapText">Packages</div>
+                <div id="patchesTab" class="menu-tab" data-loc="Patches" data-trm="swapText">Patches</div>
+                <div id="pluginTab" class="menu-tab" data-loc="Plugins" data-trm="swapText">Plugins</div>
+                <div id="themesTab" class="menu-tab" data-loc="Themes" data-trm="swapText">Themes</div>
+                <div id="sfxTab" class="menu-tab" data-loc="AudioSFX" data-trm="swapText">Sound Effects</div>
+                <div class="separator"></div>
+            </div>
+
+            <div class="menu-options" id="settings-options">
+                <div class="options" id="options-0" style="display:none;">
+                    <div class="option-separator"></div>
+                    <div class="menu-option">Coming soon</div>
+                    <div class="option-separator"></div>
+                </div>
+                <div class="options" id="options-1" style="display:none;">
+                    <div class="option-separator"></div>
+                    <div class="menu-option">Coming soon</div>
+                    <div class="option-separator"></div>
+                </div>
+                <div class="options" id="options-2" style="display:none;">
+                    <div class="option-separator"></div>
+                    <div class="menu-option">Coming soon</div>
+                    <div class="option-separator"></div>
+                    <div class="spacer" style="min-height:300px"></div>
+                </div>
+                <div class="options" id="options-3" style="display:none; ">
+                    <div class="option-separator"></div>
+                    <div class="menu-option">Coming soon</div>
+                    <div class="option-separator"></div>
+                </div>
+                <div class="options" id="options-4" style="display:none;">
+                    <div class="option-separator"></div>
+                    <div class="menu-option">Coming soon</div>
+                    <div class="option-separator"></div>
+                    <div class="spacer" style="min-height:300px"></div>
+                </div>
+            </div>
+
+            </div>
+        </main>
+        <div class="contextualMenu" id="messageContext" style="opacity: 0.9;">
+            <div id="messageBox"style="margin: 50px 50px 50px 50px">There's nothing to display here</div>
+            <div class="contextItem selected" id="messageAccept" onclick='close_context_menu(false)'>Confirm</div>
+        </div>
+        <footer class="homeFooter">
+            <div class="controllerState">
+                <div class="controllerState-type">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 184.689 100"><path d="M158 14.466H26.692a16.047 16.047 0 0 0-16 16v39.068a16.047 16.047 0 0 0 16 16H158a16.047 16.047 0 0 0 16-16V30.466a16.047 16.047 0 0 0-16-16zm.8 10.31a3.359 3.359 0 1 1-3.359 3.358 3.357 3.357 0 0 1 3.359-3.358zm0 13.969a3.359 3.359 0 1 1-3.36 3.355 3.358 3.358 0 0 1 3.36-3.355zM26.691 26.786a6.177 6.177 0 1 1-6.177 6.177 6.177 6.177 0 0 1 6.177-6.177zm-7.263 33.04a3.359 3.359 0 1 1 3.359-3.358 3.358 3.358 0 0 1-3.359 3.358zm7.263 7.253a3.359 3.359 0 1 1 3.358-3.359 3.359 3.359 0 0 1-3.358 3.359zm0-13.97a3.359 3.359 0 1 1 3.358-3.358 3.359 3.359 0 0 1-3.358 3.358zm7.109 6.717a3.359 3.359 0 1 1 3.358-3.358 3.359 3.359 0 0 1-3.358 3.358zm105.42 17.14H43.958v-52.19h95.262zm9.108-41.579a3.359 3.359 0 1 1 3.358 3.358 3.358 3.358 0 0 1-3.358-3.358zM158.8 65.068a6.177 6.177 0 1 1 6.177-6.177 6.177 6.177 0 0 1-6.177 6.177zm7.263-26.323a3.359 3.359 0 1 1 3.358-3.358 3.359 3.359 0 0 1-3.359 3.358z" fill="2E2E2E"/></svg>
+                </div>
+            </div>
+            <div class="keyGuideList pending">
+                <div class="keyGuide" id="back-keyGuide">
+                    <svg class="keyGuide-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M59.765 57.536a5.611 5.611 0 0 1-.821 3.15 6.024 6.024 0 0 1-2.171 1.985 9.644 9.644 0 0 1-3.016 1.029 19.232 19.232 0 0 1-3.309.291h-6.564V51.237h7.041a12.05 12.05 0 0 1 6.563 1.482 5.319 5.319 0 0 1 2.277 4.817zm-6.22-11.09a7 7 0 0 0 2.355-1.058 5.194 5.194 0 0 0 1.588-1.8 5.473 5.473 0 0 0 .582-2.62 4.6 4.6 0 0 0-2.222-4.315 11.857 11.857 0 0 0-5.982-1.3h-5.982v11.438h6.829a11.355 11.355 0 0 0 2.832-.345zM83.285 50A33.285 33.285 0 1 1 50 16.715 33.285 33.285 0 0 1 83.285 50zm-18.227 7.8a9.861 9.861 0 0 0-.609-3.547 8.167 8.167 0 0 0-1.72-2.752 8.707 8.707 0 0 0-2.647-1.88 10.89 10.89 0 0 0-3.335-.926v-.105a9.181 9.181 0 0 0 4.765-2.911 7.815 7.815 0 0 0 1.8-5.241 8.939 8.939 0 0 0-1.033-4.5 8.572 8.572 0 0 0-2.7-2.912 11.221 11.221 0 0 0-3.779-1.587 19.281 19.281 0 0 0-4.235-.475H38.644V68.44h12.334a21.8 21.8 0 0 0 5.478-.662 14.093 14.093 0 0 0 4.473-1.958 9.277 9.277 0 0 0 4.129-8.02z" fill="2e2e2e"/></svg>
+                    <div id="back-keyText" class="keyGuide-text">
+                        Back
+                    </div>
+                </div>
+                <div class="keyGuide">
+                    <svg class="keyGuide-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M49.83,36.051l6.987,17.574H42.79ZM83.285,50A33.285,33.285,0,1,1,50,16.715,33.285,33.285,0,0,1,83.285,50ZM68.463,67.44,52.371,29.964H47.607L31.356,67.44h5.823l3.759-9.211H58.724l3.81,9.211Z" fill="2E2E2E"/></svg>
+                    <div id="ok-keyGuide" class="keyGuide-text">
+                        OK
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

@@ -258,7 +258,12 @@ def kill_executable_by_path(target_path, force=True):
 
 def kill_process_on_port(port):
     ''' kill any executable using this port '''
-    for conn in psutil.net_connections(kind="inet"):
+    try:
+        net_conns = psutil.net_connections(kind="inet")
+    except (PermissionError, psutil.AccessDenied):
+        print("Unable to determine if port is busy")
+        return False
+    for conn in net_conns:
         if conn.laddr.port == port and conn.status == psutil.CONN_LISTEN:
             pid = conn.pid
             if pid:

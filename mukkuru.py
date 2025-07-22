@@ -31,12 +31,12 @@ from utils.core import update_config, format_executable
 from utils.bootstrap import get_userprofile_folder
 
 from library import video
-from library.games import get_games, scan_games, scan_thumbnails, get_username
+from library.games import get_games, scan_games, scan_thumbnails, get_username, artwork_worker
 from library.steam import get_steam_env, download_steam_avatar
 
 from controller.license import license_controller
 from controller.hardware import hardware_controller
-from controller.library import library_controller
+from controller.library import library_controller, external_library
 from controller.dashboard import dashboard_blueprint
 
 if FRONTEND_MODE == "PYWEBVIEW":
@@ -53,9 +53,13 @@ app = Flask(__name__)
 app.register_blueprint(license_controller)
 app.register_blueprint(hardware_controller)
 app.register_blueprint(library_controller)
+app.json.sort_keys = False
+
 
 wserver = Flask(__name__)
+wserver.json.sort_keys = False
 wserver.register_blueprint(dashboard_blueprint)
+wserver.register_blueprint(external_library)
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.CRITICAL)
 
@@ -143,6 +147,7 @@ def quit_app():
     #if os.environ.get("XDG_SESSION_DESKTOP", "").lower() == "gamescope":
     os._exit(0)
 
+@wserver.route('/favicon.ico')
 @app.route('/favicon.ico')
 def favicon():
     ''' favicon image '''
@@ -189,19 +194,6 @@ def localize():
     ''' get a json with current selected language strings'''
     return get_localization()
 
-@app.route('/media/get')
-def get_media():
-    ''' Get all Multimedia '''
-    media = {}
-    backend_log("fetching media...")
-    user_config = get_config()
-    video_manifest = mukkuru_env["video.json"]
-    video_sources = user_config["videoSources"].copy()
-    if not user_config["useAllVideoSources"]:
-        video_sources = [video_sources[0]]
-    media["videos"] = video.get_videos(video_sources, video_manifest)
-    return json.dumps(media)
-
 @app.route('/video/set', methods = ['POST'])
 def set_videos():
     '''update videos json from request'''
@@ -234,6 +226,7 @@ def get_theme_asset(theme_id, asset):
     backend_log(f"getting theme {theme_id} {asset}")
     return send_from_directory(theme_dir, asset)
 
+@wserver.route('/config/get')
 @app.route('/config/get')
 def get_user_configuration():
     ''' get_config() http controller, returns a json '''
@@ -321,18 +314,15 @@ def main_uri():
     ''' redirect to homepage '''
     return app.redirect(location=f'http://localhost:{APP_PORT}/frontend/')
 
-@wserver.route('/')
-@wserver.route('/index.html')
-def server_main():
-    ''' returns main dashboard page'''
-    serve_path = os.path.join(APP_DIR, "ui")
-    return send_from_directory(serve_path, "dashboard.html")
-
 @app.route('/frontend/<path:path>')
 def static_file(path):
     ''' serve asset '''
     user_config = get_config()
     serve_path = os.path.join(APP_DIR, "ui")
+    if path == "store":
+        return send_from_directory(serve_path, "store.html")
+    if path == "settings":
+        return send_from_directory(serve_path, "settings.html")
     if path == "assets/avatar":
         avatar_file = os.path.join(mukkuru_env["artwork"], "Avatar", f"{get_username()}.jpg")
         avatar_png = os.path.join(mukkuru_env["artwork"], "Avatar", f"{get_username()}.png")
@@ -517,7 +507,7 @@ def main():
             return
     backend_log(f'Using { FRONTEND_MODE } for rendering')
     backend_log(f"COMPILER_FLAG: {COMPILER_FLAG}")
-    hardware_if.kill_process_on_port(APP_PORT)
+    hardware_if.kill_process_on_port(APP_PORT)#to-do: send an app/quit request to Mukkuru
     # Instead of writing another executable, this one will conditionally act as updater
     if "MUKKURU_UPDATE" in os.environ and COMPILER_FLAG:
         updater.process_update()
@@ -545,7 +535,7 @@ def main():
 
     for needed_dir in needed_dirs:
         if not os.path.isdir(needed_dir):
-            os.mkdir(needed_dir)
+            os.makedirs(needed_dir, exist_ok=True)
 
     user_config = get_config()
     if not Path(mukkuru_env["library.json"]).is_file():
@@ -560,8 +550,11 @@ def main():
     fix_file_sources()
     if threading.current_thread() is threading.main_thread():
         threading.Thread(target=start_app).start()
+        threading.Thread(target=artwork_worker, daemon=True).start()
         hardware_if.wait_for_server("localhost", APP_PORT)
         Frontend(is_fullscreen(), app_version(), mukkuru_env).start()
+        # if main thread returns, ThreadExecutor won't work
+        threading.Event().wait()
     else:
         start_app()
 if __name__ == "__main__":

@@ -15,7 +15,7 @@ See [third-party.md](docs/third-party.md) for third-party files license terms.<b
 - Steam Library games scan<br/>
 - Epic Games Library and Heroic games scan<br/>
 - MacOS Crossover Steam in Apple Silicon supported<br/>
-- WebUI to transfer videos from another device<br/>
+- WebUI to transfer files from another device<br/>
 - Video playback and take video screenshots with a single button<br/>
 - Automatically download boxarts from SteamGridDB<br/>
 - Multi-language (currently only English and Spanish) <br/>
@@ -37,14 +37,13 @@ Some others are going to receive occasional uploads</br>
 - Add button to transfer mukkuru media to user folders<br/>
 - Add button to delete all video thumbnails<br/>
 - Add option to read current version changelog in settings/about<br/>
-- Order recent played items in main screen<br/>
 - Add support for non-flatpak Heroic and MacOS Heroic<br/>
 - Add support for crossover EGS in MacOS<br/>
 - More webui features: <br/>
     - Videoplayback control<br/>
     - Play Mukkuru videos from webui <br/>
     - Wallpaper change <br/>
-    - Menu to organize games, mark as favorite, blacklist, etc <br/>
+    - Menu to organize games, mark as favorite, blacklist, etc<br/>
     - Upload game boxart <br/>
     - Option to setup SteamGridDB api <br/>
     - Must also support plugins <br/>
@@ -59,6 +58,7 @@ Some others are going to receive occasional uploads</br>
 # Known issues
 - Sometimes context menus do not disappear when they should <br/>
 - Sometimes favorite games are not listed <br/>
+- Steam Store button does not open Crossover Steam in MacOS<br/>
 
 # Contribution guidelines
 - **Linting** Use pylint and remove as many warnings as reasonably possible before submitting your code. <br/>

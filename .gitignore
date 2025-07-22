@@ -11,9 +11,8 @@ mukkuru.cmd
 *.ps1
 build/
 nuitka-crash-report.xml
-mukkuru.png
-core_api.js
 .venv
 compiler.json
+cross_compile.py
 zolvanis-windows-amd64.exe
 nodes.json

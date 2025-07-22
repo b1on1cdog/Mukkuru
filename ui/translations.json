@@ -79,6 +79,14 @@
         "filesMoveSuccess" : "Archivos movidos exitosamente",
         "filesMoveMissing" : "No hay archivos que mover",
         "useAllVideoSources" : "Usar todas las fuentes de videos",
-        "all-videos-sources-desc"  : "Accede a los videos del directorio de usuario"
+        "all-videos-sources-desc"  : "Accede a los videos del directorio de usuario",
+        "Store" : "Tienda",
+        "Patches" : "Parches",
+        "AudioSFX" : "Efectos de sonido",
+        "Packages" : "Paquetes",
+        "Plugins" : "Extensiones",
+        "appsBtnTitle" : "Lista de apps",
+        "downloadBtnTitle" : "Descargar archivo",
+        "convertBtnTitle" : "Convertir archivo"
     }
 }

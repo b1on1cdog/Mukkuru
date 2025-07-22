@@ -1,5 +1,25 @@
 # Changelog
 -----------------
+# 0.3.10
+- Disabled Mukkuru Store contextItem since it was not supposed to be in release versions<br/>
+- Improved webui dashboard appearance<br>
+- Removed .html from urls<br/>
+- Added option to download files from webui<br/>
+- Added app list to dashboard, you can now request launching your games from another device<br/>
+- Replaced upload icon asset<br/>
+- 3 last played games will now be listed first<br/>
+- Solved crash when a config parent directory did not exists<br/>
+- Solved get_proton_list exception when Steam was not installed<br/>
+- Remove mukkuru.png from gitignore since is needed for compile<br/>
+- If GPU and CPU have same name, CPU/GPU name will be displayed as "SOC"<br/>
+- Avatar image will now be fetched from avatar cache before trying from internet<br/>
+- Mukkuru will now delete 0 bytes avatar images<br/>
+- (MacOS) Fixed DMG creation, also added alias so users can drag app to Applications<br/>
+- (MacOS) Compiler will use create-dmg if installed, otherwise hdiutil<br/>
+- (MacOS) Added support for system-wide crossover installs<br/>
+- (MacOS) the app name inside DMG will be just "Mukkuru" instead of "mukkuru-darwin-arm64"<br/>
+- (MacOS) Added app metadata<br/>
+- (Linux) Solved failed artwork scan due to interpreter exit<br/>
 # 0.3.9
 - Display battery percent option is now hidden in devices without battery<br/>
 - Removed "interface" config key, as it was never needed in first place<br/>

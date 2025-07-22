@@ -122,6 +122,7 @@ function allowRendering(reload = false) {
     swapTGL("librarySource", translation["LibrarySources"]);
     swapText("librarySource-desc", translation["LibrarySources-desc"]);
     swapText("settings-header", translation["SystemSettings"]);
+    swapText("store-header", translation["Store"]);
 
     apOption = document.getElementById("autoPlayOption");
     if (apOption != undefined){
