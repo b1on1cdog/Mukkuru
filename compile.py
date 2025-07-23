@@ -94,9 +94,9 @@ requirements = ["flask", "waitress",
 requirements = requirements + ["setuptools"]
 
 if system == "Linux":
-    requirements = requirements + ["patchelf", "flaskwebgui"]
+    requirements = requirements + ["patchelf"]
 
-if USE_WEF is False and "flaskwebgui" not in requirements:
+if USE_WEF is False and "patchelf" not in requirements:
     requirements = requirements + ["pywebview"]
 
 AARCH = {'x86_64': 'x86_64',

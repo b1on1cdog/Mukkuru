@@ -10,14 +10,25 @@ from functools import lru_cache
 import math
 import signal
 import time
+from typing import Optional
 
 import psutil
 import distro
 
 system = platform.system()
 
+codename_map = {
+    "10.15": "Catalina",
+    "11": "Big Sur",
+    "12": "Monterey",
+    "13": "Ventura",
+    "14": "Sonoma",
+    "15": "Sequoia",
+    "26": "Tahoe"
+}
+
 @lru_cache(maxsize=1)
-def get_cpu_name():
+def get_cpu_name() -> str:
     ''' get cpu name as string '''
 
     if system == "Windows":
@@ -50,7 +61,7 @@ def get_cpu_name():
     return "Unknown CPU"
 
 @lru_cache(maxsize=1)
-def get_gpu_name():
+def get_gpu_name() -> str:
     ''' get GPU name '''
 
     if system == "Windows":
@@ -94,7 +105,7 @@ def get_gpu_name():
     return "Unknown GPU"
 
 @lru_cache(maxsize=1)
-def get_info():
+def get_info() -> dict:
     ''' gets a dictionary with most hardware info '''
     memory_info = psutil.virtual_memory()
     platform_info = platform.uname()
@@ -114,19 +125,29 @@ def get_info():
 
     hardware_info["distro"] = hardware_info["os"]
 
-    if hardware_info["os"] == "Linux":
+    if system == "Linux":
         hardware_info["distro"] = distro.name(pretty=True)
         xdg = os.environ.get("XDG_SESSION_DESKTOP", "").lower()
         if "gamescope" in xdg:
             hardware_info["distro"] = hardware_info["distro"] + " (Gaming Mode)"
-    elif hardware_info["os"] == "Windows":
+    elif system == "Windows":
         try:
             output = subprocess.check_output(['wmic', 'os', 'get', 'Caption'], shell=True)
             lines = output.decode().splitlines()
             # to-do: fix possible empty reply if lines[2] returns nothing
             hardware_info["distro"] = lines[2].strip() if len(lines) > 1 else "Microsoft Windows"
         except subprocess.CalledProcessError:
-            hardware_info["distro"] = "Windows"
+            pass
+    elif system == "Darwin":
+        try:
+            version = subprocess.check_output(["sw_vers", "-productVersion"], text=True).strip()
+            major_version = version.split(".", maxsplit=1)[0]
+            codename = ""
+            if major_version in codename_map:
+                codename = " " + codename_map.get(major_version, "")
+            hardware_info["distro"] = "macOS " + version + codename
+        except subprocess.CalledProcessError:
+            pass
 
     disk_info = psutil.disk_usage('/')
     if hardware_info["os"] == "Linux":
@@ -147,7 +168,7 @@ def get_info():
         hardware_info["has_battery"] = False
     return hardware_info
 
-def get_active_net_interfaces():
+def get_active_net_interfaces() -> list:
     ''' get net interfaces as an array'''
     stats = psutil.net_if_stats()
     addrs = psutil.net_if_addrs()
@@ -189,7 +210,7 @@ def get_current_interface(get_ip = False):
 
     return None
 
-def connection_status():
+def connection_status() -> dict:
     ''' returns a json with connection status'''
     status = {}
     status["wifi"] = is_using_wireless()
@@ -200,7 +221,7 @@ def connection_status():
     return status
 
 
-def is_using_wireless():
+def is_using_wireless() -> bool:
     ''' return whether a Wireless connection is being used '''
     interface = get_current_interface()
     if system == "Darwin":
@@ -225,18 +246,18 @@ def is_using_wireless():
         except (IndexError, subprocess.CalledProcessError, PermissionError):
             return False
 
-def wireless_signal():
+def wireless_signal() -> int:
     '''Get the signal of Wi-Fi (Not implemented yet)'''
     return 100
 
-def get_battery():
+def get_battery() -> Optional[dict]:
     ''' returns battery'''
     battery = psutil.sensors_battery()
     if battery is None:
         return None
     return battery._asdict()
 
-def kill_executable_by_path(target_path, force=True):
+def kill_executable_by_path(target_path, force=True) -> list:
     """
     Hard-kill every running process whose executable exactly matches `target_path`.
     """
@@ -256,7 +277,7 @@ def kill_executable_by_path(target_path, force=True):
             continue
     return killed
 
-def kill_process_on_port(port):
+def kill_process_on_port(port) -> bool:
     ''' kill any executable using this port '''
     try:
         net_conns = psutil.net_connections(kind="inet")
@@ -277,7 +298,7 @@ def kill_process_on_port(port):
     print(f"No process found listening on port {port}")
     return False
 
-def wait_for_server(host, port, timeout=5.0):
+def wait_for_server(host, port, timeout=5.0) -> bool:
     ''' waits for a server to start listening '''
     start = time.time()
     while time.time() - start < timeout:

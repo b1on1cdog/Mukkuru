@@ -9,7 +9,7 @@ import zipfile
 from pathlib import Path
 
 import requests
-from utils.core import mukkuru_env, format_executable
+from utils.core import mukkuru_env, format_executable, sanitized_env
 
 if platform.system() == "Windows":
     import ctypes
@@ -43,8 +43,8 @@ def get_7z():
         os.path.join(mukkuru_env["root"], "tools", format_executable("7z")),
     ]
     wz_paths = [
-        os.path.join(os.environ.get("ProgramFiles"), "7-Zip", "7z.exe"),
-        os.path.join(os.environ.get("ProgramFiles(x86)"), "7-Zip", "7z.exe")
+        os.path.join(os.environ.get("ProgramFiles", ""), "7-Zip", "7z.exe"),
+        os.path.join(os.environ.get("ProgramFiles(x86)", ""), "7-Zip", "7z.exe")
     ]
     for z_path in z_paths:
         if z_path and Path(z_path).exists():
@@ -60,14 +60,14 @@ def extract_rar(filename, output_dir):
     unrar = get_unrar()
     if unrar is None:
         return "Unable to extract file, no decompressor available"
-    subprocess.run([unrar, "x", filename, output_dir], check=False)
+    subprocess.run([unrar, "x", filename, output_dir], check=False, env=sanitized_env())
 
 def extract_7z(filename, output_dir):
     ''' extract .7z file'''
     zz = get_7z()
     if zz is None:
         return "Unable to extract file, no decompressor available"
-    subprocess.run([zz, "x", filename, output_dir], check=False)
+    subprocess.run([zz, "x", filename, output_dir], check=False, env=sanitized_env())
 
 def extract_zip(filename, output_dir):
     ''' extract .zip file '''
@@ -130,7 +130,8 @@ def get_userprofile_folder(desired_dir):
         if linux_path_name == "DOWNLOADS":
             linux_path_name = "DOWNLOAD"
         result = subprocess.run(['xdg-user-dir', linux_path_name],
-                                 capture_output=True, text=True, check=False)
+                                 capture_output=True, text=True,
+                                 check=False, env=sanitized_env())
         return result.stdout.strip() if result.returncode == 0 else None
     return None
 

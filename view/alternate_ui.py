@@ -9,12 +9,9 @@ import tempfile
 import uuid
 import time
 from urllib.parse import urlparse
-from flaskwebgui import FlaskUI, close_application
+from utils.core import sanitized_env
 
-FLASKWEBGUI_USED_PORT = None
-FLASKWEBGUI_BROWSER_PROCESS = None
-
-FIREFOX_PROCESS = None
+BROWSER_PROCESS = None
 
 linux_browser_paths = [
     r"/usr/bin/google-chrome",
@@ -40,55 +37,39 @@ windows_browser_paths = [
     r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
 ]
 
+def get_flatpak() -> str:
+    ''' returns flatpak path '''
+    return shutil.which("flatpak") or "/usr/bin/flatpak"
 
-
-def is_flatpak_firefox_installed():
+def is_flatpak_firefox_installed() -> bool:
     ''' [Linux] checks whether firefox is installed '''
     if platform.system() != "Linux":
         return False
     try:
-        subprocess.check_output(["flatpak", "info", "org.mozilla.firefox"],
-                                stderr=subprocess.DEVNULL)
+        subprocess.check_output([get_flatpak(), "info", "org.mozilla.firefox"],
+                                stderr=subprocess.DEVNULL, text=True, env=sanitized_env())
         return True
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as e:
+        print(f"failed checking Flatpak {e.output}")
         return False
     except FileNotFoundError:
         print("Flatpak is not installed")
         return False
 
-def terminate_firefox():
-    ''' [Linux] closes firefox '''
-    firefox_executable = search_firefox()[0]
-    is_flatpak = firefox_executable == "flatpak"
-    if is_flatpak:
-        proc_flags = ["flatpak"]
-        proc_flags.extend(["kill", "org.mozilla.firefox"])
-        print("killing flatpak firefox")
-        subprocess.run(proc_flags, check=False)
-    else:
-        print(f"killing {firefox_executable}")
-        if FIREFOX_PROCESS is not None:
-            FIREFOX_PROCESS.terminate()
-            time.sleep(2)
-            # in this house we do not negotiate with processes, either they close or they are closed
-            FIREFOX_PROCESS.kill()
-            FIREFOX_PROCESS.wait()
-        else:
-            print("process not found")
-
-def search_firefox():
+def search_firefox() -> list:
     ''' Search for firefox install '''
     firefox_paths = ["/snap/bin/firefox", "/opt/firefox/firefox", "/usr/bin/firefox"]
     is_flatpak = is_flatpak_firefox_installed()
     if is_flatpak:
-        return ["flatpak", "run", "org.mozilla.firefox"]
+        return [get_flatpak(), "run", "org.mozilla.firefox"]
     if not is_flatpak:
         for firefox in firefox_paths:
             if Path(firefox).is_file():
                 return [firefox]
+    print("Unable to find firefox bin")
     return [None]
 
-def run_firefox(url, profile_dir = None):
+def run_firefox(url, profile_dir = None) -> None:
     ''' run firefox as ui '''
     proc_flags = []
     firefox = search_firefox()
@@ -99,10 +80,10 @@ def run_firefox(url, profile_dir = None):
         proc_flags.extend(["--profile", profile_dir])
     proc_flags.append("-private-window")
     proc_flags.append(url)
-    global FIREFOX_PROCESS
-    FIREFOX_PROCESS = subprocess.Popen(proc_flags)
+    global BROWSER_PROCESS
+    BROWSER_PROCESS = subprocess.Popen(proc_flags, env=sanitized_env())
 
-def find_browser_path():
+def find_browser_path() -> str:
     ''' look for an installed browser '''
     browser_paths = []
     if platform.system() == "Linux":
@@ -117,6 +98,8 @@ def find_browser_path():
 class Frontend:
     ''' uses an installed browser as ui '''
     def __init__(self, fullscreen = True, app_version = "", environ = None):
+        if environ is not None:
+            pass
         self.use_firefox = search_firefox()[0] is not None
         self.url = 'http://localhost:49347/frontend/frame.html'
         self.fullscreen = fullscreen
@@ -147,28 +130,35 @@ class Frontend:
             self.browser_command.append("--kiosk")
         self.browser_command.extend(["--guest", self.url])
 
-    def start(self):
+    def start(self) -> None:
         ''' starts frontend '''
         if self.use_firefox:
             return run_firefox(self.url)
-        ui = FlaskUI(server=None,
-                     browser_command=self.browser_command,
-                     on_shutdown=self.exit)
+        print("using flaswebgui instead of firefox")
+        if self.browser_path is None:
+            print("No browser available")
+            os._exit(0)
         try:
-            ui.run()
+            global BROWSER_PROCESS
+            BROWSER_PROCESS = subprocess.Popen(self.browser_command)
+            BROWSER_PROCESS.wait()
+            print("Browser exited, closing")
+            self.close(True)
         except (ProcessLookupError, OSError):
             pass
 
-    def close(self):
+    def close(self, should_kill = False) -> None:
         ''' close ui '''
-        if self.use_firefox:
-            terminate_firefox()
+        if self.use_firefox and search_firefox()[0] == get_flatpak():
+            proc_flags = [get_flatpak()]
+            proc_flags.extend(["kill", "org.mozilla.firefox"])
+            print("killing flatpak firefox")
+            subprocess.run(proc_flags, check=False, env=sanitized_env())
         else:
-            close_application()
+            if BROWSER_PROCESS is not None:
+                BROWSER_PROCESS.terminate()
+                time.sleep(1)
+                BROWSER_PROCESS.kill()
             shutil.rmtree(self.profile_dir)
-
-    def exit(self):
-        ''' exit whole app '''
-        print("exiting....")
-        self.close()
-        os._exit(0)
+        if should_kill:
+            os._exit(0)

@@ -882,11 +882,10 @@ function userGestureNoLongerRequired() {
 }
 
 async function openThirdPartyStore(store) {
-  response = await fetch("/store/steam");
+  backend_log("opening store "+ store);
+  response = await fetch("/store/"+store);
   responseJson = await response.json();
-  //window.location.reload();
 }
-
 
 function close_context_menu(play_sound = true){
   isContextMenu = false;
@@ -962,6 +961,81 @@ function openNextPage(newScreen){
     //scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
     refreshOptions();
 }
+
+function removeElementWithSibling(element){
+  element.nextElementSibling.remove();
+  element.remove();
+}
+
+async function applyStoreFilter(isSettings = false) {
+  stores_response = await fetch("/storefront/get");
+  stores = await stores_response.json();
+  steam = false;
+  crossover_steam = false;
+  egs = false;
+  heroic = false;
+
+  backend_log(JSON.stringify(stores));
+
+  for (let i = 0; i < stores.length; i++) {
+   switch (stores[i]) {
+    case "steam":
+      steam = true;
+      break;
+    case "crossover_steam":
+      crossover_steam = true;
+      break;
+    case "egs":
+      egs = true;
+      break;
+    case "heroic":
+      heroic = true;
+      break;
+    default:
+      break;
+   }
+  }
+
+  if (isSettings) {
+    if (!steam && !crossover_steam) {
+      removeElementWithSibling(document.getElementById("sources-0"));
+      removeElementWithSibling(document.getElementById("sources-1"));
+    }
+    if (!egs) {
+      removeElementWithSibling(document.getElementById("sources-2"));
+    }
+    if (!heroic) {
+      removeElementWithSibling(document.getElementById("sources-3"));
+    }
+    return;
+  }
+  steamContext = document.getElementById("steamContext");
+  //debug
+  //crossover_steam = true;
+  if (crossover_steam) {
+    const clone = steamContext.cloneNode(true);
+    clone.removeAttribute("onclick");
+    clone.innerHTML = clone.innerHTML + " (Crossover)";
+    clone.onclick = () => { 
+      openThirdPartyStore("crossover_steam");
+     };
+     if (steam) {
+        clone.classList.remove("selected");
+     }
+     steamContext.parentNode.insertBefore(clone, steamContext.nextSibling);
+  }
+
+  if (!steam) {
+      steamContext.remove();
+  }
+
+  egsContext = document.getElementById("egsContext");
+  if (!egs) {
+    egsContext.remove();
+  }
+  
+}
+
 function openPreviousPage(){
     absoluteTab = document.getElementById("options-"+selectedTab);
     const previousPage = previousPages.pop();

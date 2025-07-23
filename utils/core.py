@@ -12,7 +12,7 @@ import platform
 # Constants
 mukkuru_env = {}
 COMPILER_FLAG = getattr(sys, 'frozen', False) or "__compiled__" in globals()
-APP_VERSION = "0.3.10"
+APP_VERSION = "0.3.11"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
 SERVER_PORT = 49351
@@ -31,7 +31,7 @@ def app_version():
     return f"Mukkuru v{APP_VERSION}"
 
 # Logging
-def backend_log(message):
+def backend_log(message) -> None:
     ''' print message and save to file '''
     print(message)
     if "log" in mukkuru_env:
@@ -40,7 +40,7 @@ def backend_log(message):
             f.write(f"{message}\n")
 # Config
 @lru_cache(maxsize=2)
-def get_config():
+def get_config() -> dict:
     ''' get user configuration'''
     user_config = {
             "loop" : False,
@@ -77,6 +77,7 @@ def get_config():
             "heroBlacklist" : [],
             "configVersion" : APP_VERSION,
             "repos" : [ "https://repo.panyolsoft.com/" ],
+            "sgdb_key" : "",
         }
 
     while "config.json" not in mukkuru_env:
@@ -94,14 +95,14 @@ def get_config():
             user_config = configuration
     return user_config
 
-def update_config(user_config):
+def update_config(user_config) -> None:
     ''' update user configuration '''
     # clear cached config as the value was updated
     get_config.cache_clear()
     with open(mukkuru_env['config.json'] , 'w', encoding='utf-8') as f:
         json.dump(user_config, f)
 
-def set_alive_status(value):
+def set_alive_status(value) -> None:
     ''' set alive status, this will be periodically read from frontend '''
     mukkuru_env["alive"] = value
 
@@ -109,8 +110,16 @@ def set_alive_status(value):
 #    ''' adds a command to alive status '''
 #    mukkuru_env["alive"]["commands"]
 
-def format_executable(executable):
+def format_executable(executable) -> str:
     ''' appends .exe if Windows, otherwise return parameter as-is '''
     if platform.system() == "Windows":
         executable = f"{executable}.exe"
     return executable
+
+def sanitized_env() -> dict:
+    ''' get a environment copy free of bundled libs references '''
+    env = os.environ.copy()
+    env.pop("LD_LIBRARY_PATH", None)
+    env.pop("PYTHONHOME", None)
+    env.pop("PYTHONPATH", None)
+    return env

@@ -29,9 +29,9 @@ def test_tools():
 def run_tests():
     ''' run multiple tests '''
     find_latest_release()
-    test_scan()
-    test_tools()
-    print(get_userprofile_folder("Downloads"))
-    print(get_userprofile_folder("Music"))
-    print(get_userprofile_folder("Videos"))
-    print(get_userprofile_folder("Pictures"))
+    #test_scan()
+    #test_tools()
+    #print(get_userprofile_folder("Downloads"))
+    #print(get_userprofile_folder("Music"))
+    #print(get_userprofile_folder("Videos"))
+    #print(get_userprofile_folder("Pictures"))

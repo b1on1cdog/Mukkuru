@@ -5,10 +5,8 @@
 import os
 import json
 from pathlib import Path
-import subprocess
 import base64
 import threading
-import time
 import sys
 import logging
 import platform
@@ -32,7 +30,8 @@ from utils.bootstrap import get_userprofile_folder
 
 from library import video
 from library.games import get_games, scan_games, scan_thumbnails, get_username, artwork_worker
-from library.steam import get_steam_env, download_steam_avatar
+from library.steam import download_steam_avatar
+from library.games import launch_store
 
 from controller.license import license_controller
 from controller.hardware import hardware_controller
@@ -54,7 +53,6 @@ app.register_blueprint(license_controller)
 app.register_blueprint(hardware_controller)
 app.register_blueprint(library_controller)
 app.json.sort_keys = False
-
 
 wserver = Flask(__name__)
 wserver.json.sort_keys = False
@@ -156,21 +154,8 @@ def favicon():
 @app.route('/store/<storefront>')
 def open_store(storefront):
     ''' Launch the desired game storefront '''
-    steam = get_steam_env()
-    if storefront == "steam":
-        subprocess.run(f'"{steam["launchPath"]}" steam://open/bigpicture',
-                   stderr=subprocess.DEVNULL,
-                   stdout=subprocess.DEVNULL,
-                   env=os.environ.copy(), shell=True, check=False)
-        time.sleep(3)
-        subprocess.run(f'"{steam["launchPath"]}" steam://store',
-                   stderr=subprocess.DEVNULL,
-                   stdout=subprocess.DEVNULL,
-                   env=os.environ.copy(), shell=True, check=False)
-    elif storefront == "epic_games":
-        print("Unimplemented store")
-    else:
-        print(f"unknown storefront {storefront}")
+    launch_store(storefront)
+    return jsonify("OK", 200)
 
 def get_localization(raw = False):
     ''' Returns a localization dictionary '''
@@ -507,12 +492,16 @@ def main():
             return
     backend_log(f'Using { FRONTEND_MODE } for rendering')
     backend_log(f"COMPILER_FLAG: {COMPILER_FLAG}")
-    hardware_if.kill_process_on_port(APP_PORT)#to-do: send an app/quit request to Mukkuru
+    # to-do: send an app/quit request to Mukkuru
+    hardware_if.kill_process_on_port(APP_PORT)
     # Instead of writing another executable, this one will conditionally act as updater
     if "MUKKURU_UPDATE" in os.environ and COMPILER_FLAG:
         updater.process_update()
     elif COMPILER_FLAG:
-        Path(os.path.join(mukkuru_env["root"], format_executable("update"))).unlink(missing_ok=True)
+        update_path = os.path.join(mukkuru_env["root"], format_executable("update"))
+        if platform.system() == "Darwin":
+            update_path = f"{update_path}.dmg"
+        Path(update_path).unlink(missing_ok=True)
 
     needed_dirs = [
         mukkuru_env["root"],
@@ -530,9 +519,7 @@ def main():
         os.path.join(mukkuru_env["root"], "tools"),
         os.path.join(mukkuru_env["root"], "sfx"),
     ]
-
     set_alive_status({"Status": "OK" })
-
     for needed_dir in needed_dirs:
         if not os.path.isdir(needed_dir):
             os.makedirs(needed_dir, exist_ok=True)

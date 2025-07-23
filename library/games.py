@@ -5,19 +5,21 @@ import os
 import json
 import subprocess
 import queue
+import time
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
 from utils.core import mukkuru_env, backend_log, set_alive_status
-from utils.core import get_config, update_config
-from library.steam import get_steam_env, get_crossover_steam, get_crossover_env
+from utils.core import get_config, update_config, sanitized_env
+from library.steam import get_steam_env, get_crossover_steam
 from library.steam import get_steam_games, get_non_steam_games, read_steam_username
-from library import grid_db
-from library.egs import get_egs_games, read_heroic_username
+from library import grid_db, wrapper
+from library.egs import read_heroic_username, get_heroic_env, get_egs_env
+from library.egs import get_heroic_games, get_egs_games
 
 artwork_queue = queue.Queue()
 
-def artwork_worker():
+def artwork_worker() -> None:
     ''' Processes artwork queue '''
     while True:
         print("arwork_work init")
@@ -32,17 +34,27 @@ def artwork_worker():
         finally:
             artwork_queue.task_done()
 
-def library_scan(options):
+def update_sgdb_api(user_config) -> None:
+    ''' updates sgdb api, if needed '''
+    if user_config["sgdb_key"] == grid_db.API_KEY:
+        print("sgdb api is unset")
+        return
+    else:
+        grid_db.API_URL = grid_db.SGDB_URL
+        grid_db.API_KEY = user_config["sgdb_key"]
+
+def library_scan(options) -> dict:
     '''
     Scan library for games
     1 - Steam
     2 - Non-Steam
     4 - EGS
+    8 - Heroic
     '''
     option_steam = 1 << 0  # 0001 = 1
     option_nonsteam = 1 << 1  # 0010 = 2
     option_egs = 1 << 2  # 0100 = 4
-
+    option_heroic = 1 << 3 # 1000 = 8
     steam = get_steam_env()
     crossover_steam = get_crossover_steam()
     games = {}
@@ -63,9 +75,12 @@ def library_scan(options):
     if options & option_egs:
         egs_games = get_egs_games()
         games.update(egs_games)
+    if options & option_heroic:
+        heroic_games = get_heroic_games()
+        games.update(heroic_games)
     return games
 
-def get_games():
+def get_games() -> dict:
     '''get game library as json'''
     try:
         with open(mukkuru_env["library.json"], encoding='utf-8') as f:
@@ -75,12 +90,12 @@ def get_games():
         update_games(games)
     return games
 
-def update_games(games):
+def update_games(games) -> None:
     '''save game library'''
     with open(mukkuru_env["library.json"], 'w', encoding='utf-8') as f:
         json.dump(games, f)
 
-def scan_games():
+def scan_games() -> dict:
     ''' scan for games, download artwork if available '''
     user_config = get_config()
     options = user_config["librarySource"]
@@ -89,7 +104,7 @@ def scan_games():
     scan_thumbnails(games)
     return games
 
-def fetch_artwork(app_id, game, b1, b2, b3, use_alt_images):
+def fetch_artwork(app_id, game, b1, b2, b3, use_alt_images) -> dict:
     ''' handle artwork '''
     blacklist_1 = []
     blacklist_2 = []
@@ -129,10 +144,11 @@ def fetch_artwork(app_id, game, b1, b2, b3, use_alt_images):
     result["3"] = blacklist_3
     return result
 
-def scan_artwork(games = None):
+def scan_artwork(games = None) -> None:
     ''' scan for games artwork '''
     backend_log("scanning for new artwork..")
     config = get_config()
+    update_sgdb_api(config)
     blacklist1 = config["boxartBlacklist"]
     blacklist2 = config["heroBlacklist"]
     blacklist3 = config["logoBlacklist"]
@@ -160,17 +176,15 @@ def scan_artwork(games = None):
                     scan_thumbnails(games)
             except (KeyError, OSError, IndexError, FileNotFoundError) as e:
                 results[k] = {"error": str(e)}
-                print(f"scan_arwork error: {str(e)}")
+                print(f"scan_artwork error: {str(e)}")
     config["boxartBlacklist"] = blacklist1
     config["heroBlacklist"] = blacklist2
     config["logoBlacklist"] = blacklist3
     update_config(config)
     scan_thumbnails(games)
     set_alive_status({"command": "ScanFinished"})
-    return "200"
 
-
-def scan_thumbnails(games):
+def scan_thumbnails(games) -> None:
     '''update the thumbnail status for all games'''
     for k in games.keys():
         thumbnail_path = os.path.join(mukkuru_env["root"], "thumbnails", f'{k}.jpg')
@@ -180,8 +194,7 @@ def scan_thumbnails(games):
             games[k]["Thumbnail"] = True
     update_games(games)
 
-
-def get_game_properties(app_id):
+def get_game_properties(app_id) -> dict:
     ''' get game specific properties '''
     user_config = get_config()
     game_property = {
@@ -194,10 +207,11 @@ def get_game_properties(app_id):
     if app_id in game_properties:
         return game_properties[app_id]
     return game_property
-
-def launch_app(app_id):
+# To-do:
+# set env at provider (steam/heroic/egs) level
+def launch_app(app_id) -> None:
     '''launches an app using its appID'''
-    process_env = os.environ.copy()
+    process_env = sanitized_env()
     games = get_games()
     game_path = games[app_id]["Exe"].strip('"')
     working_dir = None
@@ -207,10 +221,12 @@ def launch_app(app_id):
     else:
         game_path = f'"{game_path}"'
     launch_command = f'{game_path} {games[app_id]["LaunchOptions"]}'
-    #if '%command%' in games[app_id]["LaunchOptions"]:
-    #    launch_command = games[app_id]["LaunchOptions"].replace('%command', game_path)
     if "Type" in games[app_id] and games[app_id]["Type"] == "CROSSOVER":
-        process_env = get_crossover_env()
+        source = games[app_id]["Source"]
+        bottle = "Steam"
+        if source == "egs":
+            bottle = "Epic Games Store"
+        process_env = wrapper.get_crossover_env(bottle)
         launch_command = f"wine --cx-app {launch_command}"
         working_dir = process_env["CX_DISK"]
     backend_log(f"using {launch_command}")
@@ -226,11 +242,61 @@ def launch_app(app_id):
         while len(recent_played) > 3:
             recent_played.pop(3)
         update_config(user_config)
-    #os.environ.pop("STEAM_COMPAT_DATA_PATH", None)
-    #os.environ.pop("STEAM_COMPAT_CLIENT_INSTALL_PATH", None)
+
+def list_stores() -> list:
+    ''' list valid storefronts for this device '''
+    stores = []
+    steam = get_steam_env()
+    csv_steam = get_crossover_steam()
+    heroic =  get_heroic_env()
+    egs = get_egs_env()
+    if steam is not None:
+        stores.append("steam")
+    if csv_steam is not None:
+        stores.append("crossover_steam")
+    if heroic is not None:
+        stores.append("heroic")
+    if egs is not None:
+        stores.append("egs")
+    return stores
+# to-do: setup os.environ in steam_env dictionary
+def launch_store(storefront) -> None:
+    ''' opens a storefront '''
+    store_env = sanitized_env()
+    prefix = ""
+    if storefront == "steam" or storefront == "crossover_steam":
+        steam = get_steam_env()
+        if storefront == "crossover_steam":
+            steam = get_crossover_steam()
+            store_env =  wrapper.get_crossover_env("Steam")
+            prefix = "wine --cx-app "
+        subprocess.run(f'{prefix}"{steam["launchPath"]}" steam://open/bigpicture',
+                   stderr=subprocess.DEVNULL,
+                   stdout=subprocess.DEVNULL,
+                   env=store_env, shell=True, check=False)
+        time.sleep(3)
+        subprocess.run(f'{prefix}"{steam["launchPath"]}" steam://store',
+                   stderr=subprocess.DEVNULL,
+                   stdout=subprocess.DEVNULL,
+                   env=store_env, shell=True, check=False)
+    # Since EGS is natively Windows Only, any EGS instance
+    # would be running from a compatibility layer
+    elif storefront == "egs":
+        egs = get_egs_env()
+        if "Type" in egs and egs["Type"] == "CROSSOVER":
+            store_env = wrapper.get_crossover_env("Epic Games Store")
+            prefix = "wine --cx-app "
+        subprocess.run(f'{prefix}"{egs["launchPath"]}"',
+                   stderr=subprocess.DEVNULL,
+                   stdout=subprocess.DEVNULL,
+                   env=store_env, shell=True, check=False)
+    elif storefront == "heroic":
+        print("Unimplemented store")
+    else:
+        print(f"unknown storefront {storefront}")
 
 @lru_cache(maxsize=1)
-def get_username():
+def get_username() -> str:
     '''Get username'''
     failover_user = os.environ.get('USER', os.environ.get('USERNAME'))
     steam = get_steam_env()

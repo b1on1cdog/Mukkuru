@@ -6,16 +6,14 @@ import glob
 import os
 import re
 import platform
-import sys
 from pathlib import Path
 from functools import lru_cache
+from typing import Optional
 # third-party imports
 import requests
 from library import binary_vdf_parser
-from library import grid_db
+from library import grid_db, wrapper, common
 
-if platform.system() == "Windows":
-    import winreg
 hardcoded_exclusions = ["Proton Experimental",
                         "Steamworks Common Redistributables",
                         "Steam Linux Runtime 1.0 (scout)",
@@ -36,21 +34,12 @@ hardcoded_exclusions = ["Proton Experimental",
 
 AVATAR_DOWNLOAD_URL = "https://api.panyolsoft.com/steam/avatar/[USERNAME]"
 
-def read_binary_vdf(vdf_path):
-    """Read binary VDF file using a Python implementation"""
-    try:
-        with open(vdf_path, 'rb') as f:
-            return parse_binary_vdf(f)
-    except (FileNotFoundError, PermissionError, struct.error, ValueError, IndexError) as e:
-        print(f"Error reading binary VDF: {e}")
-        return "{}"
-
-def parseshortcut(file):
+def parseshortcut(file) -> dict:
     ''' returns shortcuts '''
     vdf = binary_vdf_parser.BinaryVDFParser(None)
     return vdf.parse_shortcut(file)
 
-def parse_binary_vdf(file_obj):
+def parse_binary_vdf(file_obj) -> dict:
     """Parse binary VDF file"""
     result = {}
     while True:
@@ -70,7 +59,7 @@ def parse_binary_vdf(file_obj):
             raise ValueError(f"Unknown value type: {value_type}")
     return result
 
-def read_string(file_obj):
+def read_string(file_obj) -> str:
     """Read null-terminated string from file"""
     chars = []
     while True:
@@ -121,7 +110,7 @@ def parse_text_vdf(vdf_text):
                 current[key] = value
     return result
 
-def get_non_steam_games(steam_env):
+def get_non_steam_games(steam_env) -> dict:
     """Get Non-Steam games from shortcuts.vdf files"""
     games = {}
     if steam_env is None:
@@ -207,7 +196,7 @@ def get_rungameid(shortcut_appid: int) -> int:
     """
     return (shortcut_appid << 32) | 0x02000000
 
-def get_proton_command(app_id, command, user_config):
+def get_proton_command(app_id, command, user_config) -> str:
     ''' run game using proton '''
     steam = get_steam_env()
     proton_list = get_proton_list()
@@ -230,7 +219,7 @@ def get_proton_command(app_id, command, user_config):
         proton = f'"{proton}"'
     return f"{proton} run {command}"
 
-def get_proton_list():
+def get_proton_list() -> list:
     ''' list proton builds '''
     proton_builds = []
     steam = get_steam_env()
@@ -242,7 +231,7 @@ def get_proton_list():
             proton_builds.append(proton_build)
     return proton_builds
 
-def get_steam_games(steam):
+def get_steam_games(steam) -> dict:
     """ Get steam games """
     games = {}
     if steam is None:
@@ -273,7 +262,7 @@ def get_steam_games(steam):
     return games
 
 @lru_cache(maxsize=1)
-def read_steam_username(steam_config):
+def read_steam_username(steam_config) -> Optional[str]:
     ''' get username from steam files '''
     with open(steam_config, "r", encoding="utf-8") as file:
         content = file.read()
@@ -284,12 +273,12 @@ def read_steam_username(steam_config):
         print("No usernames found under 'Accounts'.")
         return None
 
-def copy_file(source, destination):
+def copy_file(source, destination) -> None:
     ''' copy a file from "source" to "destination" '''
     with open(source, 'rb') as src, open(destination,'wb') as dst:
         dst.write(src.read())
 
-def get_steam_avatar_from_cache(artwork_dir, steam_username):
+def get_steam_avatar_from_cache(artwork_dir, steam_username) -> bool:
     ''' Copy steam avatar from disk '''
     steam = get_steam_env()
     avatarcache = os.path.join(steam["path"], "config", "avatarcache")
@@ -347,27 +336,6 @@ def download_steam_avatar(artwork_dir):
            requests.exceptions.SSLError, requests.exceptions.HTTPError) as e:
         print(f"Unable to download steam avatar: {e}")
 
-def read_registry_value(root, reg_key, reg_value):
-    ''' [Windows only] read key from System Registry'''
-    if platform.system() == 'Windows':
-        if 'winreg' in sys.modules:
-            hroot = winreg.HKEY_LOCAL_MACHINE
-            if root == 1:
-                hroot = winreg.HKEY_CURRENT_USER
-            elif root == 2:
-                hroot = winreg.HKEY_CURRENT_CONFIG
-            elif root == 3:
-                hroot = winreg.HKEY_CLASSES_ROOT
-            key = winreg.OpenKey(hroot, reg_key)
-            ret, _ = winreg.QueryValueEx(key, reg_value)
-            return ret
-        else:
-            print("platform specific module not imported: winreg")
-            return None
-    else:
-        print('Unsupported function called')
-        return None
-
 def map_shortcuts_path(shortcut_path):
     ''' find shortcuts path '''
     find_stuser = shortcut_path.split('*')[0]
@@ -382,46 +350,13 @@ def map_shortcuts_path(shortcut_path):
         return None
     return shortcut_path.replace("*", st_user, 1)
 
-def find_path(paths):
-    ''' return which path exists of all the candidates '''
-    for path in paths:
-        if "~" in path:
-            path = os.path.expanduser(path)
-        if Path(path).exists():
-            return path
-    return None
-
-def get_crossover_env():
-    ''' get crossover environment variables '''
-    crossenv = os.environ.copy()
-    crossover_app = os.path.expanduser("~/Applications/CrossOver.app/")
-    if not Path(crossover_app).is_dir():
-        crossover_app = "/Applications/CrossOver.app/"
-        if Path(crossover_app).is_dir():
-            print("Using Crossover system install")
-        else:
-            print("Crossover is not installed")
-    else:
-        print("Using Crossover user install")
-    cxroot = os.path.join(crossover_app, "Contents", "SharedSupport", "CrossOver")
-    cxbottlepath = os.path.expanduser("~/Library/Application Support/CrossOver/Bottles")
-    crossenv["PYTHONPATH"] = os.path.join(cxroot, "lib", "python")
-    crossenv["CX_MANAGED_BOTTLE_PATH"] = "/Library/Application Support/CrossOver/Bottles"
-    crossenv["CX_BOTTLE"] = "Steam"
-    crossenv["CX_BOTTLE_PATH"] = cxbottlepath
-    crossenv["CX_APP_BUNDLE_PATH"] = crossover_app
-    crossenv["CX_ROOT"] = cxroot
-    crossenv["CX_DISK"] = os.path.join(cxbottlepath, crossenv["CX_BOTTLE"], "drive_c")
-    crossenv["PATH"] = crossenv["PATH"] + os.pathsep + os.path.join(cxroot, "bin")
-    return crossenv
-
-def get_crossover_steam():
+def get_crossover_steam() -> Optional[dict]:
     ''' gets steam paths for crossover install'''
     system = platform.system()
     steam = {}
     prefix = ""
     if system == "Darwin":
-        crossenv = get_crossover_env()
+        crossenv = wrapper.get_crossover_env("Steam")
         prefix = crossenv["CX_DISK"]
     else:
         return None
@@ -448,7 +383,7 @@ def get_crossover_steam():
     return steam
 
 @lru_cache(maxsize=1)
-def get_steam_env():
+def get_steam_env() -> Optional[dict]:
     ''' Get steam paths depending on platform '''
     system = platform.system()
     steam = {}
@@ -458,7 +393,7 @@ def get_steam_env():
         if not Path(steam["path"]).is_dir():
             print("Steam not in common path, reading registry as a failover...")
             vsk = r"SOFTWARE\WOW6432Node\Valve\Steam"
-            steam["path"] = read_registry_value(0, vsk, "InstallPath")
+            steam["path"] = common.read_registry_value(0, vsk, "InstallPath")
         steam["libraryFile"] = os.path.join(steam["path"], "steamapps", "libraryfolders.vdf")
         shortcut_path = os.path.join(steam["path"],"userdata", "*", "config", "shortcuts.vdf")
         steam["shortcuts"] = map_shortcuts_path(shortcut_path)
@@ -473,8 +408,8 @@ def get_steam_env():
             "~/.var/app/com.valvesoftware.Steam/.local/share/Steam",
             "~/snap/steam/common/.steam/steam"
         ]
-        steam["launchPath"] = find_path(launch_paths)
-        steam["path"] = find_path(main_paths)
+        steam["launchPath"] = common.find_path(launch_paths)
+        steam["path"] = common.find_path(main_paths)
         steam["libraryFile"] = os.path.join(steam["path"],"steamapps", "libraryfolders.vdf")
         shortcut_path = os.path.join(steam["path"], "userdata", "*", "config", "shortcuts.vdf")
         steam["shortcuts"] = map_shortcuts_path(shortcut_path)

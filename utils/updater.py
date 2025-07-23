@@ -9,12 +9,13 @@ import platform
 import stat
 import json
 import hashlib
+from typing import Union, Optional
 import requests
 from utils.core import format_executable, APP_VERSION, mukkuru_env, COMPILER_FLAG
 
 REPO_URL = "https://api.github.com/repos/b1on1cdog/Mukkuru/releases"
 
-def process_update():
+def process_update() -> None:
     ''' Replaces executable with new version, then starts new version '''
     update_file = os.path.abspath(sys.executable)
     update_file = format_executable(update_file)
@@ -27,7 +28,7 @@ def process_update():
     os._exit(0)
 
 # to-do: close frontend
-def start_update(update_path):
+def start_update(update_path) -> None:
     ''' Windows/Linux: replaces current executable with new one
         MacOS: opens new dmg and terminates current app
     '''
@@ -39,17 +40,17 @@ def start_update(update_path):
         subprocess.Popen([update_path])
         os._exit(0)
 
-def get_platform_str():
+def get_platform_str(alt = False) -> str:
     ''' Returns string used in executables names '''
     current_os = platform.system().lower()
-    if current_os == "darwin":
+    if current_os == "darwin" and not alt:
         current_os = "macos"
     current_arch = platform.uname().machine.lower()
     if current_arch == "amd64":
         current_arch = "x86_64"
     return f"{current_os}-{current_arch}"
 
-def ver_compare(ver1, ver2):
+def ver_compare(ver1, ver2) -> int:
     ''' compare 2 version strings 0 - lower, 1-equal, 2 bigger '''
     v1 = ver1.split(".")
     v2 = ver2.split(".")
@@ -73,30 +74,49 @@ def ver_compare(ver1, ver2):
         else:
             return 0
 
-def find_latest_release():
+def find_latest_version(versions: list) -> Optional[str]:
+    ''' returns the largest version '''
+    if not versions:
+        return None 
+    largest = versions[0]
+    for version in versions[1:]:
+        if ver_compare(largest, version) == 0:
+            largest = version
+    return largest
+
+def find_latest_release() -> Union[str, str]:
     ''' finds latest asset url '''
     manifest = requests.get(REPO_URL, stream=True, timeout=20).content
     releases = json.loads(manifest)
     platform_str = get_platform_str()
+    alt_platform_str = get_platform_str(True)
+    version_list = {}
     for release in releases:
         try:
-            # if release version is equal or lower than app_version, refuse
             tag_name = release["tag_name"]
-            if ver_compare(tag_name, APP_VERSION) < 2:
-                print(f"current version is up-to-date ({APP_VERSION} vs {tag_name}) ")
-                return "", ""
             print(tag_name)
             for asset in release["assets"]:
                 download_url = asset["browser_download_url"]
                 digest = asset["digest"].replace("sha256:", "")
-                if platform_str in download_url:
-                    print(f"Found update url {download_url}")
-                    return download_url, digest
+
+                if platform_str in download_url or alt_platform_str in download_url:
+                    version_list[tag_name] = {
+                        "digest" : digest,
+                        "url" : download_url,
+                    }
         except (KeyError, IndexError):
             print("Key does not exists")
             return "", ""
+    versions = list(version_list.keys())
+    latest_version = find_latest_version(versions)
+    if latest_version is None:
+        return "",""
+    if ver_compare(latest_version, APP_VERSION) == 2:
+        print(f'found update url {version_list[latest_version]["url"]}')
+        return version_list[latest_version]["url"], version_list[latest_version]["digest"]
+    return "", ""
 
-def download_mukkuru_update():
+def download_mukkuru_update() -> str:
     ''' downloads latest binary from Github '''
     if not COMPILER_FLAG:
         return "unsupported"
@@ -107,6 +127,8 @@ def download_mukkuru_update():
         if sha256_hash == release_digest:
             print("file checksum is OK")
             update_path = os.path.join(mukkuru_env["root"], format_executable("update"))
+            if platform.system() == "Darwin":
+                update_path = f"{update_path}.dmg"
             with open(update_path, "wb") as f:
                 f.write(data)
             start_update(update_path)

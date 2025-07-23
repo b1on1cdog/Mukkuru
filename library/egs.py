@@ -4,10 +4,12 @@ import platform
 import json
 from pathlib import Path
 from functools import lru_cache
+from typing import Optional
+from library import wrapper, common
 
 system = platform.system()
 
-def find_path(paths):
+def find_path(paths) -> Optional[str]:
     ''' return which path exists of all the candidates '''
     for path in paths:
         if "~" in path:
@@ -17,7 +19,7 @@ def find_path(paths):
     return None
 
 @lru_cache(maxsize=1)
-def read_heroic_username(heroic = None):
+def read_heroic_username(heroic = None) -> Optional[str]:
     ''' read heroic username '''
     if heroic is None:
         heroic = get_heroic_env()
@@ -34,7 +36,7 @@ def read_heroic_username(heroic = None):
 
 # Currently only Linux flatpak supported
 @lru_cache(maxsize=1)
-def get_heroic_env():
+def get_heroic_env() -> Optional[dict]:
     ''' finds heroic paths '''
     main_paths = ['~/.var/app/com.heroicgameslauncher.hgl/']
     main_path = find_path(main_paths)
@@ -48,9 +50,10 @@ def get_heroic_env():
     heroic["libraryFile"] = legendary_path
     heroic["user.json"] = os.path.join(legendary_path, "user.json")
     heroic["installed.json"] = os.path.join(legendary_path, "installed.json")
+    heroic["Type"] = "NATIVE"
     return heroic
 
-def get_heroic_games():
+def get_heroic_games() -> dict:
     ''' get games from heroic launcher '''
     games = {}
     heroic = get_heroic_env()
@@ -75,23 +78,60 @@ def get_heroic_games():
                     "Executable" : game_dir,
                     "StartDir" : gameinfo["install_path"],
                     "Source" : "egs",
+                    "Type" : heroic["Type"]
                 }
     except (PermissionError, IndexError, json.decoder.JSONDecodeError) as e:
         print(f"Exception occured: {e}")
     installed.close()
     return games
 
-def get_egs_games():
-    ''' [Windows only] get games from epic games launcher '''
-    #To-do: look for alternate ProgramData paths
+def get_egs_env() -> Optional[dict]:
+    ''' Windows/MacOS gets egs environment '''
+    egs = {}
+    egs["Type"] = "NATIVE"
+    disk = "C:\\"
+    if platform.system() == "Darwin":
+        crossover_env = wrapper.get_crossover_env("Epic Games Store")
+        disk = crossover_env["CX_DISK"]
+        egs["Type"] = "CROSSOVER"
+    if platform.system() == "Linux":
+        return None
+    install_dirs = [
+        os.path.join(disk, "Program Files (x86)", "Epic Games"),
+        os.path.join(os.environ.get("ProgramFiles(x86)", ""), "Epic Games")
+    ]
+    install_dir = common.find_path(install_dirs)
+    if install_dir is None:
+        return None
+    egs["path"] = install_dir
+    egs["launchPath"] = os.path.join(install_dir, "Launcher", "Portal",
+                                     "Binaries", "Win32", "EpicGamesLauncher.exe")
+    if not Path(egs["launchPath"]).is_file():
+        print("hmmm, looks like egs launcher is missing, ignoring for the meanwhile")
+    egs_reg = r"SOFTWARE\WOW6432Node\Epic Games\EpicGamesLauncher"
+    data_dirs = [
+        os.path.join(disk, "ProgramData", "Epic", "EpicGamesLauncher", "Data"),
+        common.read_registry_value(0, egs_reg, "AppDataPath")
+    ]
+    programdata_dir = common.find_path(data_dirs)
+    if programdata_dir is None:
+        print("Unable to find EGS ProgramData dir")
+        return None
+    egs["manifestDir"] = os.path.join(programdata_dir, "Manifests")
+    print(f'manifest: {egs["manifestDir"]}')
+    if not Path(egs["manifestDir"]).is_dir():
+        print("Unable to find EGS Manifest dir")
+        return None
+    return egs
+
+def get_egs_games() -> dict:
+    ''' Windows/MacOS get games from epic games launcher '''
     games = {}
-    if system != "Windows":
-        return get_heroic_games()
-    manifest_dir = r"C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests"
-    if not os.path.exists(manifest_dir):
-        print(f"Manifest directory not found: {manifest_dir}")
+    egs = get_egs_env()
+    if egs is None:
         print("Using heroic as failover....")
         return get_heroic_games()
+    manifest_dir = egs["manifestDir"]
     for filename in os.listdir(manifest_dir):
         if filename.endswith(".item"):
             filepath = os.path.join(manifest_dir, filename)
@@ -110,7 +150,8 @@ def get_egs_games():
                             "LaunchOptions" : "",
                             "Exe" : game_dir,
                             "StartDir" : manifest["InstallLocation"],
-                            "Source" : "egs"
+                            "Source" : "egs",
+                            "Type" : egs["Type"]
                         }
 
             except (PermissionError, IndexError, json.decoder.JSONDecodeError) as e:

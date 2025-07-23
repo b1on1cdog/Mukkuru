@@ -12,9 +12,12 @@ See [third-party.md](docs/third-party.md) for third-party files license terms.<b
 - SW, SW2, PS5 like themes<br/>
 - Import custom user themes<br/>
 - Dark mode and light mode<br/>
-- Steam Library games scan<br/>
-- Epic Games Library and Heroic games scan<br/>
-- MacOS Crossover Steam in Apple Silicon supported<br/>
+- Support fetching game library from:<br>
+    - Steam launcher<br/>
+    - (Linux) Heroic launcher<br/>
+    - (Windows) Epic Games Launcher <br/>
+    - (MacOS) Steam launcher under Crossover<br/>
+    - (MacOS) Epic Games Launcher under CrossOver<br/>
 - WebUI to transfer files from another device<br/>
 - Video playback and take video screenshots with a single button<br/>
 - Automatically download boxarts from SteamGridDB<br/>
@@ -38,7 +41,6 @@ Some others are going to receive occasional uploads</br>
 - Add button to delete all video thumbnails<br/>
 - Add option to read current version changelog in settings/about<br/>
 - Add support for non-flatpak Heroic and MacOS Heroic<br/>
-- Add support for crossover EGS in MacOS<br/>
 - More webui features: <br/>
     - Videoplayback control<br/>
     - Play Mukkuru videos from webui <br/>

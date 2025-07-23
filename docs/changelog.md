@@ -1,5 +1,19 @@
 # Changelog
 -----------------
+# 0.3.11
+- Using SGDB api directly when set in user_config<br/>
+- Heroic is now its own game source instead of being an epic games failover<br/>
+- Unavailable game sources will now be delisted from settings<br/>
+- Added return hints for most functions<br/>
+- Implemented environment sanitization to prevent bundled libs from breaking subprocess calls<br/>
+- Improved settings SOC detection<br/>
+- (Linux) Removed flaskwebui dependency and added a check to prevent exception when a browser do not exists<br/>
+- (Windows) Solved potential crash when trying to open Mukkuru without Steam installed<br/>
+- (MacOS) "darwin" is now also valid for update names<br/>
+- (MacOS) Fixed broken updater due to missing .dmg extension<br/>
+- (MacOS) Settings/about will now display MacOS version instead of "Darwin"<br/>
+- (MacOS) Added Epic Games support under Crossover<br/>
+- (MacOS) Added option to open Crossover Steam Store when available<br/>
 # 0.3.10
 - Disabled Mukkuru Store contextItem since it was not supposed to be in release versions<br/>
 - Improved webui dashboard appearance<br>

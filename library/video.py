@@ -35,7 +35,7 @@ def group_by_show(paths):
     return shows
 
 #video_files = [f for f in source_dir.rglob("*") if f.suffix.lower() in extensions and f.is_file()]
-def read_videos(source_dir, source_index = -1):
+def read_videos(source_dir, source_index = -1) -> dict:
     ''' Fetch videos from disk '''
     videos = {}
     extensions = ["mp4", "m4v"]
@@ -61,7 +61,7 @@ def read_videos(source_dir, source_index = -1):
                 videos[video_id]["thumbnail_url"] = f"video/{source_index}/{quote(th_name)}"
     return videos
 
-def verify_video_files(videos):
+def verify_video_files(videos) -> dict:
     ''' verify video files exists '''
     for video_id, video in videos.copy().items():
         video_path = video["path"]
@@ -70,7 +70,7 @@ def verify_video_files(videos):
     videos = check_thumbnails(videos)
     return videos
 
-def check_thumbnails(videos):
+def check_thumbnails(videos) -> dict:
     ''' verify video thumbnails still exists '''
     for video_id, video in videos.items():
         thumbnail_path = video["thumbnail"]
@@ -80,7 +80,7 @@ def check_thumbnails(videos):
             videos[video_id]["thumbnail_exists"] = False
     return videos
 
-def get_videos(source_dirs, video_manifest_path):
+def get_videos(source_dirs, video_manifest_path) -> dict:
     ''' Get videos from all specified dirs '''
     videos = {}
     source_index = 0
@@ -95,7 +95,7 @@ def get_videos(source_dirs, video_manifest_path):
     update_videos(video_manifest_path, videos)
     return videos
 
-def update_thumbnail(video_manifest_path, video_id, thumbnail):
+def update_thumbnail(video_manifest_path, video_id, thumbnail) -> None:
     ''' update thumbnail for specific video id '''
     videos = {}
     with open(video_manifest_path, encoding='utf-8') as f:
@@ -105,7 +105,7 @@ def update_thumbnail(video_manifest_path, video_id, thumbnail):
     with open(videos[video_id]["thumbnail"], "wb") as f:
         f.write(image_data)
 
-def save_screenshot(save_path, screenshot):
+def save_screenshot(save_path, screenshot) -> None:
     ''' saves a picture '''
     picture_b64 = screenshot.replace("data:image/png;base64,", "")
     image_data = base64.b64decode(picture_b64)
@@ -116,12 +116,12 @@ def save_screenshot(save_path, screenshot):
     with open(os.path.join(save_path, pic_name), "wb") as f:
         f.write(image_data)
 
-def update_videos(video_manifest_path, videos):
+def update_videos(video_manifest_path, videos) -> None:
     ''' update videos json '''
     with open(video_manifest_path, 'w', encoding='utf-8') as f:
         json.dump(videos, f)
 
-def sha256_hash_text(text):
+def sha256_hash_text(text) -> str:
     ''' get sha256 of a string '''
     hash_object = hashlib.sha256(text.encode())
     hex_dig = hash_object.hexdigest()

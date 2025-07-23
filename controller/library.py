@@ -6,7 +6,7 @@ from flask import Blueprint, jsonify, request
 from flask import send_from_directory
 from library.steam import get_proton_list
 from library.games import get_games, scan_games, scan_artwork
-from library.games import launch_app, get_username
+from library.games import launch_app, get_username, list_stores
 from library import video
 from utils.core import get_config, mukkuru_env
 
@@ -116,3 +116,8 @@ def get_media():
         video_sources = [video_sources[0]]
     media["videos"] = video.get_videos(video_sources, video_manifest)
     return jsonify(media)
+
+@library_controller.route('/storefront/get')
+def list_storefronts():
+    ''' returns a json list of valid storefronts '''
+    return jsonify(list_stores())
