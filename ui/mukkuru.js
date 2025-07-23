@@ -1007,6 +1007,7 @@ async function applyStoreFilter(isSettings = false) {
     if (!heroic) {
       removeElementWithSibling(document.getElementById("sources-3"));
     }
+    refreshOptions();
     return;
   }
   steamContext = document.getElementById("steamContext");

@@ -200,12 +200,12 @@ fetch("/config/get").then(function(response) {
         }
         updateLibraryOptions();
         showKeyGuide(userConfiguration["showKeyGuide"]);
+        applyStoreFilter(true);
         refreshOptions();
         addUserThemes();
         addUserAudios();
         menuItems[0].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
         tabOptions[0][0].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
-        applyStoreFilter(true);
         allowRendering();
         setTimeout(function() { checkSelectedTheme(userConfiguration["theme"]); }, 300);
 });    

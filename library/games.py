@@ -286,10 +286,12 @@ def launch_store(storefront) -> None:
         if "Type" in egs and egs["Type"] == "CROSSOVER":
             store_env = wrapper.get_crossover_env("Epic Games Store")
             prefix = "wine --cx-app "
-        subprocess.run(f'{prefix}"{egs["launchPath"]}"',
+        launch_command = f'{prefix}"{egs["launchPath"]}"'
+        subprocess.run(launch_command,
                    stderr=subprocess.DEVNULL,
                    stdout=subprocess.DEVNULL,
                    env=store_env, shell=True, check=False)
+        backend_log(f"using {launch_command}")
     elif storefront == "heroic":
         print("Unimplemented store")
     else:

@@ -108,6 +108,8 @@ def get_egs_env() -> Optional[dict]:
                                      "Binaries", "Win32", "EpicGamesLauncher.exe")
     if not Path(egs["launchPath"]).is_file():
         print("hmmm, looks like egs launcher is missing, ignoring for the meanwhile")
+    if egs["Type"] == "CROSSOVER":
+        egs["launchPath"] = egs["launchPath"].replace(disk, "C:")
     egs_reg = r"SOFTWARE\WOW6432Node\Epic Games\EpicGamesLauncher"
     data_dirs = [
         os.path.join(disk, "ProgramData", "Epic", "EpicGamesLauncher", "Data"),
