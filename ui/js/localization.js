@@ -1,3 +1,6 @@
+// Copyright (c) 2025 b1on1cdog
+// Licensed under the MIT License
+
 function swapText(elementID, newText) {
   const element = document.getElementById(elementID);
   if (element != undefined && element != null) {

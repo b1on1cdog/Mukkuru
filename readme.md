@@ -39,7 +39,6 @@ Some others are going to receive occasional uploads</br>
 # To-do list
 - Add button to transfer mukkuru media to user folders<br/>
 - Add button to delete all video thumbnails<br/>
-- Add option to read current version changelog in settings/about<br/>
 - Add support for non-flatpak Heroic and MacOS Heroic<br/>
 - More webui features: <br/>
     - Videoplayback control<br/>
@@ -50,17 +49,15 @@ Some others are going to receive occasional uploads</br>
     - Option to setup SteamGridDB api <br/>
     - Must also support plugins <br/>
     - (Optional) chunk checksum validation to prevent file corruption in upload <br/>
-- Plugin support, with a plugin storefront<br/>
-    - The first plugin might be one to patch VNs<br/>
 - Game provider install helper (Steam, Heroic, etc)<br/>
 - Add joystick buttons customization<br/>
-- Support for linux box86 in arm64<br/>
 - Add ability to download games</br>
+- Support for linux box86 in arm64<br/>
+- Add support for freebsd<br/>
 
 # Known issues
 - Sometimes context menus do not disappear when they should <br/>
 - Sometimes favorite games are not listed <br/>
-- Steam Store button does not open Crossover Steam in MacOS<br/>
 
 # Contribution guidelines
 - **Linting** Use pylint and remove as many warnings as reasonably possible before submitting your code. <br/>

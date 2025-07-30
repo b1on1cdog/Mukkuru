@@ -863,7 +863,7 @@ animation: footerButton-select - 1s ease-in-out infinite;
     animation: game-select 1s ease-in-out infinite;
 }
 
-#overlay {
+.overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -876,13 +876,39 @@ animation: footerButton-select - 1s ease-in-out infinite;
   z-index: 11000;
 }
 
-#overlay .message {
+.overlay.active {
+    display:flex;
+}
+
+.overlay .message {
   color: white;
   font-size: 24px;
   font-weight: bold;
   text-align: center;
   padding: 1em 2em;
   border-radius: 8px;
+}
+
+.overlay progress {
+    min-width: 60vw;
+    border-radius: 8px;
+    position: fixed;
+    bottom: 50%;
+}
+
+.overlay .progress-text {
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  padding: 1em 2em;
+  border-radius: 8px;
+  bottom:40%;
+  position: fixed;
+}
+
+.overlay progress::-webkit-progress-value {
+    background-color: #ffffff;
 }
 
 #videoTime {

@@ -6,6 +6,7 @@ import re
 import unicodedata
 import requests
 from PIL import Image
+from utils.core import backend_log
 from utils.bootstrap import download_file
 
 API_KEY = ""
@@ -58,7 +59,7 @@ def get_id_from_platform(platform_id, platform_name):
     except KeyError:
         return 0
     except requests.exceptions.JSONDecodeError:
-        print("Failed to decode JSON")
+        backend_log("Failed to decode JSON")
         return 0
 
 def find_image_url(game_id, image_format, image_index = 0):
@@ -108,11 +109,11 @@ def download_image(game_identifier, s_path, image_format, image_index = 0):
     else:
         game_id = get_game_id(game_title)
     if game_id == 0:
-        print(f"Failed to find game {game_title}")
+        backend_log(f"Failed to find game {game_title}")
         return False
     file_url = find_image_url(game_id, image_format, image_index)
     if file_url == 0:
-        print(f"Failed to find game asset : {game_title} [{image_format}]")
+        backend_log(f"Failed to find game asset : {game_title} [{image_format}]")
         return "Missing"
     extension = "jpg"
     if file_url.endswith(".png"):
@@ -129,7 +130,7 @@ def download_image(game_identifier, s_path, image_format, image_index = 0):
     download_file(file_url, output_file)
     if extension != "jpg" and image_format == "1:1":
         new_file = output_file.replace(f".{extension}", ".jpg")
-        print(f'{output_file} > {new_file}')
+        backend_log(f'{output_file} > {new_file}')
         im = Image.open(output_file)
         im.convert('RGB').save(new_file,"JPEG")
         os.remove(output_file)

@@ -6,8 +6,10 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Mukkuru - Store</title>
     <link rel="stylesheet" href="./assets/css/settings.css">
-    <script src="mukkuru.js"></script>
-    <script src="localization.js"></script>
+    <script src="js/mukkuru.js"></script>
+    <script src="js/settings.js"></script>
+    <script src="js/store.js"></script>
+    <script src="js/localization.js"></script>
     <script>
 if (localStorage.getItem("darkMode") == "true") {
     applyDarkMode();
@@ -41,11 +43,6 @@ const menuOptions = document.querySelectorAll('.menu-option');
 //menuItems[0].className = "menu-tab selected";
 menuItems[0].classList.add("selected");
 
-if (isFirefox || isKioskMode) {
-    document.getElementById("fullScreen").remove();
-    document.getElementById("fullScreen-separator").remove();
-}
-
 fetch("/config/get").then(function(response) {
         return response.json();
     }).then(function(data) {
@@ -59,12 +56,14 @@ fetch("/config/get").then(function(response) {
             setDarkModeState(false);
             //localStorage.setItem("darkMode", false);
         }
-        showKeyGuide(userConfiguration["showKeyGuide"]);
+        createProgressBar();
         refreshOptions();
+        fetchPatches();
+        showKeyGuide(userConfiguration["showKeyGuide"]);
         menuItems[0].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
         tabOptions[0][0].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
         allowRendering();
-});    
+});
 
 
 /*
@@ -191,6 +190,7 @@ document.addEventListener('keydown', (e) => {
                 break;
             }
             playSound("tick");
+            tabOptions[selectedTab][selectedOption].click();
             break;
 
             case 'left':
@@ -338,26 +338,24 @@ document.addEventListener('keydown', (e) => {
             <div class="menu" id="store-menu">
                 <div id="packagesTab" class="menu-tab" data-loc="Packages" data-trm="swapText">Packages</div>
                 <div id="patchesTab" class="menu-tab" data-loc="Patches" data-trm="swapText">Patches</div>
-                <div id="pluginTab" class="menu-tab" data-loc="Plugins" data-trm="swapText">Plugins</div>
+                <!-- div id="pluginTab" class="menu-tab" data-loc="Plugins" data-trm="swapText">Plugins</div>
                 <div id="themesTab" class="menu-tab" data-loc="Themes" data-trm="swapText">Themes</div>
-                <div id="sfxTab" class="menu-tab" data-loc="AudioSFX" data-trm="swapText">Sound Effects</div>
+                <div id="sfxTab" class="menu-tab" data-loc="AudioSFX" data-trm="swapText">Sound Effects</div-->
                 <div class="separator"></div>
             </div>
 
             <div class="menu-options" id="settings-options">
                 <div class="options" id="options-0" style="display:none;">
                     <div class="option-separator"></div>
-                    <div class="menu-option">Coming soon</div>
+                    <div class="menu-option">No items to list yet</div>
                     <div class="option-separator"></div>
                 </div>
                 <div class="options" id="options-1" style="display:none;">
                     <div class="option-separator"></div>
-                    <div class="menu-option">Coming soon</div>
-                    <div class="option-separator"></div>
                 </div>
                 <div class="options" id="options-2" style="display:none;">
                     <div class="option-separator"></div>
-                    <div class="menu-option">Coming soon</div>
+                    <div class="menu-option">This Mukkuru version do not support Plugins</div>
                     <div class="option-separator"></div>
                     <div class="spacer" style="min-height:300px"></div>
                 </div>

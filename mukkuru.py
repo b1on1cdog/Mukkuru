@@ -26,17 +26,18 @@ from utils.core import mukkuru_env, COMPILER_FLAG, FRONTEND_MODE
 from utils.core import APP_PORT, SERVER_PORT, APP_DIR
 from utils.core import app_version, get_config, backend_log, set_alive_status
 from utils.core import update_config, format_executable
-from utils.bootstrap import get_userprofile_folder
+from utils import bootstrap
 
 from library import video
 from library.games import get_games, scan_games, scan_thumbnails, get_username, artwork_worker
-from library.steam import download_steam_avatar
+from library.steam import get_steam_avatar
 from library.games import launch_store
 
 from controller.license import license_controller
 from controller.hardware import hardware_controller
 from controller.library import library_controller, external_library
 from controller.dashboard import dashboard_blueprint
+from controller.repos import repos_blueprint
 
 if FRONTEND_MODE == "PYWEBVIEW":
     from view.pywebview import Frontend
@@ -52,6 +53,7 @@ app = Flask(__name__)
 app.register_blueprint(license_controller)
 app.register_blueprint(hardware_controller)
 app.register_blueprint(library_controller)
+app.register_blueprint(repos_blueprint)
 app.json.sort_keys = False
 
 wserver = Flask(__name__)
@@ -135,15 +137,20 @@ def get_theme(selected = None):
         css = default_css
     return css
 
-@app.route('/app/exit')
-def quit_app():
-    ''' exit mukkuru '''
+def exit_mukkuru():
+    ''' terminates Mukkuru instance '''
+    threading.Event().wait(0.15)
     if FRONTEND_MODE == "FLASKUI":
         Frontend().close() # pylint: disable=E0606, E0601
     if FRONTEND_MODE == "WEF":
         terminate_wef()
-    #if os.environ.get("XDG_SESSION_DESKTOP", "").lower() == "gamescope":
     os._exit(0)
+
+@app.route('/app/exit')
+def quit_app():
+    ''' exit mukkuru '''
+    threading.Thread(target=exit_mukkuru).start()
+    return jsonify("Exiting...", 200)
 
 @wserver.route('/favicon.ico')
 @app.route('/favicon.ico')
@@ -325,15 +332,10 @@ def static_file(path):
         if user_config["uiSounds"] in user_audios:
             serve_path = user_sfx
             new_path = new_path.replace("assets/audio/", "")
-        ogg_file = f'{new_path}.ogg'
-        wav_file = f'{new_path}.wav'
-        mp3_file = f'{new_path}.mp3'
-        if Path(os.path.join(serve_path, ogg_file)).exists():
-            new_path = ogg_file
-        elif Path(os.path.join(serve_path, wav_file)).exists():
-            new_path = wav_file
-        elif Path(os.path.join(serve_path, mp3_file)).exists():
-            new_path = mp3_file
+        sfx_files = [f'{new_path}.ogg', f'{new_path}.wav', f'{new_path}.mp3']
+        for sfx_file in sfx_files:
+            if Path(os.path.join(serve_path, sfx_file)).exists():
+                new_path = sfx_file
         return send_from_directory(serve_path, new_path)
     if path.startswith("thumbnails/") or path.startswith("hero/"):
         return send_from_directory(mukkuru_env["root"], path, mimetype='image/jpeg')
@@ -343,6 +345,23 @@ def static_file(path):
         css = CssPreprocessor(full_path, data=theme)
         css.process()
         return send_file(css.data(), mimetype="text/css")
+    if path.endswith(".js"):
+        full_path = os.path.join(serve_path, path)
+        print(f"reading {full_path}")
+        lines = Path(full_path).read_text(encoding='utf-8').splitlines()
+        for i, line in enumerate(lines):
+            if "//Mukkuru::Load:" in line:
+                js_load = line.replace("//Mukkuru::Load:", "")
+                js_module_path = Path(full_path).with_name(js_load)
+                backend_log(f"{js_module_path}")
+                js_module = Path(js_module_path).read_text(encoding='utf-8')
+                replacement_lines = js_module.splitlines()
+                lines[i:i+1] = replacement_lines
+        js = "\n".join(lines)
+        buffer = BytesIO()
+        buffer.write(str.encode(js))
+        buffer.seek(0)
+        return send_file(buffer, mimetype="text/javascript")
     if path.endswith("web/qrcode"):
         #code = 123456
         ip = hardware_if.get_current_interface(get_ip = True)
@@ -353,6 +372,18 @@ def static_file(path):
         buf.seek(0)
         return send_file(buf, mimetype="image/png")
     return send_from_directory(serve_path, path)
+
+@app.route('/app/progress')
+def check_progress():
+    ''' returns current progress '''
+    global_progress = bootstrap.operation_progress
+    return jsonify(global_progress)
+
+@app.route('/app/check_updates')
+def check_for_updates():
+    ''' checks if an update is available '''
+    ret = updater.check_for_updates()
+    return jsonify(ret)
 
 @app.route('/app/update')
 def start_app_update():
@@ -391,7 +422,7 @@ def get_destination_map():
     user_config = get_config()
     destination_map = {
         "video" : user_config["videoSources"][1],
-        "misc" : get_userprofile_folder("Downloads"),
+        "misc" : bootstrap.get_userprofile_folder("Downloads"),
         "music" : user_config["musicSources"][1],
         "pictures" : user_config["pictureSources"][1]
     }
@@ -435,7 +466,7 @@ def start_app(is_server = False):
         if is_server:
             sserver.adj.core_count = cores
             os.environ["SERVER_RUNNING"] = "1"
-            print("starting server....")
+            backend_log("starting server....")
             sserver.run()
             #serve(wserver, host="0.0.0.0", threads=cores, port=SERVER_PORT)
         else:
@@ -456,11 +487,11 @@ def fix_file_sources():
     ''' add user dirs to file sources '''
     user_config = get_config()
     if len(user_config["pictureSources"]) == 1:
-        user_config["pictureSources"].append(get_userprofile_folder("Pictures"))
+        user_config["pictureSources"].append(bootstrap.get_userprofile_folder("Pictures"))
     if len(user_config["videoSources"]) == 1:
-        user_config["videoSources"].append(get_userprofile_folder("Videos"))
+        user_config["videoSources"].append(bootstrap.get_userprofile_folder("Videos"))
     if len(user_config["musicSources"]) == 1:
-        user_config["musicSources"].append(get_userprofile_folder("Music"))
+        user_config["musicSources"].append(bootstrap.get_userprofile_folder("Music"))
     get_config.cache_clear()
     if user_config != get_config():
         backend_log("Adding user paths...")
@@ -492,10 +523,10 @@ def main():
             return
     backend_log(f'Using { FRONTEND_MODE } for rendering')
     backend_log(f"COMPILER_FLAG: {COMPILER_FLAG}")
-    # to-do: send an app/quit request to Mukkuru
-    hardware_if.kill_process_on_port(APP_PORT)
+    bootstrap.terminate_mukkuru_backend(APP_PORT)
     # Instead of writing another executable, this one will conditionally act as updater
     if "MUKKURU_UPDATE" in os.environ and COMPILER_FLAG:
+        backend_log("Processing update....")
         updater.process_update()
     elif COMPILER_FLAG:
         update_path = os.path.join(mukkuru_env["root"], format_executable("update"))
@@ -533,7 +564,7 @@ def main():
     if user_config["startupGameScan"] is True:
         backend_log("[debug] startupGameScan: True, starting library scan")
         threading.Thread(target=scan_games).start()
-    download_steam_avatar(mukkuru_env["artwork"])
+    get_steam_avatar(mukkuru_env["artwork"])
     fix_file_sources()
     if threading.current_thread() is threading.main_thread():
         threading.Thread(target=start_app).start()

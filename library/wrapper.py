@@ -3,7 +3,7 @@
 ''' Compatibility layer module '''
 import os
 from pathlib import Path
-from utils.core import sanitized_env
+from utils.core import sanitized_env, backend_log
 
 def get_crossover_env(bottle) -> dict:
     ''' get crossover environment variables '''
@@ -12,11 +12,11 @@ def get_crossover_env(bottle) -> dict:
     if not Path(crossover_app).is_dir():
         crossover_app = "/Applications/CrossOver.app/"
         if Path(crossover_app).is_dir():
-            print("Using Crossover system install")
+            backend_log("Using Crossover system install")
         else:
-            print("Crossover is not installed")
+            backend_log("Crossover is not installed")
     else:
-        print("Using Crossover user install")
+        backend_log("Using Crossover user install")
     cxroot = os.path.join(crossover_app, "Contents", "SharedSupport", "CrossOver")
     cxbottlepath = os.path.expanduser("~/Library/Application Support/CrossOver/Bottles")
     crossenv["PYTHONPATH"] = os.path.join(cxroot, "lib", "python")

@@ -102,6 +102,7 @@ def scan_games() -> dict:
     games = library_scan(int(options))
     artwork_queue.put(games)
     scan_thumbnails(games)
+    time.sleep(0.1)
     return games
 
 def fetch_artwork(app_id, game, b1, b2, b3, use_alt_images) -> dict:
@@ -293,9 +294,9 @@ def launch_store(storefront) -> None:
                    env=store_env, shell=True, check=False)
         backend_log(f"using {launch_command}")
     elif storefront == "heroic":
-        print("Unimplemented store")
+        backend_log("Unimplemented store")
     else:
-        print(f"unknown storefront {storefront}")
+        backend_log(f"unknown storefront {storefront}")
 
 @lru_cache(maxsize=1)
 def get_username() -> str:

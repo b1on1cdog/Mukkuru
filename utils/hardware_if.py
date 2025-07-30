@@ -14,7 +14,7 @@ from typing import Optional
 
 import psutil
 import distro
-
+from utils.core import backend_log
 system = platform.system()
 
 codename_map = {
@@ -185,7 +185,7 @@ def has_internet(host="8.8.8.8", port=53, timeout=0.3):
         socket.setdefaulttimeout(timeout)
         socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
         return True
-    except TimeoutError:
+    except (TimeoutError, socket.timeout):
         return False
 
 def get_current_interface(get_ip = False):
@@ -198,7 +198,7 @@ def get_current_interface(get_ip = False):
             if get_ip:
                 return local_ip
     except (TimeoutError) as e:
-        print(f"Could not determine local IP: {e}")
+        backend_log(f"Could not determine local IP: {e}")
         return None
 
     # Step 2: Match local IP to a network interface
@@ -282,20 +282,20 @@ def kill_process_on_port(port) -> bool:
     try:
         net_conns = psutil.net_connections(kind="inet")
     except (PermissionError, psutil.AccessDenied):
-        print("Unable to determine if port is busy")
+        backend_log("Unable to determine if port is busy")
         return False
     for conn in net_conns:
         if conn.laddr.port == port and conn.status == psutil.CONN_LISTEN:
             pid = conn.pid
             if pid:
-                print(f"Killing PID {pid} on port {port}")
+                backend_log(f"Killing PID {pid} on port {port}")
                 try:
                     os.kill(pid, signal.SIGTERM)  # or signal.SIGKILL
                     return True
                 except OSError as e:
-                    print(f"Failed to kill PID {pid}: {e}")
+                    backend_log(f"Failed to kill PID {pid}: {e}")
                     return False
-    print(f"No process found listening on port {port}")
+    backend_log(f"No process found listening on port {port}")
     return False
 
 def wait_for_server(host, port, timeout=5.0) -> bool:

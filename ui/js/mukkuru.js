@@ -2,7 +2,7 @@
 // Licensed under the MIT License
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 const audioBuffers = {};
-const maxPoolSize = 4; // Maximum number of instances to keep for each sound
+const maxPoolSize = 4;
 const audioPlayedAt = {};
 let userConfiguration = {};
 let lockControls = false;
@@ -140,7 +140,6 @@ function applyDarkMode(){
 
 let configReady;
 
-
 const isConfigReady = new Promise((resolve) => {
   configReady = resolve;
 });
@@ -171,10 +170,10 @@ async function hardwareStatusUpdate(){
           const batteryLevel =  document.getElementsByClassName("batteryLevel")[0];
           const batteryState = document.getElementsByClassName("batteryState")[0];
           const batteryPercent = document.getElementById("batteryPercent");
+          const batteryCharging = document.getElementsByClassName("batteryCharging")[0];
           batteryLevel.style.width = "" + (100-battery.percent) + "%";
           batteryPercent.innerHTML = Math.trunc(battery.percent) + '<span class="chargePercent">%</span>';
           if ("power_plugged" in battery && battery.power_plugged) {
-            batteryCharging = document.getElementsByClassName("batteryCharging")[0];
             if (!batteryCharging.classList.contains("active")) {
               batteryCharging.classList.add("active");
               batteryState.style.backgroundColor = "rgba(33, 255, 59, 0.82)";
@@ -274,328 +273,8 @@ function closeCTX(){
    });
 }
 
-let videoTimeUpdateIntervalId;
-let videoTimeDisplayTimeoutId;
-let videos = { };
-
-function find_videoId(video_url){
-  const videoId = Object.keys(videos).find(
-    key => videos[key].url === video_url
-  );
-  return videoId;
-}
-
-function playVideo(videoId, startDuration = 0){
-  isVideoPlayer = true;
-  video = document.getElementById("videoPlayer");
-  video.classList.add("active");
-
-/*
-  var source = document.createElement('source');
-  source.setAttribute('src', videoFile);
-  source.setAttribute('type', 'video/mp4');
-  video.appendChild(source);
-*/
-  videoId = videoId.replace("video_", "");
-  videoFile = videos[videoId].url;
-  video.dataset.video_id = videoId;
-  video.src = videoFile;
-  video.load();
-  video.play();
-  hideUI(true);
-  if (isContextMenu) {
-    closeCTX();
-  }
-  videoTime = document.getElementById("videoTime");
-  videoTimeUpdateIntervalId = setInterval(() => {
-    if (videoTime == undefined) {
-      videoTime = document.getElementById("videoTime");
-    }
-    videoTime.innerText = formatDuration(video.currentTime) + "/" + formatDuration(video.duration);
-  }, "1000");
-  video.currentTime = startDuration;
-}
-
-function closeVideo(){
-  isVideoPlayer = false;
-  video = document.getElementById("videoPlayer");
-  video.classList.remove("active");
-  video.pause();
-  /*
-  we need to register the time before closing the video
-  To-do: make sure we are using right video (ex: PlayVideo remote command bypasses currentMedia)
-  */
-  if ("video_id" in video.dataset && video.currentTime > 30){
-    video_id = video.dataset.video_id;
-    backend_log(video_id);
-    videos[video_id]["resume"] = video.currentTime;
-    document.getElementById("video_"+video_id).dataset.resume = video.currentTime
-    send_videos_metadata(videos);
-  }
-  
-  video.currentTime = 0;
-  hideUI(false);
-  if (videoTimeUpdateIntervalId != undefined){
-    clearInterval(videoTimeUpdateIntervalId);
-    document.getElementById("videoTime").classList.remove("active");
-  }
-}
-
-function formatDuration(totalSeconds) {
-  const sec = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
-  const min = Math.floor((totalSeconds / 60) % 60).toString().padStart(2, '0');
-  const hrs = Math.floor(totalSeconds / 3600);
-
-  return hrs > 0 ? `${hrs}:${min}:${sec}` : `${min}:${sec}`;
-}
-
-
-// video_parser.js
-
-function videoControl(action){
-  video = document.getElementById("videoPlayer");
-  switch (action) {
-    case "left":
-      video.currentTime = Math.max(video.currentTime - 15, 0);
-      break;
-    case "right":
-      video.currentTime = Math.min(video.currentTime + 15, video.duration);
-      break;
-    case "up":
-      video.volume = Math.min(video.volume + 0.05, 1);
-      break;
-    case "down":
-      video.volume = Math.max(video.volume - 0.05, 0);
-      break;
-    case "back":
-      closeVideo();
-      return;
-    case "confirm":
-      if (video.paused) {
-        video.play();
-      } else {
-        video.pause();
-      }
-      break;
-    case "options":
-      playSound("shot");
-      take_video_screenshot();
-      break;
-    default:
-      break;
-  }
-  videoTime = document.getElementById("videoTime");
-  videoTime.innerText =  formatDuration(video.currentTime) + "/" + formatDuration(video.duration);
-  videoTime.classList.add("active");
-  if (videoTimeDisplayTimeoutId != undefined) {
-    clearTimeout(videoTimeDisplayTimeoutId);
-  }
-  videoTimeDisplayTimeoutId = setTimeout(() => {
-      videoTime.classList.remove("active");
-    }, "3500");
-}
-
-
-function send_videos_metadata(){
-    fetch("/video/set", {
-      method: "POST",
-      body: JSON.stringify(videos),
-      headers: {
-        "Content-type": "application/json; charset=UTF-8"
-      }
-      }).then((response) => {
-        
-      });
-}
-function deleteVideo(videoItem){
-    const videoFile = videoItem.dataset.play;
-    fetch(videoFile, {
-      method: "DELETE",
-      headers: {
-        "Content-type": "application/json; charset=UTF-8"
-      }
-      }).then((response) => {
-        videoItem.remove();
-        document.getElementById("videoContextMenu").classList.remove("active");
-        isContextMenu = false;
-        mediaItems = document.querySelectorAll('.videoLauncher')
-        if (mediaItems.length == 0) {
-          goHome();
-        } else {
-          currentMedia--;
-          mediaItems[currentMedia].focus();
-        }
-      });
-}
-
-function send_video_thumbnail(thumbnail, video_id){
-    fetch("/video/thumbnail/"+video_id, {
-      method: "POST",
-      body: JSON.stringify(thumbnail),
-      headers: {
-        "Content-type": "application/json; charset=UTF-8"
-      }
-      }).then((response) => {
-        
-      });
-}
-
-function draw_video_png(vid){
-    const c  = document.createElement('canvas');
-    c.width  = vid.videoWidth;
-    c.height = vid.videoHeight;
-    c.getContext('2d').drawImage(vid, 0, 0);
-    const png = c.toDataURL('image/png');
-    return png;
-}
-
-
-function simulateScreenshotEffect(vid) {
-  vid.classList.add("screenshot-bounce");
-
-  const flash = document.getElementById("flash");
-  flash.classList.add("active");
-
-  setTimeout(() => {
-    vid.classList.remove("screenshot-bounce");
-    flash.classList.remove("active");
-  }, 100);
-}
-
-function take_video_screenshot(){
-    vid = document.getElementById("videoPlayer");
-    screenshot = draw_video_png(vid);
-    simulateScreenshotEffect(vid);
-    fetch("/video/screenshot/", {
-      method: "POST",
-      body: JSON.stringify(screenshot),
-      headers: {
-        "Content-type": "application/json; charset=UTF-8"
-      }
-      }).then((response) => {
-        
-      });
-}
-
-
-async function get_video_metadata(video_url, vid){
-    console.log("processing metadata for " + video_url);
-    vid.id = 'metadata-video';
-    vid.preload = 'metadata';
-    vid.src = video_url;
-    vid.muted = true;
-    document.body.appendChild(vid);
-
-    await new Promise(r => vid.onloadedmetadata = r);
-    const duration = vid.duration;
-
-    vid.currentTime = Math.min(90.5, duration / 2);
-
-    await new Promise(r => vid.onseeked = r);
-
-    png = draw_video_png(vid);
-
-    vid.pause();
-    metadata = {
-        "duration" : vid.duration,
-        "thumbnail" : png,
-    }
-    return metadata;
-}
-
-function refreshVideoMetadata(video_id, video_duration = "00:00"){
-    videoElement = document.getElementById("video_"+video_id);
-    if (videoElement != undefined){
-        try {
-            th = videoElement.getElementsByClassName("video-thumbnail")[0];
-            th.src = th.src;
-            duration = videoElement.getElementsByClassName("duration")[0];
-            duration.textContent = formatDuration(video_duration);
-        } catch {}
-    }
-}
-
-async function update_videos_metadata(vids){
-    const vid = document.createElement('video');
-    for (const id in vids) {
-        const video = vids[id];
-        if ("duration" in video && video["thumbnail_exists"]){
-            //console.log("skipping "+id)
-            continue;
-        }
-        const metadata = await get_video_metadata(video.url, vid);
-        thumbnail = metadata["thumbnail"];
-        delete metadata.thumbnail;
-        Object.assign(videos[id], metadata);
-        send_video_thumbnail(thumbnail, id);
-
-        //let's refresh thumbnail
-        setTimeout(() => {
-            refreshVideoMetadata(id, metadata.duration);
-        }, "500");
-    }
-  //  console.log(JSON.stringify(videos));
-    send_videos_metadata();
-    vid.remove();
-}
-
-  async function fetch_videos(autoplay_video = ""){
-        document.querySelectorAll('.videoLauncher').forEach(el => el.remove());
-        response = await fetch("/media/get");
-        if (!response.ok) {
-            throw new Error(`HTTP ${network_resp.status}`);
-        }
-        data = await response.json();
-        videos = data["videos"];
-  
-        update_videos_metadata(videos);
-        mediaList = document.getElementsByClassName("mediaList")[0];
-        for (const id in videos){
-            video = videos[id];
-            
-            const videoLauncher = document.createElement('button');
-            videoLauncher.className = 'videoLauncher';
-            /*
-            if (favoriteGames.has(AppID)){
-                app.classList.add("favorite");
-            }*/
-            videoLauncher.id = "video_" + id;
-            videoLauncher.dataset.play = video.url;
-            if ("resume" in video) {
-              videoLauncher.dataset.resume = video.resume;
-            }
-            const videoTitle = document.createElement('div');
-            videoTitle.className = "video-title";
-            videoTitle.textContent = video.file
-            videoTitle.dataset.text = videoTitle.textContent;
-            const videoImage = document.createElement('img');
-            videoImage.className = 'video-thumbnail';
-            videoImage.src = video.thumbnail_url;
-            videoImage.alt = video.file;
-            const durationElement = document.createElement('div');
-            durationElement.className = "duration";
-            durationElement.textContent = formatDuration(video.duration);
-            videoLauncher.appendChild(videoTitle);
-            videoLauncher.appendChild(videoImage);
-            videoLauncher.appendChild(durationElement);
-            mediaList.appendChild(videoLauncher);
-            videoLauncher.addEventListener('focus', () => {
-              videoLauncher.scrollIntoView({ behavior: "instant", block: "center" });
-            });
-        }
-        if (autoplay_video != ""){
-          videoUri = encodeURI(autoplay_video);
-          backend_log("trying to find videoId for "+videoUri)
-          videoId = find_videoId(videoUri);
-          if (videoId == undefined) {
-            backend_log("Unable to autoplay media")
-          } else {
-            playVideo(videoId);
-          }
-          
-        }
-}
-
+// start video_parser.js
+//Mukkuru::Load:media.js
 // end video_parser.js
 
 async function reloadGameThumbnails(){
@@ -911,7 +590,90 @@ function open_context_menu(contextMenuName){
   playSound("select");
 }
 
+async function checkUpdates(){
+  response = await fetch("/app/check_updates");
+  response_dict = await response.json();
+  response_text = response_dict["status"]
+  if (response_text == "up-to-date") {
+    document.getElementById("messageBox").innerText = "Mukkuru is already up-to-date";
+    open_context_menu("messageContext");
+  } else if (response_text == "unsupported") {
+    document.getElementById("messageBox").innerText = "This Mukkuru app does not support updates";
+    open_context_menu("messageContext");
+  } else if (response_text == "available"){
+    document.getElementById("updateBox").innerText = "An update to version " + response_dict["version"] +" is available";
+    document.getElementById("updateChangelog").innerText = response_dict["changelog"];
+    open_context_menu("updateContext");
+  }
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+MEGABYTE = 1000 * 1000;
+
+async function createProgressBar(){
+  const progressOverlay = document.createElement('div');
+  progressOverlay.classList.add("overlay");
+  progressOverlay.id = "overlay-pb";
+  
+  const progressBar = document.createElement("progress");
+  progressBar.id = "progress-bar";
+  progressBar.value = "0";
+  progressBar.max = "100";
+
+  const progressTitle = document.createElement("div");
+  progressTitle.id = "progress-title";
+  progressTitle.classList.add("message");
+  progressTitle.style.bottom = "60%";
+  progressTitle.style.position = "fixed";
+  
+  const progressText = document.createElement("div");
+  progressText.classList.add("progress-text");
+  progressText.id = "progress-text";
+  progressText.innerText = "0mb / 0mb";
+
+  progressOverlay.appendChild(progressBar);
+  progressOverlay.appendChild(progressTitle);
+  progressOverlay.appendChild(progressText);
+  /*
+          <progress id="progress-bar" value="20" max="100"></progress>
+        <div id="progress-title" class="message" style="bottom: 60%; position: fixed;">Downloading patch.zip</div>
+        <div class="progress-text">0mb / 0mb</div>*/
+  document.body.appendChild(progressOverlay); 
+}
+
+async function startProgressBar() {
+  await sleep(600);
+  document.getElementById("overlay-pb").classList.add("active");
+  progressActive = true;
+  lockControls = true;
+  while (progressActive) {
+    response = await fetch("/app/progress");
+    global_progress = await response.json();
+    progressActive = global_progress["active"];
+
+    const downloaded = (global_progress["downloaded"] / MEGABYTE).toFixed(2);
+    const total = (global_progress["total"] / MEGABYTE).toFixed(2);
+    if (progressActive){
+        document.getElementById("progress-bar").value = global_progress["progress"];
+        document.getElementById("progress-title").innerText = global_progress["context"];
+        document.getElementById("progress-text").innerText = `${downloaded} / ${total}mb`;
+    }
+    await sleep(200);
+  }
+  closeProgressBar();
+}
+
+async function closeProgressBar(){
+  lockControls = false;
+  document.getElementById("overlay-pb").classList.remove("active");
+}
+
 async function updateMukkuru() {
+  close_context_menu(false);
+  startProgressBar();
   response = await fetch("/app/update");
   response_text = await response.text();
   if (response_text == "up-to-date") {
@@ -930,125 +692,198 @@ async function move_files(transfer_type) {
   open_context_menu("messageContext");
 }
 
+function openStore(){
+  playSound("select");
+  setTimeout( () =>{
+    window.location.replace("/frontend/store");
+  }, 100);
+}
 
-function showPreviousSeparator(state){
-    if (tabOptions[selectedTab][selectedOption].previousElementSibling != null && tabOptions[selectedTab][selectedOption].previousElementSibling.className == "option-separator") {
-        tabOptions[selectedTab][selectedOption].previousElementSibling.style.display = state?"":"none";
+async function fetch_games(isConfigReady = undefined) {
+    const root = document.documentElement; // This is the <html> element
+    const styles = getComputedStyle(root);
+    const displayHero = styles.getPropertyValue('--display-hero').trim() == "1";
+    const gameList = document.querySelector('.gameList');
+    const appList = document.querySelector('.appList');
+    const useGlass = styles.getPropertyValue('--use-glass').trim() == "1";
+    const allSoftwareThumbnailURL = styles.getPropertyValue('--all-software-thumbnail').trim().slice(1, -1);
+
+    response = await fetch("/library/get");
+    data = await response.json();
+    library_start = performance.now();
+    gameArr = Object.entries(data);
+
+    while (gameList.firstChild) {
+      gameList.removeChild(gameList.firstChild);
     }
-}
-
-function showNextSeparator(state){
-    if (tabOptions[selectedTab][selectedOption].nextElementSibling != null && tabOptions[selectedTab][selectedOption].nextElementSibling.className == "option-separator") {
-        tabOptions[selectedTab][selectedOption].nextElementSibling.style.display = state?"":"none";
+    while (appList.firstChild) {
+      appList.removeChild(appList.firstChild);
     }
-}
 
-function refreshOptions() {
-    document.querySelectorAll(".options").forEach((item, index) => {
-        options = item.querySelectorAll(".menu-option");
-        tabOptions[index] = options;
-});
-}
+    const favoriteGames = new Set(userConfiguration.favorite);
+    const recentPlayed = new Set(userConfiguration.recentPlayed);
 
-let previousPages = [];
-let isScrollable = false;
-let scrollableItem = null;
-
-function openNextPage(newScreen){
-    absoluteTab = document.getElementById("options-"+selectedTab);
-    previousPages.push(absoluteTab.cloneNode(true));
-    absoluteTab.replaceChildren(newScreen);
-    //scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
-    refreshOptions();
-}
-
-function removeElementWithSibling(element){
-  element.nextElementSibling.remove();
-  element.remove();
-}
-
-async function applyStoreFilter(isSettings = false) {
-  stores_response = await fetch("/storefront/get");
-  stores = await stores_response.json();
-  steam = false;
-  crossover_steam = false;
-  egs = false;
-  heroic = false;
-
-  backend_log(JSON.stringify(stores));
-
-  for (let i = 0; i < stores.length; i++) {
-   switch (stores[i]) {
-    case "steam":
-      steam = true;
-      break;
-    case "crossover_steam":
-      crossover_steam = true;
-      break;
-    case "egs":
-      egs = true;
-      break;
-    case "heroic":
-      heroic = true;
-      break;
-    default:
-      break;
-   }
-  }
-
-  if (isSettings) {
-    if (!steam && !crossover_steam) {
-      removeElementWithSibling(document.getElementById("sources-0"));
-      removeElementWithSibling(document.getElementById("sources-1"));
+    gameArray = [
+        ...gameArr.filter(([key]) => recentPlayed.has(key)),
+        ...gameArr.filter(([key]) => favoriteGames.has(key) && !recentPlayed.has(key)),
+        ...gameArr.filter(([key, val]) => !recentPlayed.has(key) && !favoriteGames.has(key) && val.Thumbnail === true),
+        ...gameArr.filter(([key, val]) => !recentPlayed.has(key) && !favoriteGames.has(key) && val.Thumbnail !== true)
+    ];
+    
+    gamesSkipped = 0;
+    gamesAdded = 0;
+    if (isConfigReady != undefined) {
+      await isConfigReady;
     }
-    if (!egs) {
-      removeElementWithSibling(document.getElementById("sources-2"));
-    }
-    if (!heroic) {
-      removeElementWithSibling(document.getElementById("sources-3"));
-    }
-    refreshOptions();
-    return;
-  }
-  steamContext = document.getElementById("steamContext");
-  //debug
-  //crossover_steam = true;
-  if (crossover_steam) {
-    const clone = steamContext.cloneNode(true);
-    clone.removeAttribute("onclick");
-    clone.innerHTML = clone.innerHTML + " (Crossover)";
-    clone.onclick = () => { 
-      openThirdPartyStore("crossover_steam");
-     };
-     if (steam) {
-        clone.classList.remove("selected");
-     }
-     steamContext.parentNode.insertBefore(clone, steamContext.nextSibling);
-  }
 
-  if (!steam) {
-      steamContext.remove();
-  }
+    gameLimit = userConfiguration["maxGamesInHomeScreen"];
+    gameArray.forEach((item) => {
+        const AppID = item[0];
+        box_src = './thumbnails/'+AppID+'.jpg';
 
-  egsContext = document.getElementById("egsContext");
-  if (!egs) {
-    egsContext.remove();
-  }
-  
+        if (item[1]["Thumbnail"]) {
+
+        } else if (userConfiguration["skipNoArt"] == true){
+            gamesSkipped++;
+            return;
+        } else {
+            box_src = "./assets/vector/missing.svg";
+        }
+
+        if (userConfiguration["blacklist"].includes(AppID)){
+            gamesSkipped++;
+            return;
+        }
+
+        const button = document.createElement('button');
+        button.className = 'gameLauncher';
+        button.id = AppID;
+        button.dataset.gameid = AppID;
+        if (favoriteGames.has(AppID)){
+            button.classList.add("favorite");
+        }
+        let proton = false;
+        if ("Proton" in item[1] && item[1]["Proton"] == true ) {
+            proton = true;
+        }
+        button.dataset.proton = proton;
+
+        const title = document.createElement('div');
+        title.className = 'gameLauncher-title';
+        title.textContent = item[1]["AppName"];
+        title.dataset.text = title.textContent;
+
+        const thumbnail = document.createElement('img');
+        thumbnail.className = 'gameLauncher-thumbnail';
+        thumbnail.src = box_src;
+        thumbnail.alt = item[1]["AppName"];
+
+        button.appendChild(title);
+        button.appendChild(thumbnail);
+        if (useGlass) {
+            const glass = document.createElement('div');
+            glass.className = 'glass-effect';
+            button.appendChild(glass);
+        }
+
+        if (gameLimit > gamesAdded){
+            gameList.appendChild(button);
+            gamesAdded++;
+        }
+        const app = document.createElement('button');
+        app.className = 'appLauncher';
+        if (favoriteGames.has(AppID)){
+            app.classList.add("favorite");
+        }
+        app.dataset.proton = proton;
+        app.id = "app_" + AppID;
+        app.dataset.gameid = AppID;
+        const appTitle = document.createElement('div');
+        appTitle.className = "appLauncher-title";
+        appTitle.textContent = item[1]["AppName"]
+        appTitle.dataset.text = appTitle.textContent;
+        const appImage = document.createElement('img');
+        appImage.className = 'appLauncher-thumbnail';
+        appImage.src = box_src;
+        appImage.alt = item[1]["AppName"];
+        app.appendChild(appTitle);
+        app.appendChild(appImage);
+        appList.appendChild(app);
+    });
+
+    if (gamesAdded >= gameLimit) {
+        backend_log("Game limit exceeded, creating all-software button");
+        const moreButton = document.createElement('button');
+        moreButton.className = 'gameLauncher-more';
+        moreButton.id = "allSoftware";
+
+        const thumbnail = document.createElement('img');
+        thumbnail.className = 'gameLauncher-icon';
+
+        if (allSoftwareThumbnailURL != "") {
+            thumbnail.src = allSoftwareThumbnailURL;
+        } else {
+            thumbnail.src = "assets/img/all-software.png";
+        }
+
+        const title = document.createElement('div');
+        title.className = 'gameLauncher-title';
+        title.id = "allSoftware-title";
+        title.textContent = "All Software";
+        title.dataset.trm = "swapText";
+        title.dataset.loc = "AllSoftware";
+        title.dataset.text = title.textContent;
+        moreButton.appendChild(title);
+        moreButton.appendChild(thumbnail);
+        gameList.appendChild(moreButton);
+    }
+    
+    gameLaunchers = document.querySelectorAll('.gameLauncher, .gameLauncher-more');
+    appLaunchers = document.querySelectorAll('.appLauncher');
+
+    document.querySelectorAll('.gameLauncher-placeholder').forEach(e => e.remove());
+    
+    if (gameLaunchers.length < userConfiguration["maxGamesInHomeScreen"]){
+        blocksToAdd = userConfiguration["maxGamesInHomeScreen"] - gameLaunchers.length;
+        while (blocksToAdd > 0) {
+            blocksToAdd--;
+            const block = document.createElement('button');
+            block.className = 'gameLauncher-placeholder';
+            block.disabled = true;
+            gameList.appendChild(block);
+        }
+    }
+    
+    const spacer = document.createElement('div');
+    spacer.style.minWidth = "300px";
+    gameList.appendChild(spacer);
+
+    appLaunchers.forEach(item => {
+        item.addEventListener('focus', () => {
+            item.scrollIntoView({ behavior: "instant", block: "center" });
+        });
+    });
+
+    if (displayHero) {
+        bg = document.getElementById("bg");
+        bg.style.backgroundRepeat = "no-repeat";
+        bg.style.backgroundSize = "cover";
+        bg.style.backgroundPosition = "center";
+        homeMenu.style.backgroundColor = "none";
+    }
+
+    gameLaunchers.forEach(item => {
+        item.addEventListener('focus', () => {
+            item.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
+            if (displayHero) {//start displayHero
+                if (!item.classList.contains("gameLauncher-more")) {
+                    bg.style.backgroundImage = "url('hero/" + item.id+ ".png')";
+                } else{
+                    bg.style.backgroundImage = "none";
+                }
+            }//end displayHero
+        });
+    });
+    measure_time("library loading time", library_start)
 }
 
-function openPreviousPage(){
-    absoluteTab = document.getElementById("options-"+selectedTab);
-    const previousPage = previousPages.pop();
-    absoluteTab.replaceChildren(...previousPage.childNodes);
-    refreshOptions();
-    isScrollable = false;
-    selectedOption = 0;
-    document.querySelectorAll(".menu-option.selected").forEach((element) => element.classList.remove("selected"));
-    document.querySelectorAll(".option-separator").forEach((element) => element.style.display = "");
-    if (!isTab){
-        showPreviousSeparator(false);
-        tabOptions[selectedTab][selectedOption].classList.add("selected");
-        showNextSeparator(false);
-    }
-}

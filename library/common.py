@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 import platform
+
+from utils.core import backend_log
 if platform.system() == 'Windows':
     import winreg
 
@@ -25,13 +27,13 @@ def read_registry_value(root, reg_key, reg_value) -> Optional[str]:
                 ret, _ = winreg.QueryValueEx(key, reg_value)
                 return ret
             except (FileNotFoundError, PermissionError, OSError) as e:
-                print(f"Error occured when trying to read registry: {e}")
+                backend_log(f"Error occured when trying to read registry: {e}")
                 return None
         else:
-            print("platform specific module not imported: winreg")
+            backend_log("platform specific module not imported: winreg")
             return None
     else:
-        print('non-windows, ignoring registry read')
+        backend_log('non-windows, ignoring registry read')
         return None
 
 def find_path(paths) -> Optional[str]:

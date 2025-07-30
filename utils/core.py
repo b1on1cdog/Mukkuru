@@ -12,7 +12,7 @@ import platform
 # Constants
 mukkuru_env = {}
 COMPILER_FLAG = getattr(sys, 'frozen', False) or "__compiled__" in globals()
-APP_VERSION = "0.3.11"
+APP_VERSION = "0.3.12"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
 SERVER_PORT = 49351
@@ -39,7 +39,7 @@ def backend_log(message) -> None:
         with open(mukkuru_env["log"], 'a', encoding='utf-8') as f:
             f.write(f"{message}\n")
 # Config
-@lru_cache(maxsize=2)
+@lru_cache(maxsize=1)
 def get_config() -> dict:
     ''' get user configuration'''
     user_config = {
@@ -67,16 +67,18 @@ def get_config() -> dict:
             "favorite" : [],
             "recentPlayed" : [],
             "showKeyGuide" : True,
-            "theme" : "Switch",
+            "theme" : "Switch 2",
             "cores" : 6,
             "alwaysShowBottomBar" : True,
-            "uiSounds" : "Switch",
+            "uiSounds" : "original",
             "gameProperties" : {},
             "boxartBlacklist" : [],
             "logoBlacklist" : [],
             "heroBlacklist" : [],
             "configVersion" : APP_VERSION,
+            "adultContent" : False,
             "repos" : [ "https://repo.panyolsoft.com/" ],
+            "patches" : [ ],
             "sgdb_key" : "",
         }
 
@@ -123,3 +125,7 @@ def sanitized_env() -> dict:
     env.pop("PYTHONHOME", None)
     env.pop("PYTHONPATH", None)
     return env
+
+def is_bsd() -> bool:
+    ''' returns whether os is a FreeBSD fork '''
+    return "BSD" in platform.system() or platform.system() == "DragonFly"

@@ -87,6 +87,7 @@
         "Plugins" : "Extensiones",
         "appsBtnTitle" : "Lista de apps",
         "downloadBtnTitle" : "Descargar archivo",
-        "convertBtnTitle" : "Convertir archivo"
+        "convertBtnTitle" : "Convertir archivo",
+        "adultContent" : "Permitir contenido adulto"
     }
 }

@@ -6,8 +6,9 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Mukkuru - Settings</title>
     <link rel="stylesheet" href="./assets/css/settings.css">
-    <script src="mukkuru.js"></script>
-    <script src="localization.js"></script>
+    <script src="js/mukkuru.js"></script>
+    <script src="js/localization.js"></script>
+    <script src="js/settings.js"></script>
     <script>
 
 //at this point we do not have access to userConfiguration, so we are using localStorage
@@ -200,6 +201,7 @@ fetch("/config/get").then(function(response) {
         }
         updateLibraryOptions();
         showKeyGuide(userConfiguration["showKeyGuide"]);
+        createProgressBar();
         applyStoreFilter(true);
         refreshOptions();
         addUserThemes();
@@ -449,7 +451,7 @@ document.addEventListener('keydown', (e) => {
                             showLicense(elem.dataset.param1);
                             break;
                         case "updateMukkuru":
-                            updateMukkuru();
+                            checkUpdates();
                             break;
                         case "click":
                             elem.click();
@@ -655,7 +657,7 @@ document.addEventListener('keydown', (e) => {
         <div class="settings-container">
             <div class="header">
                 <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M83.285,52.4V46.9H73.1a23.155,23.155,0,0,0-4.83-11.633l7.208-7.209-3.888-3.888-7.209,7.208a23.155,23.155,0,0,0-11.633-4.83V16.361h-5.5V26.544a23.155,23.155,0,0,0-11.633,4.83l-7.209-7.208L24.52,28.054l7.208,7.209A23.155,23.155,0,0,0,26.9,46.9H16.715v5.5H26.9a23.157,23.157,0,0,0,4.829,11.633L24.52,71.237l3.888,3.889,7.209-7.209a23.146,23.146,0,0,0,11.633,4.83V82.931h5.5V72.747a23.146,23.146,0,0,0,11.633-4.83l7.209,7.209,3.888-3.889-7.208-7.208A23.157,23.157,0,0,0,73.1,52.4ZM50,67.415A17.77,17.77,0,1,1,67.77,49.646,17.79,17.79,0,0,1,50,67.415Z" fill="#707676"/></svg>
-                <h2 id="settings-header">System Settings</h2>
+                <h2 id="settings-header">Settings</h2>
             </div>
             <div class="separator"></div>
         </div>
@@ -672,7 +674,6 @@ document.addEventListener('keydown', (e) => {
                 <div class="separator"></div>
                 <div id="aboutTab" class="menu-tab" data-loc="About" data-trm="swapText">About</div>
             </div>
-            
 
             <div class="menu-options" id="settings-options">
                 <div class="options" id="options-0" style="display:none;">
@@ -700,6 +701,20 @@ document.addEventListener('keydown', (e) => {
                     <div class="option-separator"></div>
                     <div class="option-description" id="startupGameScan-desc" data-trm="swapTGL" data-loc="id">Scan games automatically everytime Mukkuru opens</div>
 
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="adultContent" data-loc="id" data-trm="swapTGL">Allow Adult Content [BTOGGLE]</div>
+
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="saveScreenshot" data-loc="id" data-trm="swapTGL">Screenshot destination [BLIST]</div>
+                    <div class="option-separator"></div>
+                    <div class="option-description" id="data-folder-desc" data-trm="swapText" data-loc="id">"Mukkuru" means Mukkuru data folder<br>"User" references a folder in home directory</div>
+
+                    <div class="option-separator"></div>
+                    <div class="menu-option" id="useAllVideoSources" data-loc="id" data-trm="swapTGL">Use all video sources [BTOGGLE]</div>
+                    <div class="option-separator"></div>
+                    <div class="option-description" id="all-videos-sources-desc" data-trm="swapText" data-loc="id">Reads videos from user video folder</div>
+
+                    <div class="spacer" style="min-height:170px"></div>
                 </div>
                 <div class="options" id="options-2" style="display:none;">
                     <div class="option-separator" id="fullScreen-separator"></div>
@@ -753,15 +768,6 @@ document.addEventListener('keydown', (e) => {
                     <div class="option-separator"></div>
                 </div>
                 <div class="options" id="options-5" style="display:none;">
-                    <div class="option-separator"></div>
-                    <div class="menu-option" id="saveScreenshot" data-loc="id" data-trm="swapTGL">Screenshot destination [BLIST]</div>
-                    <div class="option-separator"></div>
-                    <div class="option-description" id="data-folder-desc" data-trm="swapText" data-loc="id">"Mukkuru" means Mukkuru data folder<br>"User" references a folder in home directory</div>
-
-                    <div class="option-separator"></div>
-                    <div class="menu-option" id="useAllVideoSources" data-loc="id" data-trm="swapTGL">Use all video sources [BTOGGLE]</div>
-                    <div class="option-separator"></div>
-                    <div class="option-description" id="all-videos-sources-desc" data-trm="swapText" data-loc="id">Reads videos from user video folder</div>
                     
                     <div class="option-separator"></div>
                     <div class="menu-option" id="moveDownloads" data-loc="id" data-trm="swapTGL" data-call="moveDownloads">Move files to Downloads</div>
@@ -779,7 +785,7 @@ document.addEventListener('keydown', (e) => {
 
                     <div class="menu-option" id="clearData" data-loc="clearData" data-trm="swapText" data-call="deleteData">Wipe Mukkuru data</div>
                     <div class="option-separator"></div>
-                    <div class="spacer" style="min-height:150px"></div>
+                    <div class="spacer" style="min-height:170px"></div>
                 </div>
                 <div class="options" id="options-6" style="display:none;">
                     <div class="option-separator"></div>
@@ -809,6 +815,11 @@ document.addEventListener('keydown', (e) => {
         <div class="contextualMenu" id="messageContext" style="opacity: 0.9;">
             <div id="messageBox"style="margin: 50px 50px 50px 50px">There's nothing to display here</div>
             <div class="contextItem selected" id="messageAccept" onclick='close_context_menu(false)'>Confirm</div>
+        </div>
+        <div class="contextualMenu" id="updateContext" style="opacity: 0.9; min-width: 800px; left: 25vw;top:10vh;">
+            <div id="updateBox"style="margin: 50px 50px 50px 50px">There's nothing to display here</div>
+            <div id="updateChangelog"style="margin: 50px 50px 50px 50px; font-size: 0.6em;">No changes to show</div>
+            <div class="contextItem selected" id="updateConfirm" onclick='updateMukkuru()'>Confirm</div>
         </div>
         <footer class="homeFooter">
             <div class="controllerState">

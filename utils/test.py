@@ -1,14 +1,15 @@
 # Copyright (c) 2025 b1on1cdog
 # Licensed under the MIT License
 ''' This Mukkuru module will handle unit testing '''
-from utils.updater import ver_compare, find_latest_release
-from utils.bootstrap import get_7z, get_unrar, get_ffmpeg, get_userprofile_folder
+import json
+from utils import updater
+from utils.bootstrap import get_7z, get_unrar, get_ffmpeg
 from library.games import library_scan
 
 def test_compare(ver1, ver2):
     '''test ver_compare'''
     test = ["lower", "equal", "bigger"]
-    r = ver_compare(ver1, ver2)
+    r = updater.ver_compare(ver1, ver2)
     print(f"{ver1} is {test[r]} than {ver2}")
     return r
 
@@ -28,7 +29,8 @@ def test_tools():
 
 def run_tests():
     ''' run multiple tests '''
-    find_latest_release()
+    update_status = updater.check_for_updates()
+    print(json.dumps(update_status))
     #test_scan()
     #test_tools()
     #print(get_userprofile_folder("Downloads"))

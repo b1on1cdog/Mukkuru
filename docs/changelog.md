@@ -1,5 +1,20 @@
 # Changelog
 -----------------
+# 0.3.12
+- SW2 is now default theme<br/>
+- "original" is now default ui effect<br/>
+- removed "download_steam_avatar" as it was unnecesary and unreliable<br/>
+- Mukkuru can now download and install game patches<br/>
+- Games can now be refreshed without refreshing whole home screen<br/>
+- Update button will now display a prompt with the changelog before updating<br/>
+- Updates and downloads will now show a progress bar<br/>
+- Mukkuru will now exclude itself from library scan <br/>
+- Fixed bad reference to batteryCharging<br/>
+- Opening a new instance will terminate previous by HTTP instead of killing by signal<br/>
+- Fixed 2 Proton builds not properly excluded from library scan due to missing comma<br/>
+- Moved screenshot destination and use all video sources settings from "Advanced" to "Library"<br/>
+- JS files moved to a folder<br/>
+- Added basic js preprocessor<br/>
 # 0.3.11
 - Using SGDB api directly when set in user_config<br/>
 - Heroic is now its own game source instead of being an epic games failover<br/>

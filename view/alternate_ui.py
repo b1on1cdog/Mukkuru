@@ -9,7 +9,7 @@ import tempfile
 import uuid
 import time
 from urllib.parse import urlparse
-from utils.core import sanitized_env
+from utils.core import sanitized_env, backend_log
 
 BROWSER_PROCESS = None
 
@@ -50,10 +50,10 @@ def is_flatpak_firefox_installed() -> bool:
                                 stderr=subprocess.DEVNULL, text=True, env=sanitized_env())
         return True
     except subprocess.CalledProcessError as e:
-        print(f"failed checking Flatpak {e.output}")
+        backend_log(f"failed checking Flatpak {e.output}")
         return False
     except FileNotFoundError:
-        print("Flatpak is not installed")
+        backend_log("Flatpak is not installed")
         return False
 
 def search_firefox() -> list:
@@ -66,7 +66,7 @@ def search_firefox() -> list:
         for firefox in firefox_paths:
             if Path(firefox).is_file():
                 return [firefox]
-    print("Unable to find firefox bin")
+    backend_log("Unable to find firefox bin")
     return [None]
 
 def run_firefox(url, profile_dir = None) -> None:
@@ -134,15 +134,15 @@ class Frontend:
         ''' starts frontend '''
         if self.use_firefox:
             return run_firefox(self.url)
-        print("using flaswebgui instead of firefox")
+        backend_log("using flaswebgui instead of firefox")
         if self.browser_path is None:
-            print("No browser available")
+            backend_log("No browser available")
             os._exit(0)
         try:
             global BROWSER_PROCESS
             BROWSER_PROCESS = subprocess.Popen(self.browser_command)
             BROWSER_PROCESS.wait()
-            print("Browser exited, closing")
+            backend_log("Browser exited, closing")
             self.close(True)
         except (ProcessLookupError, OSError):
             pass
@@ -152,7 +152,7 @@ class Frontend:
         if self.use_firefox and search_firefox()[0] == get_flatpak():
             proc_flags = [get_flatpak()]
             proc_flags.extend(["kill", "org.mozilla.firefox"])
-            print("killing flatpak firefox")
+            backend_log("killing flatpak firefox")
             subprocess.run(proc_flags, check=False, env=sanitized_env())
         else:
             if BROWSER_PROCESS is not None:

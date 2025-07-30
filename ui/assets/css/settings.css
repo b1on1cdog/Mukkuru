@@ -179,6 +179,15 @@ root {
     margin: 10px 0;
 }
 
+.menu-option.store-item {
+    font-size: 0.75em;
+}
+
+.menu-option img {
+    max-width: 90px;
+    max-height: 90px;
+}
+
 .nospace {
     justify-content: unset;
 }
@@ -249,3 +258,19 @@ root {
           0 1px 1px 4px rgba(0, 0, 0, .1);
       }
   }
+
+.left-label {
+    position: absolute;
+    bottom: 4px;
+    left: 12px;
+    font-size: 14px;
+    color: #3159dc;
+}
+
+.right-label {
+    position: absolute;
+    bottom: 4px;
+    right: 10vw;
+    font-size: 14px;
+    color: #666;
+}

@@ -6,6 +6,7 @@ from pathlib import Path
 from functools import lru_cache
 from typing import Optional
 from library import wrapper, common
+from utils.core import backend_log
 
 system = platform.system()
 
@@ -24,7 +25,7 @@ def read_heroic_username(heroic = None) -> Optional[str]:
     if heroic is None:
         heroic = get_heroic_env()
         if heroic is None:
-            print("Unable to read heroic username")
+            backend_log("Unable to read heroic username")
             return None
     try:
         with open(heroic["user.json"], encoding='utf-8') as usf:
@@ -41,7 +42,7 @@ def get_heroic_env() -> Optional[dict]:
     main_paths = ['~/.var/app/com.heroicgameslauncher.hgl/']
     main_path = find_path(main_paths)
     if main_path is None:
-        print("heroic is not available")
+        backend_log("heroic is not available")
         return None
     heroic = {}
     heroic["path"] = main_path
@@ -60,7 +61,7 @@ def get_heroic_games() -> dict:
     if heroic is None:
         return games
     if not Path(heroic["installed.json"]).exists():
-        print("heroic installed.json not found")
+        backend_log("heroic installed.json not found")
         return games
     installed = open(heroic["installed.json"], encoding='utf-8')
     try:
@@ -81,7 +82,7 @@ def get_heroic_games() -> dict:
                     "Type" : heroic["Type"]
                 }
     except (PermissionError, IndexError, json.decoder.JSONDecodeError) as e:
-        print(f"Exception occured: {e}")
+        backend_log(f"Exception occured: {e}")
     installed.close()
     return games
 
@@ -107,7 +108,7 @@ def get_egs_env() -> Optional[dict]:
     egs["launchPath"] = os.path.join(install_dir, "Launcher", "Portal",
                                      "Binaries", "Win32", "EpicGamesLauncher.exe")
     if not Path(egs["launchPath"]).is_file():
-        print("hmmm, looks like egs launcher is missing, ignoring for the meanwhile")
+        backend_log("hmmm, looks like egs launcher is missing, ignoring for the meanwhile")
     if egs["Type"] == "CROSSOVER":
         egs["launchPath"] = egs["launchPath"].replace(disk, "C:")
     egs_reg = r"SOFTWARE\WOW6432Node\Epic Games\EpicGamesLauncher"
@@ -117,12 +118,12 @@ def get_egs_env() -> Optional[dict]:
     ]
     programdata_dir = common.find_path(data_dirs)
     if programdata_dir is None:
-        print("Unable to find EGS ProgramData dir")
+        backend_log("Unable to find EGS ProgramData dir")
         return None
     egs["manifestDir"] = os.path.join(programdata_dir, "Manifests")
-    print(f'manifest: {egs["manifestDir"]}')
+    backend_log(f'manifest: {egs["manifestDir"]}')
     if not Path(egs["manifestDir"]).is_dir():
-        print("Unable to find EGS Manifest dir")
+        backend_log("Unable to find EGS Manifest dir")
         return None
     return egs
 
@@ -131,8 +132,7 @@ def get_egs_games() -> dict:
     games = {}
     egs = get_egs_env()
     if egs is None:
-        print("Using heroic as failover....")
-        return get_heroic_games()
+        return games
     manifest_dir = egs["manifestDir"]
     for filename in os.listdir(manifest_dir):
         if filename.endswith(".item"):
@@ -157,5 +157,5 @@ def get_egs_games() -> dict:
                         }
 
             except (PermissionError, IndexError, json.decoder.JSONDecodeError) as e:
-                print(f"Exception occured: {e}")
+                backend_log(f"Exception occured: {e}")
     return games

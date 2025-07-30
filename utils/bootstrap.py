@@ -6,6 +6,7 @@ import platform
 import subprocess
 import shutil
 import zipfile
+import hashlib
 from pathlib import Path
 
 import requests
@@ -16,11 +17,49 @@ if platform.system() == "Windows":
     from ctypes import wintypes
     import uuid
 
-def download_file(url, path):
-    ''' download file from url '''
-    with open(path, 'wb') as out_file:
-        content = requests.get(url, stream=True, timeout=20).content
-        out_file.write(content)
+operation_progress = {
+    "active" : False,
+    "downloaded" : 0,
+    "progress" : 0,
+    "total" : 0,
+    "context" : "unknown",
+}
+
+def global_progress_callback(downloaded, total) -> None:
+    ''' handles progress in a global context '''
+    operation_progress["downloaded"] = downloaded
+    operation_progress["total"] = total
+    if total == 0:
+        total = 0.1
+    operation_progress["progress"] = (downloaded/total)*100
+    operation_progress["active"] = True
+
+def set_global_progress_context(title) -> None:
+    ''' sets parameter as global_progress title '''
+    operation_progress["context"] = title
+
+def clear_global_progress() -> None:
+    ''' clears operation_progress '''
+    operation_progress["downloaded"] = 0
+    operation_progress["total"] = 0
+    operation_progress["progress"] = 0
+    operation_progress["active"] = False
+    operation_progress["context"] = "unknown"
+
+def download_file(url, path, progress_callback=None, chunk_size=8192):
+    '''Download file from URL with optional progress callback'''
+    with requests.get(url, stream=True, timeout=20) as response:
+        response.raise_for_status()
+        total = int(response.headers.get('content-length', 0))
+        downloaded = 0
+
+        with open(path, 'wb') as out_file:
+            for chunk in response.iter_content(chunk_size=chunk_size):
+                if chunk:
+                    out_file.write(chunk)
+                    downloaded += len(chunk)
+                    if progress_callback:
+                        progress_callback(downloaded, total)
 
 def get_unrar():
     ''' gets unrar path '''
@@ -37,10 +76,10 @@ def get_unrar():
 def get_7z():
     ''' gets 7z path '''
     z_paths = [
-        shutil.which("7za"),
         shutil.which("7z"),
-        os.path.join(mukkuru_env["root"], "tools", format_executable("7za")),
         os.path.join(mukkuru_env["root"], "tools", format_executable("7z")),
+        shutil.which("7za"),
+        os.path.join(mukkuru_env["root"], "tools", format_executable("7za")),
     ]
     wz_paths = [
         os.path.join(os.environ.get("ProgramFiles", ""), "7-Zip", "7z.exe"),
@@ -67,7 +106,7 @@ def extract_7z(filename, output_dir):
     zz = get_7z()
     if zz is None:
         return "Unable to extract file, no decompressor available"
-    subprocess.run([zz, "x", filename, output_dir], check=False, env=sanitized_env())
+    subprocess.run([zz, "x", filename, f"-o{output_dir}"], check=False, env=sanitized_env())
 
 def extract_zip(filename, output_dir):
     ''' extract .zip file '''
@@ -78,9 +117,9 @@ def extract_archive(filename, output_dir):
     ''' extract archive '''
     if filename.endswith(".zip"):
         return extract_zip(filename, output_dir)
-    elif filename.endswith(".rar"):
-        return extract_rar(filename, output_dir)
-    elif filename.endswith(".7z"):
+    #elif filename.endswith(".rar"):
+    #    return extract_rar(filename, output_dir)
+    elif filename.endswith(".7z") or filename.endswith(".exe") or filename.endswith(".rar"):
         return extract_7z(filename, output_dir)
     else:
         return "unknown compression"
@@ -148,3 +187,20 @@ def build_file_tree(root_path):
             tree.setdefault("files", []).append(item)
 
     return tree
+
+def sha256_file(path, chunk_size=8192):
+    ''' calculate sha256 of file in chunks '''
+    hasher = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(chunk_size), b''):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+def terminate_mukkuru_backend(app_port):
+    ''' send a quit request to mukkuru port '''
+    quit_url = f"http://localhost:{app_port}/app/exit"
+    try:
+        requests.get(quit_url, stream=True, timeout=0.15)
+        print("Previous Mukkuru instance was killed successfully")
+    except requests.exceptions.RequestException:
+        pass
