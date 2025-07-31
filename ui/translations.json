@@ -71,6 +71,7 @@
         "restartMediaOption" : "Reproducir desde el principio",
         "updateMukkuru" : "Actualizar",
         "updateUnsupported" : "Esta app de Mukkuru no soporta actualizaciones",
+        "updateAvailable" : "Actualizacion disponible",
         "alreadyUpToDate" : "Cuentas con la ultima version de Mukkuru",
         "saveScreenshot" : "Destino de screenshots",
         "data-folder-desc" : " \"Mukkuru\": carpeta de datos Mukkuru\n\"User\": directorio en la carpeta de usuario",
@@ -88,6 +89,22 @@
         "appsBtnTitle" : "Lista de apps",
         "downloadBtnTitle" : "Descargar archivo",
         "convertBtnTitle" : "Convertir archivo",
-        "adultContent" : "Permitir contenido adulto"
+        "adultContent" : "Permitir contenido adulto",
+        "installing..." : "instalando...",
+        "reinstalling..." : "reinstalling...",
+        "Starting" : "Iniciando...",
+        "Extracting" : "Extrayendo",
+        "Downloading" : "Descargando",
+        "Updating" : "Actualizando",
+        "install" : "instalar",
+        "installed" : "instalado",
+        "NoItemsToList" : "No hay elementos que mostrar",
+        "CopyingPatchFiles" : "Copiando archivos del parche...",
+        "DownloadingUpdate" : "Descargando actualizacion de Mukkuru...",
+        "MustAddToSteam" : "Debes agregar Mukkuru a Steam antes de presionar este boton",
+        "UnsupportedFunction" : "Esta funcion no esta disponible para tu configuracion",
+        "OperationSuccess" : "La operacion fue completada correctamente",
+        "addToStartup" : "Agregar al arranque",
+        "removeFromStartup" : "Quitar del arranque"
     }
 }

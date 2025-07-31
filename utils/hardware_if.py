@@ -8,7 +8,6 @@ import os
 import re
 from functools import lru_cache
 import math
-import signal
 import time
 from typing import Optional
 
@@ -258,9 +257,7 @@ def get_battery() -> Optional[dict]:
     return battery._asdict()
 
 def kill_executable_by_path(target_path, force=True) -> list:
-    """
-    Hard-kill every running process whose executable exactly matches `target_path`.
-    """
+    """Hard-kill every running process whose executable matches `target_path`"""
     target_path = os.path.abspath(target_path)
     killed = []
 
@@ -276,27 +273,6 @@ def kill_executable_by_path(target_path, force=True) -> list:
             # Skip processes that vanished or we can't touch
             continue
     return killed
-
-def kill_process_on_port(port) -> bool:
-    ''' kill any executable using this port '''
-    try:
-        net_conns = psutil.net_connections(kind="inet")
-    except (PermissionError, psutil.AccessDenied):
-        backend_log("Unable to determine if port is busy")
-        return False
-    for conn in net_conns:
-        if conn.laddr.port == port and conn.status == psutil.CONN_LISTEN:
-            pid = conn.pid
-            if pid:
-                backend_log(f"Killing PID {pid} on port {port}")
-                try:
-                    os.kill(pid, signal.SIGTERM)  # or signal.SIGKILL
-                    return True
-                except OSError as e:
-                    backend_log(f"Failed to kill PID {pid}: {e}")
-                    return False
-    backend_log(f"No process found listening on port {port}")
-    return False
 
 def wait_for_server(host, port, timeout=5.0) -> bool:
     ''' waits for a server to start listening '''

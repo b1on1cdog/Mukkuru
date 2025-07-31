@@ -38,7 +38,7 @@ class Frontend:
             webview.start(icon="ui/mukkuru.ico", user_agent="Mukkuru/Frontend", gui=web_gui)
     def close(self):
         ''' close mukkuru server '''
-        requests.get("http://localhost:49347/app/exit", timeout=1)
+        requests.get("http://localhost:49347/app/exit", timeout=0.5)
     def update_user_config(self):
         ''' update config from backend '''
         try:

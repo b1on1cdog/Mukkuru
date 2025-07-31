@@ -123,3 +123,29 @@ function openPreviousPage(){
         showNextSeparator(false);
     }
 }
+
+async function checkUpdates(){
+  response = await fetch("/app/check_updates");
+  response_dict = await response.json();
+  response_text = response_dict["status"]
+  if (response_text == "up-to-date") {
+    document.getElementById("messageBox").innerText = translate_str("alreadyUpToDate", "Mukkuru is already up-to-date");
+    open_context_menu("messageContext");
+  } else if (response_text == "unsupported") {
+    document.getElementById("messageBox").innerText = translate_str("updateUnsupported", "This Mukkuru app does not support updates");
+    open_context_menu("messageContext");
+  } else if (response_text == "available"){
+    document.getElementById("updateBox").innerText = translate_str("updateAvailable", "Update available") + " : " + response_dict["version"];
+    document.getElementById("updateChangelog").innerText = response_dict["changelog"];
+    open_context_menu("updateContext");
+  }
+}
+
+async function setAppStartup(request_method = "POST") {
+    ss_response = await fetch(`/app/startup`, {
+        method : request_method
+    });
+    message = await ss_response.text();
+    document.getElementById("messageBox").innerText = message;
+    open_context_menu("messageContext");
+}

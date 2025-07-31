@@ -11,9 +11,11 @@ from pathlib import Path
 from functools import lru_cache
 from typing import Optional
 # third-party imports
-from utils.core import backend_log
+from utils.core import backend_log, get_config, update_config
 from library import binary_vdf_parser
 from library import wrapper, common
+
+APP_BASE_NAME = os.path.basename(sys.argv[0])
 
 hardcoded_exclusions = ["Proton Experimental",
                         "Steamworks Common Redistributables",
@@ -32,9 +34,7 @@ hardcoded_exclusions = ["Proton Experimental",
                         "Proton Hotfix",
                         "Proton EasyAntiCheat Runtime",
                         "Proton BattlEye Runtime",
-                        os.path.basename(sys.argv[0])]
-
-AVATAR_DOWNLOAD_URL = "https://api.panyolsoft.com/steam/avatar/[USERNAME]"
+                        APP_BASE_NAME]
 
 def parseshortcut(file) -> dict:
     ''' returns shortcuts '''
@@ -120,7 +120,7 @@ def get_non_steam_games(steam_env) -> dict:
     if steam_env is None:
         return games
     steam_launch_path = steam_env["launchPath"]
-    # Find all shortcuts.vdf files
+
     shortcuts_pattern = steam_env["shortcuts"]
     shortcuts_files = glob.glob(shortcuts_pattern)
     for file in shortcuts_files:
@@ -133,25 +133,22 @@ def get_non_steam_games(steam_env) -> dict:
                 if not isinstance(shortcut, dict):
                     continue
                 app_name = shortcut.get("AppName", "")
-                if app_name in hardcoded_exclusions:
-                    continue
-
                 app_exe = shortcut.get("Exe", "")
-
                 if "moondeckrun" in app_exe:
                     continue
-                #test
-                #print(f'adding "{app_name}"')
-
                 app_dir = shortcut.get("StartDir", "")
                 #app_options = shortcut.get("LaunchOptions", "")
 
                 app_id = int(shortcut.get("appid", 0)) if shortcut.get("appid") else 0
                 app_id = str(get_rungameid(app_id))
+                if app_name in hardcoded_exclusions:
+                    if app_name == APP_BASE_NAME:
+                        user_config = get_config()
+                        user_config["mukkuru_steam_id"] = app_id
+                        update_config(user_config)
+                    backend_log(f"Skipping {app_name} ({app_id}) due to hardcoded exclusion")
+                    continue
                 icon = shortcut.get("icon", "")
-
-                #needs_proton = False
-
                 #if app_exe.strip('"').endswith(".exe") and platform.system() == "Linux":
                 #    needs_proton = True
 

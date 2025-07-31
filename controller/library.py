@@ -119,5 +119,5 @@ def get_media():
 
 @library_controller.route('/storefront/get')
 def list_storefronts():
-    ''' returns a json list of valid storefronts '''
+    ''' Returns a json list of valid storefronts '''
     return jsonify(list_stores())

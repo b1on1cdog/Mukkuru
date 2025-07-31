@@ -241,6 +241,13 @@ fetch("/hardware").then(function(response) {
         }
         distroInfo.innerText = "OS: " + hardwareInformation["distro"];
         versionInfo.innerText = hardwareInformation["app_version"] + " (" + hardwareInformation["arch"] +")";
+
+        if (!hardwareInformation["distro"].includes("SteamOS")) {
+            document.getElementById("addToStartup").remove();
+            document.getElementById("addToStartupSep").remove();
+            document.getElementById("removeFromStartup").remove();
+            document.getElementById("removeFromStartupSep").remove();
+        }
         } catch (err) {
             backend_log(err);
             gpuInfo.style.display = "none";
@@ -252,6 +259,7 @@ fetch("/hardware").then(function(response) {
         }
         aboutId = "options-"+(Object.keys(tabOptions).length - 1);
         aboutScreen = document.getElementById(aboutId);
+        refreshOptions();
     });
 
 
@@ -432,6 +440,12 @@ document.addEventListener('keydown', (e) => {
             elem = tabOptions[selectedTab][selectedOption];
             if (elem.dataset.hasOwnProperty("call")) {
                     switch (elem.dataset.call) {
+                        case "addToStartup":
+                            setAppStartup("POST");
+                            break;
+                        case "removeFromStartup":
+                            setAppStartup("DELETE");
+                            break;
                         case "deleteArt":
                             deleteData("art");
                             break;
@@ -768,6 +782,12 @@ document.addEventListener('keydown', (e) => {
                     <div class="option-separator"></div>
                 </div>
                 <div class="options" id="options-5" style="display:none;">
+
+                    <div class="option-separator" id="addToStartupSep"></div>
+                    <div class="menu-option" id="addToStartup" data-loc="id" data-trm="swapTGL" data-call="addToStartup">Start Mukkuru at system startup</div>
+
+                    <div class="option-separator" id="removeFromStartupSep"></div>
+                    <div class="menu-option" id="removeFromStartup" data-loc="id" data-trm="swapTGL" data-call="removeFromStartup">Remove Mukkuru from system startup</div>
                     
                     <div class="option-separator"></div>
                     <div class="menu-option" id="moveDownloads" data-loc="id" data-trm="swapTGL" data-call="moveDownloads">Move files to Downloads</div>

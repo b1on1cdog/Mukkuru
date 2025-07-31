@@ -19,9 +19,9 @@ from flask import Flask, request, jsonify
 from flask import send_from_directory, send_file
 
 import utils.core as core
-from utils import hardware_if, updater, test
 from utils.css_preprocessor import CssPreprocessor
 core.APP_DIR = os.path.dirname(os.path.abspath(__file__))
+from utils import hardware_if, updater, expansion, test
 from utils.core import mukkuru_env, COMPILER_FLAG, FRONTEND_MODE
 from utils.core import APP_PORT, SERVER_PORT, APP_DIR
 from utils.core import app_version, get_config, backend_log, set_alive_status
@@ -63,7 +63,7 @@ wserver.register_blueprint(external_library)
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.CRITICAL)
 
-sserver = create_server(wserver, host="0.0.0.0", port=SERVER_PORT)
+sserver = None
 
 def is_valid_json(filepath, template = None):
     ''' Returns True if JSON is valid, otherwise returns False '''
@@ -137,9 +137,23 @@ def get_theme(selected = None):
         css = default_css
     return css
 
+@app.route('/app/startup', methods = ['POST', 'DELETE'])
+def startup_controller():
+    ''' Controls whether app should open at system startup'''
+    if request.method == 'DELETE':
+        response = expansion.remove_from_startup()
+    else:
+        response = expansion.add_to_startup()
+    return response
+
 def exit_mukkuru():
     ''' terminates Mukkuru instance '''
-    threading.Event().wait(0.15)
+    threading.Event().wait(0.09)
+    try:
+        if sserver is not None:
+            sserver.close()
+    except (OSError, ValueError, AttributeError):
+        pass
     if FRONTEND_MODE == "FLASKUI":
         Frontend().close() # pylint: disable=E0606, E0601
     if FRONTEND_MODE == "WEF":
@@ -164,27 +178,12 @@ def open_store(storefront):
     launch_store(storefront)
     return jsonify("OK", 200)
 
-def get_localization(raw = False):
-    ''' Returns a localization dictionary '''
-    user_config = get_config()
-    language = user_config["language"]
-    loc_path = f'{APP_DIR}/ui/translations.json'
-    with open(Path(loc_path),encoding='utf-8') as f:
-        localization = json.load(f)
-        if language in localization:
-            localization = localization[language]
-            localization["available"] = True
-            return localization
-    localization = {"available" : False}
-    if raw is True:
-        return localization
-    return json.dumps(localization)
-
 @wserver.route('/localization')
 @app.route('/localization')
 def localize():
     ''' get a json with current selected language strings'''
-    return get_localization()
+    localization = expansion.get_localization()
+    return jsonify(localization)
 
 @app.route('/video/set', methods = ['POST'])
 def set_videos():
@@ -401,6 +400,8 @@ def is_fullscreen():
 def init_server(action):
     ''' http controller for wserver start '''
     global sserver #pylint: disable=W0603
+    if sserver is None:
+        sserver = create_server(wserver, host="0.0.0.0", port=SERVER_PORT)
     if action == "start":
         threading.Thread(target=start_app, args=(True,)).start()
         return hardware_if.get_current_interface(get_ip=True), 200
@@ -409,7 +410,7 @@ def init_server(action):
             ip = hardware_if.get_current_interface(get_ip=True)
             url = f'http://{ip}:{SERVER_PORT}'
             return url, 200
-        loc = get_localization(True)
+        loc = expansion.get_localization()
         return loc.get("OfflineServer", "Server: Offline"), 222
     else:
         sserver.close()

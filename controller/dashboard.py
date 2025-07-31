@@ -112,6 +112,8 @@ def get_base_paths_dir():
         "music" : user_config["musicSources"][0],
         "pictures" : user_config["pictureSources"][0],
     }
+    for _, path_dir in path_dirs.items():
+        os.makedirs(path_dir, exist_ok=True)
     return path_dirs
 
 def get_base_path(base_path):

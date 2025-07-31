@@ -13,6 +13,12 @@ def get_patches():
     patches = expansion.get_patches()
     return jsonify(patches, 200)
 
+@repos_blueprint.route("/repos/packages")
+def get_packages():
+    ''' returns a json of repo packages '''
+    packages = expansion.get_packages()
+    return jsonify(packages, 200)
+
 @repos_blueprint.route("/repos/patches/<appid>/<patch_index>", methods = ['POST'])
 def install_patch(appid, patch_index):
     ''' expansion.install_patch_from_index controller '''

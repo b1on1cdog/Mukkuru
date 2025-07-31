@@ -1,5 +1,14 @@
 # Changelog
 -----------------
+# 0.3.13
+- Fixed server port busy prevented terminating old instance in Linux <br/>
+- Fixed controls not locked during global progress bar display <br/>
+- Fixed unable to return in dashboard file download <br/>
+- Localized Mukkuru Store, global progress bar and update messages<br/>
+- Fixed global progress bar not appearing after starting patch install<br/>
+- Removed kill_process_on_port since is not used anymore<br/>
+- (SteamOS only) added option to launch Mukkuru at startup<br/>
+- (Linux) Solved Firefox crash message<br/>
 # 0.3.12
 - SW2 is now default theme<br/>
 - "original" is now default ui effect<br/>

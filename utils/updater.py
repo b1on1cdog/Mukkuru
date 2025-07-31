@@ -12,7 +12,7 @@ from typing import Union, Optional
 import requests
 from utils.core import format_executable, APP_VERSION, mukkuru_env, COMPILER_FLAG
 from utils.core import backend_log, sanitized_env
-from utils import bootstrap
+from utils import bootstrap, expansion
 
 REPO_URL = "https://api.github.com/repos/b1on1cdog/Mukkuru/releases"
 
@@ -151,7 +151,8 @@ def download_mukkuru_update() -> str:
         update_path = os.path.join(mukkuru_env["root"], format_executable("update"))
         if platform.system() == "Darwin":
             update_path = f"{update_path}.dmg"
-        bootstrap.set_global_progress_context("Downloading Mukkuru update.....")
+        download_str = expansion.translate_str("DownloadingUpdate", "Downloading Mukkuru Update...")
+        bootstrap.set_global_progress_context(download_str)
         bootstrap.download_file(release_url, update_path,
                                 progress_callback=bootstrap.global_progress_callback)
         sha256_hash = bootstrap.sha256_file(update_path)

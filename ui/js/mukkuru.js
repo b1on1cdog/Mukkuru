@@ -590,23 +590,6 @@ function open_context_menu(contextMenuName){
   playSound("select");
 }
 
-async function checkUpdates(){
-  response = await fetch("/app/check_updates");
-  response_dict = await response.json();
-  response_text = response_dict["status"]
-  if (response_text == "up-to-date") {
-    document.getElementById("messageBox").innerText = "Mukkuru is already up-to-date";
-    open_context_menu("messageContext");
-  } else if (response_text == "unsupported") {
-    document.getElementById("messageBox").innerText = "This Mukkuru app does not support updates";
-    open_context_menu("messageContext");
-  } else if (response_text == "available"){
-    document.getElementById("updateBox").innerText = "An update to version " + response_dict["version"] +" is available";
-    document.getElementById("updateChangelog").innerText = response_dict["changelog"];
-    open_context_menu("updateContext");
-  }
-}
-
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }

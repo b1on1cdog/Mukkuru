@@ -7,6 +7,7 @@ import subprocess
 import shutil
 import zipfile
 import hashlib
+import threading
 from pathlib import Path
 
 import requests
@@ -37,6 +38,7 @@ def global_progress_callback(downloaded, total) -> None:
 def set_global_progress_context(title) -> None:
     ''' sets parameter as global_progress title '''
     operation_progress["context"] = title
+    operation_progress["active"] = True
 
 def clear_global_progress() -> None:
     ''' clears operation_progress '''
@@ -201,6 +203,7 @@ def terminate_mukkuru_backend(app_port):
     quit_url = f"http://localhost:{app_port}/app/exit"
     try:
         requests.get(quit_url, stream=True, timeout=0.15)
+        threading.Event().wait(1.25)
         print("Previous Mukkuru instance was killed successfully")
     except requests.exceptions.RequestException:
         pass

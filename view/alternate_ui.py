@@ -8,6 +8,7 @@ import shutil
 import tempfile
 import uuid
 import time
+import glob
 from urllib.parse import urlparse
 from utils.core import sanitized_env, backend_log
 
@@ -69,6 +70,25 @@ def search_firefox() -> list:
     backend_log("Unable to find firefox bin")
     return [None]
 
+def clear_firefox_locks():
+    '''Might prevent crash message when using Firefox as webview'''
+    is_flatpak = is_flatpak_firefox_installed()
+    if is_flatpak:
+        base_path = os.path.expanduser("~/.var/app/org.mozilla.firefox/.mozilla/firefox")
+    else:
+        base_path = os.path.expanduser("~/.mozilla/firefox")
+    profiles = glob.glob(os.path.join(base_path,"*.default*"))
+    target_files = ["lock", ".parentlock"]
+    for profile in profiles:
+        for filename in target_files:
+            file_path = os.path.join(profile, filename)
+            if Path(file_path).is_symlink() or Path(file_path).exists():
+                try:
+                    backend_log(f"Removing {file_path}")
+                    os.remove(file_path)
+                except (OSError, PermissionError) as e:
+                    backend_log(f"Failed to delete {file_path}: {e}")
+
 def run_firefox(url, profile_dir = None) -> None:
     ''' run firefox as ui '''
     proc_flags = []
@@ -81,6 +101,7 @@ def run_firefox(url, profile_dir = None) -> None:
     proc_flags.append("-private-window")
     proc_flags.append(url)
     global BROWSER_PROCESS
+    clear_firefox_locks()
     BROWSER_PROCESS = subprocess.Popen(proc_flags, env=sanitized_env())
 
 def find_browser_path() -> str:
@@ -157,7 +178,7 @@ class Frontend:
         else:
             if BROWSER_PROCESS is not None:
                 BROWSER_PROCESS.terminate()
-                time.sleep(1)
+                time.sleep(0.5)
                 BROWSER_PROCESS.kill()
             shutil.rmtree(self.profile_dir)
         if should_kill:

@@ -59,6 +59,7 @@ fetch("/config/get").then(function(response) {
         createProgressBar();
         refreshOptions();
         fetchPatches();
+        fetchPackages();
         showKeyGuide(userConfiguration["showKeyGuide"]);
         menuItems[0].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
         tabOptions[0][0].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
@@ -158,7 +159,10 @@ document.addEventListener('keydown', (e) => {
     if (homeMenu.style.opacity < 1) {
         return;
     }
-    ctxMenu = document.getElementsByClassName("contextualMenu active")[0];
+        ctxMenu = document.getElementsByClassName("contextualMenu active")[0];
+        if (lockControls) {
+            return;
+        }
 
         switch(keyBindings[e.key]) {
             case 'right':
@@ -347,7 +351,7 @@ document.addEventListener('keydown', (e) => {
             <div class="menu-options" id="settings-options">
                 <div class="options" id="options-0" style="display:none;">
                     <div class="option-separator"></div>
-                    <div class="menu-option">No items to list yet</div>
+                    <div class="menu-option" id="NoItemsToList" data-trm="swapText" data-loc="id">No items to list yet</div>
                     <div class="option-separator"></div>
                 </div>
                 <div class="options" id="options-1" style="display:none;">
