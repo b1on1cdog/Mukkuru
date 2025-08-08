@@ -23,7 +23,7 @@ class GameIdentifier(object):
         self.app_id = app_id
         self.platform = platform
 
-def search_game(term):
+def search_game(term: str):
     ''' search for game using a title term '''
     url = f'{API_URL}search/autocomplete/{term}'
     try:
@@ -36,7 +36,7 @@ def search_game(term):
             return 0
     except (requests.exceptions.JSONDecodeError, IndexError, KeyError):
         return 0
-def get_game_id(term):
+def get_game_id(term: str):
     ''' find game id using a title name '''
     game = search_game(term)
     if game == 0:
@@ -46,7 +46,7 @@ def get_game_id(term):
     except (IndexError, KeyError):
         return 0
 
-def get_id_from_platform(platform_id, platform_name):
+def get_id_from_platform(platform_id: str, platform_name: str):
     ''' find game id using a title name '''
     url = f'{API_URL}games/{platform_name}/{platform_id}'
     r=requests.get(url, headers={"Authorization":f'Bearer {API_KEY}'}, timeout=20)
@@ -62,7 +62,7 @@ def get_id_from_platform(platform_id, platform_name):
         backend_log("Failed to decode JSON")
         return 0
 
-def find_image_url(game_id, image_format, image_index = 0):
+def find_image_url(game_id: str, image_format:str, image_index: int = 0):
     ''' find square picture '''
     if image_format == "1:1":
         dimensions = "512x512,1024x1024"
@@ -87,7 +87,7 @@ def find_image_url(game_id, image_format, image_index = 0):
         return 0
         #r=requests.get(url, headers={"Authorization":f'Bearer {API_KEY}'}, timeout=20)
 
-def sanitize_filename_ascii(name, max_length=255):
+def sanitize_filename_ascii(name: str, max_length=255):
     ''' removes characters so string become suitable for filename use '''
     name = unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode()
     name = name.replace('.', '')
@@ -96,11 +96,12 @@ def sanitize_filename_ascii(name, max_length=255):
     name = re.sub(r'_+', '_', name)
     return name[:max_length]
 
-def download_square_image(game_identifier, s_path):
+def download_square_image(game_identifier: GameIdentifier, s_path: str):
     ''' download a 1:1 image '''
     return download_image(game_identifier, s_path, "1:1")
 
-def download_image(game_identifier, s_path, image_format, image_index = 0):
+def download_image(game_identifier: GameIdentifier, s_path: str,
+                   image_format: str, image_index:int = 0):
     ''' find and download image from SteamGridDb '''  
     game_id = 0
     game_title = game_identifier.title

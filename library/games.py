@@ -6,11 +6,13 @@ import json
 import subprocess
 import queue
 import time
+import platform
+import threading
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
 from utils.core import mukkuru_env, backend_log, set_alive_status
-from utils.core import get_config, update_config, sanitized_env
+from utils.core import get_config, update_config, sanitized_env, normalize_text
 from library.steam import get_steam_env, get_crossover_steam
 from library.steam import get_steam_games, get_non_steam_games, read_steam_username
 from library import grid_db, wrapper
@@ -34,7 +36,7 @@ def artwork_worker() -> None:
         finally:
             artwork_queue.task_done()
 
-def update_sgdb_api(user_config) -> None:
+def update_sgdb_api(user_config: dict) -> None:
     ''' updates sgdb api, if needed '''
     if user_config["sgdb_key"] == grid_db.API_KEY:
         print("sgdb api is unset")
@@ -43,7 +45,7 @@ def update_sgdb_api(user_config) -> None:
         grid_db.API_URL = grid_db.SGDB_URL
         grid_db.API_KEY = user_config["sgdb_key"]
 
-def library_scan(options) -> dict:
+def library_scan(options: int) -> dict:
     '''
     Scan library for games
     1 - Steam
@@ -78,7 +80,21 @@ def library_scan(options) -> dict:
     if options & option_heroic:
         heroic_games = get_heroic_games()
         games.update(heroic_games)
+    library_filtering(games)
     return games
+
+def library_filtering(games: dict) -> None:
+    ''' handles post scan game filtering '''
+    user_config = get_config()
+    if user_config["skipDuplicated"]:
+        game_titles = []
+        for key, value in games.copy().items():
+            game_title = normalize_text(value["AppName"])
+            if game_title in game_titles:
+                backend_log(f"skipping duplicated: {game_title} due to user settings")
+                del games[key]
+            else:
+                game_titles.append(game_title)
 
 def get_games() -> dict:
     '''get game library as json'''
@@ -90,7 +106,7 @@ def get_games() -> dict:
         update_games(games)
     return games
 
-def update_games(games) -> None:
+def update_games(games: dict) -> None:
     '''save game library'''
     with open(mukkuru_env["library.json"], 'w', encoding='utf-8') as f:
         json.dump(games, f)
@@ -105,7 +121,7 @@ def scan_games() -> dict:
     time.sleep(0.1)
     return games
 
-def fetch_artwork(app_id, game, b1, b2, b3, use_alt_images) -> dict:
+def fetch_artwork(app_id: str, game, b1, b2, b3, use_alt_images) -> dict:
     ''' handle artwork '''
     blacklist_1 = []
     blacklist_2 = []
@@ -185,7 +201,7 @@ def scan_artwork(games = None) -> None:
     scan_thumbnails(games)
     set_alive_status({"command": "ScanFinished"})
 
-def scan_thumbnails(games) -> None:
+def scan_thumbnails(games: dict) -> None:
     '''update the thumbnail status for all games'''
     for k in games.keys():
         thumbnail_path = os.path.join(mukkuru_env["root"], "thumbnails", f'{k}.jpg')
@@ -195,7 +211,7 @@ def scan_thumbnails(games) -> None:
             games[k]["Thumbnail"] = True
     update_games(games)
 
-def get_game_properties(app_id) -> dict:
+def get_game_properties(app_id: str) -> dict:
     ''' get game specific properties '''
     user_config = get_config()
     game_property = {
@@ -208,9 +224,24 @@ def get_game_properties(app_id) -> dict:
     if app_id in game_properties:
         return game_properties[app_id]
     return game_property
+
+def launch_lossless_scaling():
+    ''' (Windows) launchs lossless scaling executable and sends ctrl+alt+s after 30 seconds '''
+    games = get_games()
+    backend_log("Launching lossless_scaling....")
+    lossless_scaling = games["993090"]
+    lossless_path = os.path.join(lossless_scaling["InstallDir"], "LosslessScaling.exe")
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
+    startupinfo.wShowWindow = subprocess.SW_HIDE
+    subprocess.Popen([lossless_path], startupinfo=startupinfo)
+    time.sleep(30)
+    from utils.winkeys import send_ctrl_alt_s#pylint: disable=C0415
+    send_ctrl_alt_s()
+
 # To-do:
 # set env at provider (steam/heroic/egs) level
-def launch_app(app_id) -> None:
+def launch_app(app_id: str) -> None:
     '''launches an app using its appID'''
     process_env = sanitized_env()
     games = get_games()
@@ -230,13 +261,16 @@ def launch_app(app_id) -> None:
         process_env = wrapper.get_crossover_env(bottle)
         launch_command = f"wine --cx-app {launch_command}"
         working_dir = process_env["CX_DISK"]
+    user_config = get_config()
+    lossless_scaling = user_config["losslessScaling"]
+    if app_id in lossless_scaling and platform.system() == "Windows":
+        threading.Thread(target=launch_lossless_scaling).start()
     backend_log(f"using {launch_command}")
     subprocess.run(launch_command,
                    stderr=subprocess.DEVNULL,
                    stdout=subprocess.DEVNULL,
                    cwd=working_dir,
                    env=process_env, shell=True, check=False)
-    user_config = get_config()
     recent_played = user_config["recentPlayed"]
     if app_id not in recent_played:
         recent_played.insert(0, app_id)
@@ -261,7 +295,7 @@ def list_stores() -> list:
         stores.append("egs")
     return stores
 # to-do: setup os.environ in steam_env dictionary
-def launch_store(storefront) -> None:
+def launch_store(storefront: str) -> None:
     ''' opens a storefront '''
     store_env = sanitized_env()
     prefix = ""

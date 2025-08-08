@@ -52,9 +52,43 @@ class BinaryVDFParser:
             result[name] = value
         return result
 
-    def parse_shortcut(self, path):
+    def parse_shortcut(self, path: str):
         ''' parses a vdf shortcut '''
         with open(path, "rb") as f:
             self.file = f
             return self._read_dict()
-    
+
+    def _write_string(self, s: str):
+        self.file.write(s.encode('utf-8') + b'\x00')
+
+    def _write_entry(self, key: str, value):
+        if isinstance(value, dict):
+            self.file.write(b'\x00')  # nested dict
+            self._write_string(key)
+            self._write_dict(value)
+        elif isinstance(value, str):
+            self.file.write(b'\x01')  # string
+            self._write_string(key)
+            self._write_string(value)
+        elif isinstance(value, int):
+            if value <= 0xFFFFFFFF:
+                self.file.write(b'\x02')  # uint32
+                self._write_string(key)
+                self.file.write(struct.pack("<I", value))
+            else:
+                self.file.write(b'\x07')  # uint64
+                self._write_string(key)
+                self.file.write(struct.pack("<Q", value))
+        else:
+            raise TypeError(f"Unsupported value type for key '{key}': {type(value)}")
+
+    def _write_dict(self, d: dict):
+        for key, value in d.items():
+            self._write_entry(key, value)
+        self.file.write(b'\x08')  # end of dict marker
+
+    def save_shortcut(self, path: str, data: dict):
+        '''Write back to the shortcuts.vdf file'''
+        with open(path, "wb") as f:
+            self.file = f
+            self._write_dict(data)

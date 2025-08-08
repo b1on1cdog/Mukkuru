@@ -9,8 +9,10 @@ See [third-party.md](docs/third-party.md) for third-party files license terms.<b
 
 # Current features
 - Linux, Windows and MacOS Support<br/>
-- SW, SW2, PS5 like themes<br/>
+- 3 Built-in themes similar to popular consoles<br/>
+- Under 30mb executable<br/>
 - Import custom user themes<br/>
+- Import custom ui sound effects<br/>
 - Dark mode and light mode<br/>
 - Support fetching game library from:<br>
     - Steam launcher<br/>
@@ -18,6 +20,8 @@ See [third-party.md](docs/third-party.md) for third-party files license terms.<b
     - (Windows) Epic Games Launcher <br/>
     - (MacOS) Steam launcher under Crossover<br/>
     - (MacOS) Epic Games Launcher under CrossOver<br/>
+- Skip duplicated games<br/>
+- Update to latest version from app settings<br/>
 - WebUI to transfer files from another device<br/>
 - Video playback and take video screenshots with a single button<br/>
 - Automatically download boxarts from SteamGridDB<br/>
@@ -40,24 +44,21 @@ Some others are going to receive occasional uploads</br>
 - Add button to transfer mukkuru media to user folders<br/>
 - Add button to delete all video thumbnails<br/>
 - Add support for non-flatpak Heroic and MacOS Heroic<br/>
-- More webui features: <br/>
+- More webui features:<br/>
     - Videoplayback control<br/>
-    - Play Mukkuru videos from webui <br/>
-    - Wallpaper change <br/>
+    - Play Mukkuru videos from webui<br/>
+    - Wallpaper change<br/>
     - Menu to organize games, mark as favorite, blacklist, etc<br/>
-    - Upload game boxart <br/>
-    - Option to setup SteamGridDB api <br/>
-    - Must also support plugins <br/>
-    - (Optional) chunk checksum validation to prevent file corruption in upload <br/>
+    - Upload game boxart<br/>
+    - Option to setup SteamGridDB api<br/>
+    - Must also support plugins<br/>
+    - (Optional) chunk checksum validation to prevent file corruption in upload<br/>
 - Game provider install helper (Steam, Heroic, etc)<br/>
 - Add joystick buttons customization<br/>
 - Add ability to download games</br>
+- Implement SQLite instead of JSON<br/>
 - Support for linux box86 in arm64<br/>
 - Add support for freebsd<br/>
-
-# Known issues
-- Sometimes context menus do not disappear when they should <br/>
-- Sometimes favorite games are not listed <br/>
 
 # Contribution guidelines
 - **Linting** Use pylint and remove as many warnings as reasonably possible before submitting your code. <br/>

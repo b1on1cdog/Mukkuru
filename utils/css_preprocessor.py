@@ -28,7 +28,7 @@ class CssPreprocessor:
             prefix = self.prefix + function + "("
             pattern = re.compile(rf'{re.escape(prefix)}.*?{re.escape(self.suffix)}')
             for match in pattern.findall(self.css):
-                print(f"m: {match}")
+                #print(f"m: {match}")
                 command = match.replace(prefix, "")
                 command = command.replace(self.suffix, "")
                 args = command.split("$#")

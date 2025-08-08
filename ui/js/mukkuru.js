@@ -101,6 +101,20 @@ function unvanish(element, ms)
     })();
 }
 
+function returnMainScreen(){
+  playSound("enter-back");
+  setTimeout(function () {
+    currentRow = 1;
+    document.getElementsByClassName("mediaList")[0].style.display = "none";
+    document.getElementsByClassName("gameList")[0].style.display = "";
+    document.getElementsByClassName("homeHeader")[0].style.display = "";
+    document.getElementsByClassName("footerNavigation")[0].style.display = "";
+    document.getElementsByClassName("appList")[0].style.display = "none";
+    currentIndex = 0;
+    }, 300);
+    blink(document.getElementsByClassName("homeMenu")[0]);
+}
+
 function goHome(){
     vanish(document.getElementsByClassName("homeMenu")[0]);
     playSound("home");
@@ -353,6 +367,10 @@ async function isAlive(){
     document.getElementsByClassName("footerNavigation")[0].style.display = state?"flex":"none";
   }
 
+  async function toggleLosslessScaling(app_id, state = true){
+    await fetch("/library/lossless_scaling/"+app_id, { method: state?"POST":"DELETE" });
+  }
+
   function setGameProperty(property, value, value2 = undefined){
     switch (property) {
       case "favorite":
@@ -375,6 +393,16 @@ async function isAlive(){
         } else {
           userConfiguration.blacklist.push(value);
         }
+        break;
+      case "lossless_scaling":
+          if (userConfiguration.losslessScaling.includes(value)){
+            const index = userConfiguration.losslessScaling.indexOf(value);
+            userConfiguration.losslessScaling.splice(index, 1);
+            toggleLosslessScaling(value, false);
+          } else {
+            userConfiguration.losslessScaling.push(value);
+            toggleLosslessScaling(value, true);
+          }
         break;
       default:
         return;
@@ -427,6 +455,16 @@ function restartMukkuru(){
   });
   homeMenu = document.getElementsByClassName("homeMenu")[0];
   vanish(homeMenu);
+}
+
+async function shutdownDevice(reboot = false) {
+    url = "/app/shutdown"
+    if (reboot) {
+      url = "/app/reboot"
+    }
+    await fetch(url, {
+      method: "POST"
+    });
 }
 
 async function refreshServer(){
@@ -504,7 +542,8 @@ function mediaControl(action) {
       currentMedia = Math.min(currentMedia+1, mediaItems.length-1);
       break;
     case "back":
-      goHome();
+      //goHome();
+      returnMainScreen();
       break;
     case "options":
       document.getElementById("videoContextMenu").classList.add("active");

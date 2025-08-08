@@ -6,11 +6,14 @@ import glob
 import os
 import sys
 import re
+import shutil
 import platform
 from pathlib import Path
 from functools import lru_cache
 from typing import Optional
 # third-party imports
+import vdf
+
 from utils.core import backend_log, get_config, update_config
 from library import binary_vdf_parser
 from library import wrapper, common
@@ -36,42 +39,50 @@ hardcoded_exclusions = ["Proton Experimental",
                         "Proton BattlEye Runtime",
                         APP_BASE_NAME]
 
-def parseshortcut(file) -> dict:
-    ''' returns shortcuts '''
-    vdf = binary_vdf_parser.BinaryVDFParser(None)
-    return vdf.parse_shortcut(file)
+def set_shortcut_launch_options(steam_env: dict, appid: str, new_options:str) -> bool:
+    ''' edit launch options of non-steam games '''
+    if steam_env is None:
+        steam_env = get_steam_env()
+    games = get_non_steam_games(steam_env)
+    game = games[appid]
+    if "Index" not in game:
+        backend_log("Unable to access steam shortcut Index, outdated library.json, re-scan")
+        return False
+    shortcut_index = game["Index"]
+    parser = binary_vdf_parser.BinaryVDFParser(None)
+    file = steam_env["shortcuts"]
+    data = parser.parse_shortcut(file)
+    data['shortcuts'][shortcut_index]["LaunchOptions"] = new_options
+    parser.save_shortcut(file, data)
+    return True
 
-def parse_binary_vdf(file_obj) -> dict:
-    """Parse binary VDF file"""
-    result = {}
-    while True:
-        key = read_string(file_obj)
-        if not key:
-            break
-        value_type = file_obj.read(1)[0]
-        if value_type == 0x00:  # End of file
-            break
-        if value_type == 0x01:  # String
-            result[key] = read_string(file_obj)
-        elif value_type == 0x02:  # Int32
-            result[key] = struct.unpack('<i', file_obj.read(4))[0]
-        elif value_type == 0x08:  # Dictionary
-            result[key] = parse_binary_vdf(file_obj)
+def set_launch_options(steam: dict, appid: str, new_options: str) -> bool:
+    """Set the LaunchOptions for a given appid in localconfig.vdf"""
+    if steam is None:
+        steam = get_steam_env()
+    vdf_path = steam["shortcuts"].replace("shortcuts.vdf", "localconfig.vdf")
+    backend_log(f"editing {vdf_path}")
+    try:
+        with open(vdf_path, 'r', encoding='utf-8') as f:
+            data = vdf.load(f)
+    except (FileNotFoundError, PermissionError, ValueError) as e:
+        print(f"Failed to read {vdf_path}: {e}")
+        return False
+    try:
+        software_dict = data["UserLocalConfigStore"]["Software"]
+        if "valve" in software_dict:
+            valve_dict = software_dict["valve"]
         else:
-            raise ValueError(f"Unknown value type: {value_type}")
-    return result
+            valve_dict = software_dict["Valve"]
+        valve_dict["Steam"]["apps"][appid]["LaunchOptions"] = new_options
+    except KeyError:
+        backend_log("Unable to set launch options, key error")
+        return False
+    with open(vdf_path, "w", encoding="utf-8") as f:
+        vdf.dump(data, f, pretty=True)
+    return True
 
-def read_string(file_obj) -> str:
-    """Read null-terminated string from file"""
-    chars = []
-    while True:
-        c = file_obj.read(1)
-        if not c or c == b'\x00':
-            break
-        chars.append(c)
-    return b''.join(chars).decode('utf-8')
-
-def parse_acf(acf_path) -> dict:
+def parse_acf(acf_path: str) -> dict:
     """Parse an ACF file to get game info"""
     try:
         with open(acf_path, 'r', encoding='utf-8') as f:
@@ -114,7 +125,8 @@ def parse_text_vdf(vdf_text) -> dict:
                 current[key] = value
     return result
 
-def get_non_steam_games(steam_env) -> dict:
+
+def get_non_steam_games(steam_env: dict) -> dict:
     """Get Non-Steam games from shortcuts.vdf files"""
     games = {}
     if steam_env is None:
@@ -126,10 +138,10 @@ def get_non_steam_games(steam_env) -> dict:
     for file in shortcuts_files:
         try:
             # Read and parse the binary VDF file
-            data = parseshortcut(file)
+            data = binary_vdf_parser.BinaryVDFParser(None).parse_shortcut(file)
             shortcuts = data.get("shortcuts", {})
             # Iterate over each shortcut, 'key' discarded with _
-            for _, shortcut in shortcuts.items():
+            for shorcut_index, shortcut in shortcuts.items():
                 if not isinstance(shortcut, dict):
                     continue
                 app_name = shortcut.get("AppName", "")
@@ -165,6 +177,7 @@ def get_non_steam_games(steam_env) -> dict:
                         "Logo": os.path.join(steam_env["gridPath"], app_id+"_logo.png"),
                         "Cover": os.path.join(steam_env["gridPath"], app_id+"p.jpg"),
                         "Source" : "non-steam",
+                        "Index" : shorcut_index,
                         #"Proton" : needs_proton,
                         "Type" : steam_env["type"]
                     }
@@ -197,12 +210,10 @@ def get_steam_libraries(vdf_path) -> list:
     return paths
 
 def get_rungameid(shortcut_appid: int) -> int:
-    """
-    Turn a 32‑bit shortcut AppID into the 64‑bit value.
-    """
+    """Turn a 32‑bit shortcut AppID into the 64‑bit value."""
     return (shortcut_appid << 32) | 0x02000000
 
-def get_proton_command(app_id, command, user_config) -> str:
+def get_proton_command(app_id: str, command: str, user_config: dict) -> str:
     ''' run game using proton '''
     steam = get_steam_env()
     proton_list = get_proton_list()
@@ -237,7 +248,7 @@ def get_proton_list() -> list:
             proton_builds.append(proton_build)
     return proton_builds
 
-def get_steam_games(steam) -> dict:
+def get_steam_games(steam: dict) -> dict:
     """ Get steam games """
     games = {}
     if steam is None:
@@ -288,12 +299,7 @@ def read_steam_username(steam_config) -> Optional[str]:
         backend_log("No usernames found under 'Accounts'.")
         return None
 
-def copy_file(source, destination) -> None:
-    ''' copy a file from "source" to "destination" '''
-    with open(source, 'rb') as src, open(destination,'wb') as dst:
-        dst.write(src.read())
-
-def get_steam_avatar_from_cache(artwork_dir, steam_username) -> bool:
+def get_steam_avatar_from_cache(artwork_dir: str, steam_username: str) -> bool:
     ''' Copy steam avatar from disk '''
     steam = get_steam_env()
     avatarcache = os.path.join(steam["path"], "config", "avatarcache")
@@ -312,10 +318,10 @@ def get_steam_avatar_from_cache(artwork_dir, steam_username) -> bool:
         return False
     avatar_image = os.path.join(avatarcache, avatar_file)
     avatar_path = os.path.join(artwork_dir, "Avatar", steam_username + extension)
-    copy_file(avatar_image, avatar_path)
+    shutil.copy(avatar_image, avatar_path)
     return True
 
-def get_steam_avatar(artwork_dir) -> bool:
+def get_steam_avatar(artwork_dir: str) -> bool:
     ''' Wrapper for get_steam_avatar_from_cache '''
     steam = get_steam_env()
     if steam is None:
@@ -338,7 +344,7 @@ def get_steam_avatar(artwork_dir) -> bool:
         return False
     return get_steam_avatar_from_cache(artwork_dir, steam_username)
 
-def map_shortcuts_path(shortcut_path) -> Optional[str]:
+def map_shortcuts_path(shortcut_path: str) -> Optional[str]:
     ''' find shortcuts path '''
     find_stuser = shortcut_path.split('*')[0]
     st_user = None

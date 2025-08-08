@@ -17,7 +17,7 @@ OPTION_ATTACHMENT = 1 << 4
 OPTION_ALL = OPTION_VIDEO | OPTION_AUDIO | OPTION_SUBTITLES
 OPTION_ALL = OPTION_ALL | OPTION_DATA | OPTION_ATTACHMENT
 
-def check_remux_possible(input_file, options = OPTION_ALL):
+def check_remux_possible(input_file: str, options = OPTION_ALL):
     ''' do a dry run for testing video encoding '''
     ffmpeg = [get_ffmpeg(),
               "-v", "error",
@@ -50,7 +50,7 @@ def check_remux_possible(input_file, options = OPTION_ALL):
 
     return True
 
-def remux_video(input_file, output_file):
+def remux_video(input_file: str, output_file: str):
     ''' copy video stream without re-encoding '''
     cmd = [
         get_ffmpeg(),
@@ -73,7 +73,7 @@ def remux_video(input_file, output_file):
         return False
     return True
 
-def encode_video(input_file, output_file):
+def encode_video(input_file: str, output_file: str):
     ''' encode videos '''
     ffmpeg = []
     ffmpeg.append(get_ffmpeg())
@@ -93,7 +93,7 @@ def encode_video(input_file, output_file):
         return False
     return True
 
-def auto_conversion(input_file, output_dir):
+def auto_conversion(input_file: str, output_dir: str):
     ''' detects what conversion file needs '''
     video_ext = ["mp4", "m4v", "mov", "mkv", "ts", "flv", "avi", "mpg"]
     music_ext = ["mp3", "wav", "ogg"]

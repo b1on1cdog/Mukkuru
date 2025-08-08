@@ -26,7 +26,7 @@ operation_progress = {
     "context" : "unknown",
 }
 
-def global_progress_callback(downloaded, total) -> None:
+def global_progress_callback(downloaded: int, total: int) -> None:
     ''' handles progress in a global context '''
     operation_progress["downloaded"] = downloaded
     operation_progress["total"] = total
@@ -35,7 +35,7 @@ def global_progress_callback(downloaded, total) -> None:
     operation_progress["progress"] = (downloaded/total)*100
     operation_progress["active"] = True
 
-def set_global_progress_context(title) -> None:
+def set_global_progress_context(title: str) -> None:
     ''' sets parameter as global_progress title '''
     operation_progress["context"] = title
     operation_progress["active"] = True
@@ -48,7 +48,7 @@ def clear_global_progress() -> None:
     operation_progress["active"] = False
     operation_progress["context"] = "unknown"
 
-def download_file(url, path, progress_callback=None, chunk_size=8192):
+def download_file(url, path: str, progress_callback=None, chunk_size=8192):
     '''Download file from URL with optional progress callback'''
     with requests.get(url, stream=True, timeout=20) as response:
         response.raise_for_status()
@@ -96,26 +96,26 @@ def get_7z():
                 return wz_path
     return None
 
-def extract_rar(filename, output_dir):
+def extract_rar(filename: str, output_dir:str):
     ''' extract .rar file '''
     unrar = get_unrar()
     if unrar is None:
         return "Unable to extract file, no decompressor available"
     subprocess.run([unrar, "x", filename, output_dir], check=False, env=sanitized_env())
 
-def extract_7z(filename, output_dir):
+def extract_7z(filename: str, output_dir: str):
     ''' extract .7z file'''
     zz = get_7z()
     if zz is None:
         return "Unable to extract file, no decompressor available"
     subprocess.run([zz, "x", filename, f"-o{output_dir}"], check=False, env=sanitized_env())
 
-def extract_zip(filename, output_dir):
+def extract_zip(filename: str, output_dir: str):
     ''' extract .zip file '''
     with zipfile.ZipFile(filename,"r") as zip_ref:
         zip_ref.extractall(output_dir)
 
-def extract_archive(filename, output_dir):
+def extract_archive(filename: str, output_dir: str):
     ''' extract archive '''
     if filename.endswith(".zip"):
         return extract_zip(filename, output_dir)
@@ -151,7 +151,7 @@ if platform.system() == "Windows":
             raise ctypes.WinError()
         return path_ptr.value
 
-def get_userprofile_folder(desired_dir):
+def get_userprofile_folder(desired_dir: str):
     ''' returns a user folder (Music, Videos, Downloads, Pictures)'''
     home_dir = Path('~').expanduser()
     user_dir = os.path.join(home_dir, desired_dir)
@@ -177,7 +177,7 @@ def get_userprofile_folder(desired_dir):
     return None
 
 
-def build_file_tree(root_path):
+def build_file_tree(root_path: str):
     ''' return files and folders as a dictionary '''
     tree = {}
 
@@ -187,7 +187,6 @@ def build_file_tree(root_path):
             tree.setdefault("folders", []).append(item)
         else:
             tree.setdefault("files", []).append(item)
-
     return tree
 
 def sha256_file(path, chunk_size=8192):
@@ -198,7 +197,7 @@ def sha256_file(path, chunk_size=8192):
             hasher.update(chunk)
     return hasher.hexdigest()
 
-def terminate_mukkuru_backend(app_port):
+def terminate_mukkuru_backend(app_port: int):
     ''' send a quit request to mukkuru port '''
     quit_url = f"http://localhost:{app_port}/app/exit"
     try:

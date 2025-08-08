@@ -46,8 +46,8 @@ const SOURCE_OPTIONS = {
 let tabOptions = {};
 
 const blistOptions = {
-    "theme" : ["Switch", "Switch 2", "PS5"],
-    "uiSounds" : ["Switch", "PS5"],
+    "theme" : ["JoyView", "JoyView 2", "BlancheUI"],
+    "uiSounds" : ["original"],
     "saveScreenshot" : ["Mukkuru", "User"]
 }
 
@@ -128,19 +128,9 @@ function addUserThemes(){
             themeTab.appendChild(themeOption)
             const separator = document.createElement('div');
             separator.className = 'option-separator';
-            themeTab.appendChild(separator)
-            /*
-            <div class="menu-option" id="sw_theme" data-key="theme" data-value="Switch" style="display: flex; align-items: center;">
-                    <svg class="option-img" width="100" height="50" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="0" y="0" width="100" height="50" fill="white" stroke="black" stroke-width="2" rx="3" ry="3"></rect>
-                    </svg>Sample
-                    </div>
-            
-            
-            */
-        });//
+        });
         const spacer = document.createElement('div');
-        spacer.style.minHeight = "300px";
+        spacer.style.minHeight = "200px";
         themeTab.appendChild(spacer)
         refreshOptions();
     });
@@ -199,6 +189,13 @@ fetch("/config/get").then(function(response) {
             setDarkModeState(false);
             //localStorage.setItem("darkMode", false);
         }
+        
+        if (userConfiguration["addedToStartup"]) {
+            const addToStartupButton = document.getElementById("addToStartup");
+            addToStartupButton.id = "removeFromStartup";
+            addToStartupButton.dataset.call = "removeFromStartup";
+            addToStartupButton.innerText = translate_str("removeFromStartup", "Remove Mukkuru from startup");
+        } 
         updateLibraryOptions();
         showKeyGuide(userConfiguration["showKeyGuide"]);
         createProgressBar();
@@ -243,10 +240,9 @@ fetch("/hardware").then(function(response) {
         versionInfo.innerText = hardwareInformation["app_version"] + " (" + hardwareInformation["arch"] +")";
 
         if (!hardwareInformation["distro"].includes("SteamOS")) {
-            document.getElementById("addToStartup").remove();
-            document.getElementById("addToStartupSep").remove();
-            document.getElementById("removeFromStartup").remove();
-            document.getElementById("removeFromStartupSep").remove();
+            //safeRemove("addToStartup");
+            //safeRemove("addToStartupSep");
+            //safeRemove("removeFromStartup");
         }
         } catch (err) {
             backend_log(err);
@@ -397,6 +393,62 @@ async function createLicenseScreen(){
     openNextPage(licenseScreen);
 }
 
+function handleTabMovement(up = true){
+    if ((up && selectedTab == 0) || (!up && selectedTab == menuItems.length - 1)) {
+        playSound("border");
+        return true;
+    }
+    while (previousPages.length > 0) {
+        openPreviousPage();
+    }
+    menuItems[selectedTab].className = "menu-tab";
+    if (up) {
+        selectedTab--;
+    } else {
+        selectedTab++;
+    }
+    
+    menuItems[selectedTab].className = "menu-tab selected";
+    menuItems[selectedTab].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
+    previousOption = selectedOption;
+    selectedOption = 0;
+    if (previousOption != 0) {
+        setTimeout( () => {
+            tabOptions[selectedTab][selectedOption].scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 30);
+    }
+    playSound("select");
+    return false;
+}
+
+function handleOptionMovement(up = true){
+    if (up && selectedOption == 0 || !up && selectedOption+1 == tabOptions[selectedTab].length)
+    {
+        playSound("border");
+        return true;
+    }
+    currentOption = tabOptions[selectedTab][selectedOption];
+    if (currentOption == null) {
+        playSound("border");
+        return true;
+    }
+    showPreviousSeparator(true);
+    showNextSeparator(true);
+    tabOptions[selectedTab][selectedOption].classList.remove("selected");
+    if (up) {
+        tabOptions[selectedTab][selectedOption].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
+        selectedOption--;
+    } else {
+        selectedOption++;
+        tabOptions[selectedTab][selectedOption].scrollIntoView({ behavior: "instant", block: "center" });
+    }
+    tabOptions[selectedTab][selectedOption].classList.add("selected");
+    showPreviousSeparator(false);
+    showNextSeparator(false);
+    playSound("select");
+    return false;
+}
+
 document.addEventListener('keydown', (e) => {
     e.preventDefault();
     if (homeMenu.style.opacity < 1) {
@@ -473,6 +525,7 @@ document.addEventListener('keydown', (e) => {
                         default:
                             break;
                     }
+                        return;
                 } else if (elem.dataset.hasOwnProperty("key")) {
                 if (elem.dataset.value == "true" || elem.dataset.value == "false") {
                     tstate = (elem.dataset.value == "true");
@@ -558,39 +611,14 @@ document.addEventListener('keydown', (e) => {
                     changeLockedValue(0);
                 }
                 if (isTab){
-                if (selectedTab == 0) {
-                    playSound("border");
-                    break;
+                    handleTabMovement(true);
+                } else {
+                    if (isScrollable) {
+                        scrollableItem.scrollBy(0, -100);
+                        return;
+                    }
+                    handleOptionMovement(true)
                 }
-                while (previousPages.length > 0) {
-                    openPreviousPage();
-                }
-                menuItems[selectedTab].className = "menu-tab";
-                selectedTab--;
-                menuItems[selectedTab].className = "menu-tab selected";
-                menuItems[selectedTab].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
-                selectedOption = 0;
-            } else {
-                if (isScrollable) {
-                    scrollableItem.scrollBy(0, -100);
-                    return;
-                }
-
-                if (selectedOption == 0)
-                {
-                    playSound("border");
-                    break;
-                }
-                showPreviousSeparator(true);
-                showNextSeparator(true);
-                tabOptions[selectedTab][selectedOption].classList.remove("selected");
-                tabOptions[selectedTab][selectedOption].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
-                selectedOption--;
-                tabOptions[selectedTab][selectedOption].classList.add("selected");
-                showPreviousSeparator(false);
-                showNextSeparator(false);
-            }
-                playSound("select");
                 break;
             case 'down':
                 if (isContextMenu) {
@@ -600,47 +628,14 @@ document.addEventListener('keydown', (e) => {
                     changeLockedValue(0);
                 }
                 if (isTab){
-
-                if (selectedTab == menuItems.length - 1) {
-                    playSound("border");
-                    break;
-                }
-                while (previousPages.length > 0) {
-                    openPreviousPage();
-                }
-                
-                menuItems[selectedTab].className = "menu-tab";
-                selectedTab++;
-                menuItems[selectedTab].className = "menu-tab selected";
-                menuItems[selectedTab].scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
-                selectedOption = 0;
-            } else {
-
-                if (isScrollable) {
-                    scrollableItem.scrollBy(0, 100);
-                    return;
-                }
-
-                if (selectedOption+1 == tabOptions[selectedTab].length)
-                {
-                    playSound("border");
-                    break;
-                }
-                    currentOption = tabOptions[selectedTab][selectedOption];
-                    if (currentOption == null) {
-                        playSound("border");
+                    handleTabMovement(false);
+                } else {
+                    if (isScrollable) {
+                        scrollableItem.scrollBy(0, 100);
                         return;
                     }
-                    showPreviousSeparator(true);
-                    showNextSeparator(true);
-                    tabOptions[selectedTab][selectedOption].classList.remove("selected");
-                    selectedOption++;
-                    tabOptions[selectedTab][selectedOption].classList.add("selected");
-                    tabOptions[selectedTab][selectedOption].scrollIntoView({ behavior: "instant", block: "center" });
-                    showPreviousSeparator(false);
-                    showNextSeparator(false);
-            }
-                playSound("select");
+                    handleOptionMovement(false);
+                }
                 break;
             case 'back':
                 if (isContextMenu) {
@@ -728,7 +723,7 @@ document.addEventListener('keydown', (e) => {
                     <div class="option-separator"></div>
                     <div class="option-description" id="all-videos-sources-desc" data-trm="swapText" data-loc="id">Reads videos from user video folder</div>
 
-                    <div class="spacer" style="min-height:170px"></div>
+                    <div class="spacer" style="min-height:150px"></div>
                 </div>
                 <div class="options" id="options-2" style="display:none;">
                     <div class="option-separator" id="fullScreen-separator"></div>
@@ -750,22 +745,22 @@ document.addEventListener('keydown', (e) => {
                     <div class="option-separator"></div>
                     <div class="menu-option" id="darkMode" data-trm="swapTGL" data-loc="id">Dark Mode &nbsp; [BTOGGLE]</div>
                     <div class="option-separator"></div>
-                    <div class="menu-option nospace" id="sw_theme" data-key="theme" data-value="Switch" style="display: flex; align-items: center;">
+                    <div class="menu-option nospace" id="jv_theme" data-key="theme" data-value="JoyView" style="display: flex; align-items: center;">
                     <svg class="option-img" width="100" height="50" xmlns="http://www.w3.org/2000/svg">
                         <rect x="0" y="0" width="100" height="50" fill="white" stroke="black" stroke-width="2" rx="3" ry="3"></rect>
-                    </svg>Switch
+                    </svg>JoyView
                     </div>
                     <div class="option-separator"></div>
-                    <div class="menu-option nospace" id="sw2_theme" data-key="theme" data-value="Switch 2" style="display: flex; align-items: center;">
+                    <div class="menu-option nospace" id="jv2_theme" data-key="theme" data-value="JoyView 2" style="display: flex; align-items: center;">
                     <svg class="option-img" width="100" height="50" xmlns="http://www.w3.org/2000/svg">
                         <rect x="0" y="0" width="100" height="50" fill="purple" stroke="black" stroke-width="2" rx="3" ry="3"></rect>
-                    </svg>Switch 2
+                    </svg>JoyView 2
                     </div>
                      <div class="option-separator"></div>
-                    <div class="menu-option nospace" id="ps5_theme" data-key="theme" data-value="PS5" style="display: flex; align-items: center;">
+                    <div class="menu-option nospace" id="blancheui_theme" data-key="theme" data-value="BlancheUI" style="display: flex; align-items: center;">
                     <svg class="option-img" width="100" height="50" xmlns="http://www.w3.org/2000/svg">
                         <rect x="0" y="0" width="100" height="50" fill="black" stroke="black" stroke-width="2" rx="3" ry="3"></rect>
-                    </svg>PS5
+                    </svg>BlancheUI
                     </div>
                     <div class="option-separator"></div>
 
@@ -784,11 +779,9 @@ document.addEventListener('keydown', (e) => {
                 <div class="options" id="options-5" style="display:none;">
 
                     <div class="option-separator" id="addToStartupSep"></div>
-                    <div class="menu-option" id="addToStartup" data-loc="id" data-trm="swapTGL" data-call="addToStartup">Start Mukkuru at system startup</div>
-
-                    <div class="option-separator" id="removeFromStartupSep"></div>
-                    <div class="menu-option" id="removeFromStartup" data-loc="id" data-trm="swapTGL" data-call="removeFromStartup">Remove Mukkuru from system startup</div>
-                    
+                    <div class="menu-option" id="addToStartup" data-loc="id" data-trm="swapTGL" data-call="addToStartup">Start Mukkuru at startup</div>
+                    <div class="option-separator"></div>
+                    <div class="option-description" id="add-to-startup-desc" data-trm="swapText" data-loc="id">You can setup Mukkuru so it will automatically open when user login</div>
                     <div class="option-separator"></div>
                     <div class="menu-option" id="moveDownloads" data-loc="id" data-trm="swapTGL" data-call="moveDownloads">Move files to Downloads</div>
                     <div class="option-separator"></div>

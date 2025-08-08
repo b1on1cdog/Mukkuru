@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from utils.core import sanitized_env, backend_log
 
-def get_crossover_env(bottle) -> dict:
+def get_crossover_env(bottle: str) -> dict:
     ''' get crossover environment variables '''
     crossenv = sanitized_env()
     crossover_app = os.path.expanduser("~/Applications/CrossOver.app/")

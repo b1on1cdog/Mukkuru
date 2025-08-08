@@ -22,7 +22,7 @@ SHOWS_PATTERN = re.compile(
     re.VERBOSE,
 )
 
-def group_by_show(paths):
+def group_by_show(paths: list):
     ''' organize whole series in a single collection '''
     shows = defaultdict(list)
     for p in map(Path, paths):
@@ -35,7 +35,7 @@ def group_by_show(paths):
     return shows
 
 #video_files = [f for f in source_dir.rglob("*") if f.suffix.lower() in extensions and f.is_file()]
-def read_videos(source_dir, source_index = -1) -> dict:
+def read_videos(source_dir: str, source_index: int = -1) -> dict:
     ''' Fetch videos from disk '''
     videos = {}
     extensions = ["mp4", "m4v"]
@@ -61,7 +61,7 @@ def read_videos(source_dir, source_index = -1) -> dict:
                 videos[video_id]["thumbnail_url"] = f"video/{source_index}/{quote(th_name)}"
     return videos
 
-def verify_video_files(videos) -> dict:
+def verify_video_files(videos: dict) -> dict:
     ''' verify video files exists '''
     for video_id, video in videos.copy().items():
         video_path = video["path"]
@@ -70,7 +70,7 @@ def verify_video_files(videos) -> dict:
     videos = check_thumbnails(videos)
     return videos
 
-def check_thumbnails(videos) -> dict:
+def check_thumbnails(videos: dict) -> dict:
     ''' verify video thumbnails still exists '''
     for video_id, video in videos.items():
         thumbnail_path = video["thumbnail"]
@@ -80,7 +80,7 @@ def check_thumbnails(videos) -> dict:
             videos[video_id]["thumbnail_exists"] = False
     return videos
 
-def get_videos(source_dirs, video_manifest_path) -> dict:
+def get_videos(source_dirs: list, video_manifest_path: str) -> dict:
     ''' Get videos from all specified dirs '''
     videos = {}
     source_index = 0
@@ -95,7 +95,7 @@ def get_videos(source_dirs, video_manifest_path) -> dict:
     update_videos(video_manifest_path, videos)
     return videos
 
-def update_thumbnail(video_manifest_path, video_id, thumbnail) -> None:
+def update_thumbnail(video_manifest_path: str, video_id: str, thumbnail: str) -> None:
     ''' update thumbnail for specific video id '''
     videos = {}
     with open(video_manifest_path, encoding='utf-8') as f:
@@ -105,7 +105,7 @@ def update_thumbnail(video_manifest_path, video_id, thumbnail) -> None:
     with open(videos[video_id]["thumbnail"], "wb") as f:
         f.write(image_data)
 
-def save_screenshot(save_path, screenshot) -> None:
+def save_screenshot(save_path:str, screenshot:str) -> None:
     ''' saves a picture '''
     picture_b64 = screenshot.replace("data:image/png;base64,", "")
     image_data = base64.b64decode(picture_b64)
@@ -116,12 +116,12 @@ def save_screenshot(save_path, screenshot) -> None:
     with open(os.path.join(save_path, pic_name), "wb") as f:
         f.write(image_data)
 
-def update_videos(video_manifest_path, videos) -> None:
+def update_videos(video_manifest_path:str, videos:dict) -> None:
     ''' update videos json '''
     with open(video_manifest_path, 'w', encoding='utf-8') as f:
         json.dump(videos, f)
 
-def sha256_hash_text(text) -> str:
+def sha256_hash_text(text:str) -> str:
     ''' get sha256 of a string '''
     hash_object = hashlib.sha256(text.encode())
     hex_dig = hash_object.hexdigest()

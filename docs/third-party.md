@@ -18,3 +18,6 @@ License: [Apache 2.0](docs/license/requests.txt)<br/>
 
 [flaskwebgui](https://github.com/ClimenteA/flaskwebgui)<br/>
 License: [MIT](license/flaskwebgui.txt)<br/>
+
+[vdf](https://github.com/ValvePython/vdf)
+License: [MIT](license/vdf.txt)<br/>

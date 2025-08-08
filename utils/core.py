@@ -1,18 +1,25 @@
 # Copyright (c) 2025 b1on1cdog
 # Licensed under the MIT License
-''' Mukkuru module with essential functions and constants '''
+'''
+Mukkuru module with essential functions and constants.
+This module should NOT import other Mukkuru modules.
+'''
 import os
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 import sys
 import time
 import json
 import platform
+import inspect
+import unicodedata
+import re
 
 # Constants
 mukkuru_env = {}
 COMPILER_FLAG = getattr(sys, 'frozen', False) or "__compiled__" in globals()
-APP_VERSION = "0.3.13"
+APP_VERSION = "0.3.14"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT = 49347
 SERVER_PORT = 49351
@@ -31,8 +38,16 @@ def app_version():
     return f"Mukkuru v{APP_VERSION}"
 
 # Logging
-def backend_log(message) -> None:
+def backend_log(message, parent = False) -> None:
     ''' print message and save to file '''
+    stack = inspect.stack()
+    frame = stack[1]
+    if parent:
+        frame = stack[2]
+    lineno = frame.lineno
+    filename = os.path.basename(frame.filename)
+    if "[frontend]" not in message:
+        message = f"[{filename}:{lineno}] {message}"
     print(message)
     if "log" in mukkuru_env:
         os.makedirs(os.path.dirname(mukkuru_env["log"]), exist_ok=True)
@@ -45,6 +60,7 @@ def get_config() -> dict:
     user_config = {
             "loop" : False,
             "skipNoArt" : False,
+            "skipDuplicated" : True,
             "displayBatteryPercent" : False,
             "maxGamesInHomeScreen" : 12,
             "enableServer" : False,
@@ -67,7 +83,7 @@ def get_config() -> dict:
             "favorite" : [],
             "recentPlayed" : [],
             "showKeyGuide" : True,
-            "theme" : "Switch 2",
+            "theme" : "JoyView 2",
             "cores" : 6,
             "alwaysShowBottomBar" : True,
             "uiSounds" : "original",
@@ -75,8 +91,10 @@ def get_config() -> dict:
             "boxartBlacklist" : [],
             "logoBlacklist" : [],
             "heroBlacklist" : [],
+            "losslessScaling" : [],
             "configVersion" : APP_VERSION,
             "adultContent" : False,
+            "addedToStartup" : False,
             "repos" : [ "https://repo.panyolsoft.com/" ],
             "patches" : [ ],
             "sgdb_key" : "",
@@ -93,12 +111,14 @@ def get_config() -> dict:
         configuration = json.load(f)
         for key, value in user_config.items():
             if key not in configuration:
+                backend_log(f"creating configuration key {key}")
                 configuration[key] = value
             user_config = configuration
     return user_config
 
-def update_config(user_config) -> None:
+def update_config(user_config: dict) -> None:
     ''' update user configuration '''
+    backend_log("updating config....", parent=True)
     # clear cached config as the value was updated
     get_config.cache_clear()
     with open(mukkuru_env['config.json'] , 'w', encoding='utf-8') as f:
@@ -112,7 +132,7 @@ def set_alive_status(value) -> None:
 #    ''' adds a command to alive status '''
 #    mukkuru_env["alive"]["commands"]
 
-def format_executable(executable) -> str:
+def format_executable(executable: str) -> str:
     ''' appends .exe if Windows, otherwise return parameter as-is '''
     if platform.system() == "Windows":
         executable = f"{executable}.exe"
@@ -126,6 +146,19 @@ def sanitized_env() -> dict:
     env.pop("PYTHONPATH", None)
     return env
 
+def normalize_text(text: str, remove_symbols: bool = False) -> str:
+    ''' removes all special characters '''
+    text = unicodedata.normalize("NFKD", text)
+    text = text.encode("ascii", "ignore").decode()
+    if remove_symbols:
+        text = re.sub(r"[^\w\s]", "", text)
+    text = text.rstrip()
+    return text
+
 def is_bsd() -> bool:
     ''' returns whether os is a FreeBSD fork '''
     return "BSD" in platform.system() or platform.system() == "DragonFly"
+
+def ternary(condition: bool, var1: Any, var2: Any) -> Any:
+    ''' returns var1 if condition evaluates True, else return var2'''
+    return var1 if condition else var2

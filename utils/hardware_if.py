@@ -5,6 +5,7 @@ import socket
 import platform
 import subprocess
 import os
+import signal
 import re
 from functools import lru_cache
 import math
@@ -12,6 +13,7 @@ import time
 from typing import Optional
 
 import psutil
+from psutil import Process
 import distro
 from utils.core import backend_log
 system = platform.system()
@@ -41,7 +43,7 @@ def get_cpu_name() -> str:
         except (subprocess.CalledProcessError, IndexError, UnicodeDecodeError):
             pass
         return platform.processor()
-    if system == "Darwin":  # macOS
+    if system == "Darwin":
         try:
             return subprocess.check_output(["sysctl",
                                             "-n", "machdep.cpu.brand_string"]).decode().strip()
@@ -88,7 +90,7 @@ def get_gpu_name() -> str:
         except (PermissionError, IndexError, subprocess.CalledProcessError):
             return "Unknown GPU"
 
-    elif system == "Darwin":  # macOS
+    elif system == "Darwin":
         try:
             output = subprocess.check_output(
                 ["system_profiler", "SPDisplaysDataType"]
@@ -256,7 +258,7 @@ def get_battery() -> Optional[dict]:
         return None
     return battery._asdict()
 
-def kill_executable_by_path(target_path, force=True) -> list:
+def kill_executable_by_path(target_path: str, force=True) -> list:
     """Hard-kill every running process whose executable matches `target_path`"""
     target_path = os.path.abspath(target_path)
     killed = []
@@ -274,7 +276,32 @@ def kill_executable_by_path(target_path, force=True) -> list:
             continue
     return killed
 
-def wait_for_server(host, port, timeout=5.0) -> bool:
+def pause_process(proc):
+    ''' In Windows suspends process, in Unix sends SIGSTOP'''
+    if platform.system() == "Windows":
+        proc.suspend()
+    else:
+        proc.send_signal(signal.SIGSTOP)#pylint: disable=E1101
+
+def resume_process(proc):
+    ''' In Windows resume process, in Unix sends SIGCONT '''
+    if platform.system() == "Windows":
+        proc.resume()
+    else:
+        proc.send_signal(signal.SIGCONT)#pylint: disable=E1101
+
+def get_process_by_name(name: str) -> list[Process]:
+    ''' return a list of processes '''
+    processes = []
+    for proc in psutil.process_iter(['pid', 'name']):
+        try:
+            if proc.info['name'] == name:
+                processes.append(proc)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    return processes
+
+def wait_for_server(host: str, port: int, timeout=5.0) -> bool:
     ''' waits for a server to start listening '''
     start = time.time()
     while time.time() - start < timeout:

@@ -63,9 +63,9 @@ wserver.register_blueprint(external_library)
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.CRITICAL)
 
-sserver = None
+SSERVER = None
 
-def is_valid_json(filepath, template = None):
+def is_valid_json(filepath: str, template = None):
     ''' Returns True if JSON is valid, otherwise returns False '''
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
@@ -97,11 +97,11 @@ def get_themes():
         with open(theme_manifest, 'r', encoding='utf-8') as f:
             manifest = json.load(f)
             themes[Path(theme_manifest).parent.name] = manifest
-        return themes
+    return themes
 
 def get_theme(selected = None):
     ''' Return css of selected theme '''
-    builtin_themes = ["Switch", "Switch 2", "PS5"]
+    builtin_themes = ["JoyView", "JoyView 2", "BlancheUI"]
     config = get_config()
     if selected is None:
         selected = config["theme"]
@@ -113,10 +113,10 @@ def get_theme(selected = None):
     if selected in builtin_themes:
         backend_log(f"using built-in theme {selected}")
         css = default_css
-        if selected == "PS5":
-            css = css + Path(os.path.join(sys_themes_dir, "ps5.css")).read_text(encoding='utf-8')
-        elif selected == "Switch 2":
-            css = css + Path(os.path.join(sys_themes_dir, "sw2.css")).read_text(encoding='utf-8')
+        if selected == "BlancheUI":
+            css = css + Path(os.path.join(sys_themes_dir, "bui.css")).read_text(encoding='utf-8')
+        elif selected == "JoyView 2":
+            css = css + Path(os.path.join(sys_themes_dir, "jv2.css")).read_text(encoding='utf-8')
         return css
     backend_log(f"loading user theme {selected}")
     themes_dir = os.path.join(mukkuru_env["root"], "themes")
@@ -146,12 +146,29 @@ def startup_controller():
         response = expansion.add_to_startup()
     return response
 
+@app.route('/app/capabilities', methods = ['GET'])
+def capability_controller():
+    ''' Returns what is this instance capable of '''
+    return jsonify(expansion.get_capabilities())
+
+@app.route('/app/shutdown', methods = ['POST'])
+def shutdown_device():
+    ''' Shutdowns device '''
+    threading.Thread(target=expansion.shutdown(False)).start()
+    return jsonify("Shutdown in progress", 200)
+
+@app.route('/app/reboot', methods = ['POST'])
+def reboot_device():
+    ''' Reboots device '''
+    threading.Thread(target=expansion.shutdown(True)).start()
+    return jsonify("Reboot in progress", 200)
+
 def exit_mukkuru():
     ''' terminates Mukkuru instance '''
     threading.Event().wait(0.09)
     try:
-        if sserver is not None:
-            sserver.close()
+        if SSERVER is not None:
+            SSERVER.close()
     except (OSError, ValueError, AttributeError):
         pass
     if FRONTEND_MODE == "FLASKUI":
@@ -173,7 +190,7 @@ def favicon():
     return send_from_directory(os.path.join(APP_DIR, "ui"), 'mukkuru.ico')
 
 @app.route('/store/<storefront>')
-def open_store(storefront):
+def open_store(storefront: str):
     ''' Launch the desired game storefront '''
     launch_store(storefront)
     return jsonify("OK", 200)
@@ -194,7 +211,6 @@ def set_videos():
         return "200"
     return "400"
 
-@app.route('/audios/get')
 def get_audio_packs():
     ''' get audio pack'''
     audio_packs = []
@@ -202,6 +218,12 @@ def get_audio_packs():
     user_sfx = os.path.join(mukkuru_env["root"], "sfx")
     audio_packs.extend(os.listdir(builtin_sfx))
     audio_packs.extend(os.listdir(user_sfx))
+    return audio_packs
+
+@app.route('/audios/get')
+def get_audio_packs_controller():
+    ''' http controller for get_audio_packs'''
+    audio_packs = get_audio_packs()
     return jsonify(audio_packs)
 
 @app.route('/themes/get')
@@ -211,7 +233,7 @@ def get_user_themes():
     return jsonify(themes)
 
 @app.route('/theme/<theme_id>/<asset>')
-def get_theme_asset(theme_id, asset):
+def get_theme_asset(theme_id: str, asset: str):
     ''' get the asset of a user theme '''
     theme_dir = os.path.join(mukkuru_env["root"], "themes", theme_id)
     backend_log(f"getting theme {theme_id} {asset}")
@@ -251,7 +273,7 @@ def terminate_wef():
     hardware_if.kill_executable_by_path(wef_bundle)
 
 @app.route('/clear/<selection>', methods = ['POST'])
-def delete_data(selection):
+def delete_data(selection: str):
     ''' deletes app data '''
     backend_log(f"deleting data {selection}")
     tn_folder = os.path.join(mukkuru_env["root"], "thumbnails")
@@ -287,7 +309,7 @@ def ping_request():
 
 @wserver.route('/log/<message>')
 @app.route('/log/<message>')
-def log_message(message):
+def log_message(message: str):
     ''' prints frontend messages in backend, useful for debugging '''
     msg = base64.b64decode(message).decode("utf-8")
     msg = f"[frontend] {msg}"
@@ -346,7 +368,6 @@ def static_file(path):
         return send_file(css.data(), mimetype="text/css")
     if path.endswith(".js"):
         full_path = os.path.join(serve_path, path)
-        print(f"reading {full_path}")
         lines = Path(full_path).read_text(encoding='utf-8').splitlines()
         for i, line in enumerate(lines):
             if "//Mukkuru::Load:" in line:
@@ -397,11 +418,11 @@ def is_fullscreen():
     return user_config["fullScreen"]
 
 @app.route('/server/<action>', methods = ['POST', 'GET'])
-def init_server(action):
+def init_server(action: str):
     ''' http controller for wserver start '''
-    global sserver #pylint: disable=W0603
-    if sserver is None:
-        sserver = create_server(wserver, host="0.0.0.0", port=SERVER_PORT)
+    global SSERVER #pylint: disable=W0603
+    if SSERVER is None:
+        SSERVER = create_server(wserver, host="0.0.0.0", port=SERVER_PORT)
     if action == "start":
         threading.Thread(target=start_app, args=(True,)).start()
         return hardware_if.get_current_interface(get_ip=True), 200
@@ -413,9 +434,9 @@ def init_server(action):
         loc = expansion.get_localization()
         return loc.get("OfflineServer", "Server: Offline"), 222
     else:
-        sserver.close()
+        SSERVER.close()
         os.environ.pop('SERVER_RUNNING', None)
-        sserver = create_server(wserver, host="0.0.0.0", port=SERVER_PORT)
+        SSERVER = create_server(wserver, host="0.0.0.0", port=SERVER_PORT)
     return "200"
 
 def get_destination_map():
@@ -436,7 +457,7 @@ def get_user_dirs():
     return jsonify(destination_map)
 
 @app.route('/app/move/<folder>', methods = ['POST'])
-def move_files_controller(folder):
+def move_files_controller(folder: str):
     ''' move files between folders '''
     user_config = get_config()
     source_map = {
@@ -459,16 +480,16 @@ def move_files_controller(folder):
         shutil.move(source_path, destination_path)
     return loc.get("filesMoveSuccess", "Files moved successfully"), 200
 
-def start_app(is_server = False):
+def start_app(is_server:bool = False):
     ''' init server '''
     try:
         user_config = get_config()
         cores = user_config["cores"]
         if is_server:
-            sserver.adj.core_count = cores
+            SSERVER.adj.core_count = cores
             os.environ["SERVER_RUNNING"] = "1"
             backend_log("starting server....")
-            sserver.run()
+            SSERVER.run()
             #serve(wserver, host="0.0.0.0", threads=cores, port=SERVER_PORT)
         else:
             serve(app, host="localhost", threads=cores, port=APP_PORT)
@@ -517,13 +538,20 @@ def main():
     mukkuru_env["log"] = os.path.join(mukkuru_env["root"], "mukkuru.log")
     mukkuru_env["app_path"] = APP_DIR
     if len(sys.argv) >= 2:
-        print("Running in test mode")
         arg = sys.argv[1]
         if arg == "--test":
+            print("Running in test mode")
             test.run_tests()
             return
+        elif arg == "--add-poolkit-rules":
+            expansion.add_poolkit_rule()
+            return
+        return
     backend_log(f'Using { FRONTEND_MODE } for rendering')
     backend_log(f"COMPILER_FLAG: {COMPILER_FLAG}")
+    if "DELAY_EXECUTION" in os.environ:
+        backend_log("DELAY_EXECUTION variable is set, waiting...")
+        threading.Event().wait(float(os.environ["DELAY_EXECUTION"]))
     bootstrap.terminate_mukkuru_backend(APP_PORT)
     # Instead of writing another executable, this one will conditionally act as updater
     if "MUKKURU_UPDATE" in os.environ and COMPILER_FLAG:
@@ -562,6 +590,14 @@ def main():
     else:
         games = get_games()
         scan_thumbnails(games)
+    # version correction
+    if updater.ver_compare(user_config["configVersion"], "0.3.14") == 0:
+        backend_log("updating config...")
+        del user_config["theme"]
+        del user_config["uiSounds"]
+        del user_config["configVersion"]
+        user_config = get_config()
+        update_config(user_config)
     if user_config["startupGameScan"] is True:
         backend_log("[debug] startupGameScan: True, starting library scan")
         threading.Thread(target=scan_games).start()

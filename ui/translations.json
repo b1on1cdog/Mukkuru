@@ -104,7 +104,11 @@
         "MustAddToSteam" : "Debes agregar Mukkuru a Steam antes de presionar este boton",
         "UnsupportedFunction" : "Esta funcion no esta disponible para tu configuracion",
         "OperationSuccess" : "La operacion fue completada correctamente",
-        "addToStartup" : "Agregar al arranque",
-        "removeFromStartup" : "Quitar del arranque"
+        "OperationFailed" : "Operacion fallida",
+        "addToStartup" : "Agregar al inicio",
+        "add-to-startup-desc" : "Puedes configurar Mukkuru para que inicie tan pronto el usuario inicie sesion",
+        "removeFromStartup" : "Quitar del inicio",
+        "enableLosslessScaling" : "Habilitar Lossless Scaling",
+        "disableLosslessScaling" : "Desactivar Losless Scaling"
     }
 }

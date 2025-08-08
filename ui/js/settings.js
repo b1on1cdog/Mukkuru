@@ -148,4 +148,22 @@ async function setAppStartup(request_method = "POST") {
     message = await ss_response.text();
     document.getElementById("messageBox").innerText = message;
     open_context_menu("messageContext");
+    if (request_method == "DELETE") {
+          const addToStartupButton = document.getElementById("removeFromStartup");
+          addToStartupButton.id = "addToStartup";
+          addToStartupButton.dataset.call = "addToStartup";
+          addToStartupButton.innerText = translate_str("addToStartup", "Add Mukkuru to startup");
+    } else {
+          const addToStartupButton = document.getElementById("addToStartup");
+          addToStartupButton.id = "removeFromStartup";
+          addToStartupButton.dataset.call = "removeFromStartup";
+          addToStartupButton.innerText = translate_str("removeFromStartup", "Remove Mukkuru from startup");
+    }
+}
+
+function safeRemove(elementId){
+  const element = document.getElementById(elementId);
+  if (element != undefined) {
+    element.remove();
+  }
 }

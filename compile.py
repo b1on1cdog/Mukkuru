@@ -88,7 +88,7 @@ def zip_dir_contents(src_dir, zip_path):
 
 requirements = ["flask", "waitress",
                 "requests", "pillow",
-                "distro", "psutil",
+                "distro", "psutil", "vdf",
                 "nuitka", "imageio", "qrcode"]
 
 requirements = requirements + ["setuptools"]
@@ -215,7 +215,7 @@ if args.alt:
 compiler_flags = [ "-m", "nuitka"]
 #compiler_flags.append("--follow-imports")
 if system == "Windows":
-    compiler_flags.append(f"--windows-icon-from-ico={ICON_PATH}")
+    compiler_flags.append(f"--windows-icon-from-ico={PNG_PATH}")
     if not args.debug:
         compiler_flags.append("--windows-console-mode=disable")
     compiler_flags.append("--windows-company-name=Josue Alonso Rodriguez")
@@ -235,7 +235,7 @@ else:
     compiler_flags.append("--onefile")
 
 if system == "Linux":
-    compiler_flags.append(f"--linux-icon={ICON_PATH}")
+    compiler_flags.append(f"--linux-icon={PNG_PATH}")
 if USE_WEF:
     compiler_flags.append("--enable-plugin=tk-inter")
 compiler_flags.append(f"--include-data-dir={UI_SOURCE}={UI_SOURCE}")

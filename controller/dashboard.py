@@ -13,7 +13,7 @@ from utils.bootstrap import build_file_tree, get_userprofile_folder
 dashboard_blueprint = Blueprint('library', __name__)
 
 @dashboard_blueprint.route('/<path:path>')
-def server_file(path):
+def server_file(path: str):
     ''' returns dashboard static files '''
     serve_path = os.path.join(APP_DIR, "ui")
     if path.startswith("thumbnails/") or path.startswith("hero/"):

@@ -9,6 +9,7 @@ from library.games import get_games, scan_games, scan_artwork
 from library.games import launch_app, get_username, list_stores
 from library import video
 from utils.core import get_config, mukkuru_env
+from utils import expansion
 
 library_controller = Blueprint('library', __name__)
 external_library = Blueprint('external_library', __name__)
@@ -43,6 +44,12 @@ def get_games_controller():
     games = get_games()
     return jsonify(games)
 
+@library_controller.route('/library/lossless_scaling/<app_id>', methods = ['POST', 'DELETE'])
+def toggle_lossless_scaling_controller(app_id):
+    ''' calls toggle_lossless_scaling '''
+    expansion.toggle_lossless_scaling_for_game(app_id, request.method == 'POST')
+    return jsonify(200)
+
 @external_library.route('/library/launch/<app_id>')
 @library_controller.route('/library/launch/<app_id>')
 def launch_app_controller(app_id):
@@ -56,7 +63,7 @@ def get_username_controller():
     return get_username()
 
 @library_controller.route('/video/thumbnail/<video_id>', methods = ['POST'])
-def set_video_thumbnail(video_id):
+def set_video_thumbnail(video_id: str):
     '''update video thumbnail from request'''
     if request.method == 'POST':
         thumbnail = request.get_json()

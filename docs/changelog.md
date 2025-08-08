@@ -1,16 +1,31 @@
 # Changelog
 -----------------
+# 0.3.14
+- Removed unused assets and compressed some images<br/>
+- Replaced Mukkuru icon<br/>
+- Solved language not applying until app reboot<br/>
+- Parameters are now type hinted<br/>
+- Added shutdown and reboot options<br/>
+- Added option to skip games with same title<br/>
+- Changing Settings tab will now revert scroll position<br/>
+- AddToStartup and RemoveFromStartup are now a single setting<br/>
+- Added a description to "Add to startup"<br/>
+- Added "Add To Startup" support for MacOS and Windows<br/>
+- (Windows/Linux) Added "Enable Lossless scaling" option when Lossless Scaling is installed<br/>
+- Returning from all-software and media list menu will not reload home anymore<br/>
+- Solved accidental configuration update when calling settings functions<br/>
+- Improved backend_log, it will now log with more information<br/>
 # 0.3.13
-- Fixed server port busy prevented terminating old instance in Linux <br/>
-- Fixed controls not locked during global progress bar display <br/>
-- Fixed unable to return in dashboard file download <br/>
+- Fixed server port busy prevented terminating old instance in Linux<br/>
+- Fixed controls not locked during global progress bar display<br/>
+- Fixed unable to return in dashboard file download<br/>
 - Localized Mukkuru Store, global progress bar and update messages<br/>
 - Fixed global progress bar not appearing after starting patch install<br/>
 - Removed kill_process_on_port since is not used anymore<br/>
 - (SteamOS only) added option to launch Mukkuru at startup<br/>
 - (Linux) Solved Firefox crash message<br/>
 # 0.3.12
-- SW2 is now default theme<br/>
+- JV2 is now default theme<br/>
 - "original" is now default ui effect<br/>
 - removed "download_steam_avatar" as it was unnecesary and unreliable<br/>
 - Mukkuru can now download and install game patches<br/>
@@ -73,7 +88,7 @@
 - Added option to load videos from user video directory <br/>
 # 0.3.8
 - Some theme logic was moved to CSS so it can be controlled from user themes<br/>
-- Fixed game scrolling title not stopping in SW2 Theme<br/>
+- Fixed game scrolling title not stopping in JV2 Theme<br/>
 - Removed tooltip in top of username<br/>
 - It is now possible to load user audio effects<br/>
 - MP3 and OGG are now supported audio effects formats<br/>
@@ -96,7 +111,7 @@
 - non-steam games that are not from heroic/lutris can now run<br/>
 - added executable metadata for windows build<br/>
 - 'onedir' in compile.py will be '--standalone' when using nuitka<br/>
-- SW2 Theme item selector now applies to videos, avatar and context Menus<br/>
+- JV2 Theme item selector now applies to videos, avatar and context Menus<br/>
 - Added min size to app icons in AppList<br/>
 - Added Steam Crossover support in MacOS<br/>
 # 0.3.5
@@ -179,11 +194,11 @@
 - Added FlaskUI as an optional view<br/>
 - Minor UI Changes<br/>
 # 0.2.14
-- SW2 style now applies to applist<br/>
-- Improved SW2 selector animation<br/>
-- PS5 style now applies to applist<br/>
-- PS5 style visibility is improved in light mode<br/>
-- [fix] PS5 placeholders are now invisible <br/>
+- JV2 style now applies to applist<br/>
+- Improved JV2 selector animation<br/>
+- BlanceUI style now applies to applist<br/>
+- BlanceUI style visibility is improved in light mode<br/>
+- [fix] BlanceUI placeholders are now invisible <br/>
 - [fix] spacer is now added after placeholders<br/>
 - [fix] improved network interface detection <br/>
 - [fix] solved MacOS annoying "boop" when navigating in settings <br/>
@@ -201,7 +216,7 @@
 - [source] Steam functions are now in a [different module](/utils/steam.py) <br/>
 - [source] Added [third-party.md](third-party.md) <br/>
 # 0.2.12
-- SW2 list style <br/>
+- JV2 list style <br/>
 - [fix] opening store used to open settings instead <br/>
 - [fix] sound effects label off bounds <br/>
 - Added WIP CSS Preprocessor <br/>
@@ -213,8 +228,8 @@
 - Fixed Settings not hightlighting White when dark mode was disabled<br/>
 - Improved navigation logic<br/>
 # 0.2.10
-- Added PS5-like list style <br/>
-- Added PS5 Sound effects <br/>
+- Added BlancheUI theme <br/>
+- Added *** Sound effects <br/>
 - Solved crash when a translation was not available <br/>
 - Added waitress as dependency <br/>
 - Improved loading speed <br/>

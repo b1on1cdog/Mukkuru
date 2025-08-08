@@ -63,6 +63,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (footerButtonBg != "") {
         document.querySelectorAll(".footerButton").forEach((element) => element.style.backgroundColor = "rgba(0, 0, 0, 0)");
     }
+    fetch("/app/capabilities").then(function(response) {
+        return response.json();
+    }).then(function(data) {
+        if (data["shutdown"] == false) {
+            document.getElementById("shutdownDeviceBtn").remove();
+        }
+        if (data["reboot"] == false) {
+            document.getElementById("restartDeviceBtn").remove();
+        }
+        if (data["lossless_scaling"] == false) {
+            document.getElementById("lsOption").remove();
+        }
+    })
 
     fetch("/config/get").then(function(response) {
         return response.json();
@@ -199,6 +212,15 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("blOption").innerText = translate_str("showGame", "Show game");
         } else {
             document.getElementById("blOption").innerText = translate_str("hideGame", "Hide game");
+        }
+        // To-do: improve this detection
+        lsOption = document.getElementById("lsOption");
+        if (lsOption != undefined) {
+            if (isGameRow && userConfiguration.losslessScaling.includes(gameId) ) {
+                lsOption.innerText = translate_str("disableLosslessScaling", "Disable Lossless Scaling");
+            } else {
+                lsOption.innerText = translate_str("enableLosslessScaling", "Enable Lossless Scaling");
+            }
         }
 
         if (isGameRow){
@@ -417,7 +439,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     gameList.style.display = "none";
                     document.getElementsByClassName("homeHeader")[0].style.display = "none";
                     document.getElementsByClassName("footerNavigation")[0].style.display = "none";
-                  //  document.getElementsByClassName("appheaders")[0].style.display = "flex";
                     appList.style.display = "grid";
                     currentIndex = 0;
                     }, 300);
@@ -513,7 +534,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
                 if (currentRow == 3){
-                    goHome();
+                   // goHome();
+                    returnMainScreen();
                 }
 
         }
@@ -636,6 +658,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="contextualMenu" id="gameContextMenu">
             <div class="contextItem selected" id="fvOption" onclick='setGameProperty("favorite", appLaunchers[currentIndex].dataset.gameid)'>Add as favorite</div>
             <div class="contextItem" id="blOption" onclick='setGameProperty("blacklist", appLaunchers[currentIndex].dataset.gameid)'>Blacklist game</div>
+            <div class="contextItem" id="lsOption" onclick='setGameProperty("lossless_scaling", appLaunchers[currentIndex].dataset.gameid)'>Enable lossless scaling</div>
         </div>
         <div class="contextualMenu" id="videoContextMenu">
             <div class="contextItem selected" id="deleteVideoOption" data-loc="id" data-trm="swapText" onclick='deleteVideo(mediaItems[currentMedia])'>Delete video</div>
@@ -682,6 +705,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="32px" height="32px">
                     <path xmlns="http://www.w3.org/2000/svg" fill="currentColor" fill-rule="evenodd" d="M38.25 24a13.5 13.5 0 0 1-25.83 5.502l-4.173 1.695A18.003 18.003 0 0 0 42.75 24 18 18 0 0 0 10.5 13.002V7.5H6v12l2.25 2.25h10.5v-4.5h-5.694A13.5 13.5 0 0 1 38.25 24" clip-rule="evenodd"></path>
                 </svg>&nbsp;Restart Mukkuru</div>
+                <div class="contextItem" id="restartDeviceBtn" data-loc="restartDevice" data-trm="patchHTML" data-patch="Restart Device" onclick="shutdownDevice(true)">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="32px" height="32px">
+                    <path xmlns="http://www.w3.org/2000/svg" fill="red" fill-rule="evenodd" d="M38.25 24a13.5 13.5 0 0 1-25.83 5.502l-4.173 1.695A18.003 18.003 0 0 0 42.75 24 18 18 0 0 0 10.5 13.002V7.5H6v12l2.25 2.25h10.5v-4.5h-5.694A13.5 13.5 0 0 1 38.25 24" clip-rule="evenodd"></path>
+                </svg>&nbsp;Restart Device</div>
+                <div class="contextItem" id="shutdownDeviceBtn" data-loc="shutdownDevice" data-trm="patchHTML" data-patch="Shutdown Device" onclick="shutdownDevice(false)">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="10 10 80 80" width="32px" height="32px"><path d="M79.8,49.646A29.8,29.8,0,1,1,39.125,21.913v6.015a24.3,24.3,0,1,0,21.75,0V21.913A29.84,29.84,0,0,1,79.8,49.646ZM52.75,15.038h-5.5V44.6h5.5Z" fill="red"/></svg>
+                </svg>&nbsp;Shutdown Device</div>
         </div>
         <footer class="homeFooter pending">
             <div class="controllerState">
