@@ -161,6 +161,27 @@ async function setAppStartup(request_method = "POST") {
     }
 }
 
+
+async function manageGame(app_id, request_method = "POST") {
+    ss_response = await fetch(`/library/manage/`+app_id, {
+        method : request_method
+    });
+    if (app_id == "all") {
+      startProgressBar();
+    }
+    message = await ss_response.text();
+    document.getElementById("messageBox").innerText = message;
+    open_context_menu("messageContext");
+    const manageAllGamesButton = document.getElementById("manageAllGames");
+    if (request_method == "POST") {
+      manageAllGamesButton.dataset.call = "unmanageAllGames";
+      manageAllGamesButton.innerText = translate_str("unmanageAllGames", "Unmanage all games");
+    } else {
+      manageAllGamesButton.dataset.call = "manageAllGames";
+      manageAllGamesButton.innerText = translate_str("manageAllGames", "Manage all games");
+    }
+}
+
 function safeRemove(elementId){
   const element = document.getElementById(elementId);
   if (element != undefined) {

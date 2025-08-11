@@ -7,7 +7,7 @@
   --applist-columns: 5;
   --game-title-scrolling-text: 0;
   --use-glass: 1;
-  --all-software-thumbnail: "assets/img/all-software-2.png";
+  --all-software-thumbnail: "assets/img/all-software.png";
 }
 
 html {
@@ -58,20 +58,12 @@ html {
     width: unset;
     transform: unset;
     transition: unset;
-
 }
-
 
 .gameLauncher-more {
     height: 140px;
     width: 140px;
     border-radius: 11%;
-}
-
-.gameLauncher-icon {
-    border-radius: 11%;
-    width: 100%;
-    height: 100%;
 }
 
 .gameLauncher-more:focus {

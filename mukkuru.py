@@ -21,7 +21,7 @@ from flask import send_from_directory, send_file
 import utils.core as core
 from utils.css_preprocessor import CssPreprocessor
 core.APP_DIR = os.path.dirname(os.path.abspath(__file__))
-from utils import hardware_if, updater, expansion, test
+from utils import hardware_if, updater, expansion, passthrough, test
 from utils.core import mukkuru_env, COMPILER_FLAG, FRONTEND_MODE
 from utils.core import APP_PORT, SERVER_PORT, APP_DIR
 from utils.core import app_version, get_config, backend_log, set_alive_status
@@ -31,7 +31,7 @@ from utils import bootstrap
 from library import video
 from library.games import get_games, scan_games, scan_thumbnails, get_username, artwork_worker
 from library.steam import get_steam_avatar
-from library.games import launch_store
+from library.games import launch_store, find_app_id_from_path
 
 from controller.license import license_controller
 from controller.hardware import hardware_controller
@@ -405,6 +405,22 @@ def check_for_updates():
     ret = updater.check_for_updates()
     return jsonify(ret)
 
+@app.route('/app/running')
+def get_running_apps():
+    ''' returns a dictionary containing running apps '''
+    running_apps = {}
+    passthrough_port = passthrough.PASSTHROUGH_PORT
+    used_ports = 0
+    while used_ports < passthrough.AVAILABLE_P_PORTS:
+        try:
+            passthrough_url: str = f"http://localhost:{passthrough_port+used_ports}/status"
+            rep = bootstrap.REQUESTS.get(passthrough_url, stream=True, timeout=0.15)
+            rep.json()
+        except bootstrap.REQUESTS.exceptions.RequestException:
+            pass
+        used_ports = used_ports + 1
+    return jsonify(running_apps)
+
 @app.route('/app/update')
 def start_app_update():
     ''' downloads update if available '''
@@ -546,6 +562,13 @@ def main():
         elif arg == "--add-poolkit-rules":
             expansion.add_poolkit_rule()
             return
+        else:
+            backend_log("Passthrough mode")
+            if "SteamAppId" not in os.environ:
+                os.environ["SteamAppId"] = find_app_id_from_path(sys.argv[1])
+                if os.environ["SteamAppId"] == "":
+                    backend_log("Unable to find app_id")
+            passthrough.transparent_execution()
         return
     backend_log(f'Using { FRONTEND_MODE } for rendering')
     backend_log(f"COMPILER_FLAG: {COMPILER_FLAG}")

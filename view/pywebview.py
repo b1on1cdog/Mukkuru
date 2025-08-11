@@ -14,7 +14,7 @@ class Frontend:
     def __init__(self, fullscreen, app_version, environ = None):
         self.window = webview.create_window(
             app_version,
-            "http://localhost:49347/frontend/",
+            "http://localhost:49347/frontend/frame.html",
             fullscreen=fullscreen, width=1280, height=800
         )
         self.fullscreen_state = fullscreen

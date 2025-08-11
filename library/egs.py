@@ -150,6 +150,7 @@ def get_egs_games() -> dict:
                             "catalogNamespace" : manifest["MainGameCatalogNamespace"],
                             "catalogItemID" : manifest["MainGameCatalogItemId"],
                             "LaunchOptions" : "",
+                            "InstallDir" : manifest["InstallLocation"],
                             "Exe" : game_dir,
                             "StartDir" : manifest["InstallLocation"],
                             "Source" : "egs",

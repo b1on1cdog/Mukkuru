@@ -1,8 +1,8 @@
 # Copyright (c) 2025 b1on1cdog
 # Licensed under the MIT License
 '''
-Mukkuru module with essential functions and constants.
-This module should NOT import other Mukkuru modules.
+Mukkuru module with essential functions and constants.\n
+This module should NOT import other Mukkuru modules.\n
 '''
 import os
 from functools import lru_cache
@@ -19,11 +19,13 @@ import re
 # Constants
 mukkuru_env = {}
 COMPILER_FLAG = getattr(sys, 'frozen', False) or "__compiled__" in globals()
-APP_VERSION = "0.3.14"
+APP_VERSION: str = "0.3.15"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
-APP_PORT = 49347
-SERVER_PORT = 49351
-FRONTEND_MODE = "PYWEBVIEW"
+APP_PORT: int = 49347
+SERVER_PORT: int = 49351
+PASSTHROUGH_PORT: int = 49453# 49454, 49455 will also be used when opening more games
+AVAILABLE_P_PORTS: int = 4
+FRONTEND_MODE: str = "PYWEBVIEW"
 
 if platform.system() == "Windows":
     pass
@@ -39,7 +41,9 @@ def app_version():
 
 # Logging
 def backend_log(message, parent = False) -> None:
-    ''' print message and save to file '''
+    ''' print message and save to file
+    :param str message: Message to print\n
+    :param bool parent: logs caller filename/line\n'''
     stack = inspect.stack()
     frame = stack[1]
     if parent:
@@ -62,6 +66,7 @@ def get_config() -> dict:
             "skipNoArt" : False,
             "skipDuplicated" : True,
             "displayBatteryPercent" : False,
+            "displayCursor" : True,
             "maxGamesInHomeScreen" : 12,
             "enableServer" : False,
             "autoPlayMedia" : False,
@@ -139,7 +144,13 @@ def format_executable(executable: str) -> str:
     return executable
 
 def sanitized_env() -> dict:
-    ''' get a environment copy free of bundled libs references '''
+    '''
+    Returns a sanitized copy of os.environ\n
+    This is necessary when using PyInstaller, since default environment
+    can cause external executable calls to look for system libs inside
+    this app directory\n
+    :returns: a os.environ copy without LD_LIBRARY_PATH, PYTHONHOME and PYTHONPATH
+    '''
     env = os.environ.copy()
     env.pop("LD_LIBRARY_PATH", None)
     env.pop("PYTHONHOME", None)
@@ -147,7 +158,9 @@ def sanitized_env() -> dict:
     return env
 
 def normalize_text(text: str, remove_symbols: bool = False) -> str:
-    ''' removes all special characters '''
+    ''' removes all special characters
+    :param str text: text to normalize\n
+    :param bool remove_symbols: keep only letters, numbers, underscores, and spaces.\n'''
     text = unicodedata.normalize("NFKD", text)
     text = text.encode("ascii", "ignore").decode()
     if remove_symbols:

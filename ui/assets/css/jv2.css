@@ -1,7 +1,7 @@
 :root {
     --footer-button-bg: rgba(0, 0, 0, 0);
     --dark-footer-button-bg: unset;
-    --all-software-thumbnail: "assets/img/all-software-2.png";
+    --all-software-thumbnail: "assets/img/all-software.png";
 }
 .footerNavigation {
     background-color: var(--select-border);
@@ -34,7 +34,7 @@
     box-shadow: 0 1px 1px calc(4px + 3px) rgba(0, 0, 0, .1);
 }
 
-.gameLauncher, .gameLauncher-thumbnail, .gameLauncher-icon, .gameLauncher-more, .gameLauncher-more:focus {
+.gameLauncher, .gameLauncher-thumbnail, .gameLauncher-more, .gameLauncher-more:focus {
     width: 246px;
     height: 246px;
     border-radius: 12px;

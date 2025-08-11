@@ -270,7 +270,6 @@ function hideUI(state){
     document.getElementsByClassName("homeBody")[0].classList.remove("pending");
     document.getElementsByClassName("homeFooter")[0].classList.remove("pending");
   }
-
 }
 
 function closeCTX(){
@@ -371,6 +370,11 @@ async function isAlive(){
     await fetch("/library/lossless_scaling/"+app_id, { method: state?"POST":"DELETE" });
   }
 
+  async function archiveGame(app_id){
+    startProgressBar(true);
+    await fetch("/library/archive/"+app_id, { method: "POST"});
+  }
+
   function setGameProperty(property, value, value2 = undefined){
     switch (property) {
       case "favorite":
@@ -394,6 +398,9 @@ async function isAlive(){
           userConfiguration.blacklist.push(value);
         }
         break;
+      case "archived":
+        archiveGame(value);
+        return;
       case "lossless_scaling":
           if (userConfiguration.losslessScaling.includes(value)){
             const index = userConfiguration.losslessScaling.indexOf(value);
@@ -659,14 +666,10 @@ async function createProgressBar(){
   progressOverlay.appendChild(progressBar);
   progressOverlay.appendChild(progressTitle);
   progressOverlay.appendChild(progressText);
-  /*
-          <progress id="progress-bar" value="20" max="100"></progress>
-        <div id="progress-title" class="message" style="bottom: 60%; position: fixed;">Downloading patch.zip</div>
-        <div class="progress-text">0mb / 0mb</div>*/
   document.body.appendChild(progressOverlay); 
 }
 
-async function startProgressBar() {
+async function startProgressBar(usePercent = false) {
   await sleep(600);
   document.getElementById("overlay-pb").classList.add("active");
   progressActive = true;
@@ -681,7 +684,11 @@ async function startProgressBar() {
     if (progressActive){
         document.getElementById("progress-bar").value = global_progress["progress"];
         document.getElementById("progress-title").innerText = global_progress["context"];
-        document.getElementById("progress-text").innerText = `${downloaded} / ${total}mb`;
+        progressMessage = `${Math.round(global_progress["progress"])}%`;
+        if (usePercent == false) {
+          progressMessage = `${downloaded} / ${total}mb`;
+        }
+        document.getElementById("progress-text").innerText = progressMessage;
     }
     await sleep(200);
   }
@@ -720,6 +727,11 @@ function openStore(){
     window.location.replace("/frontend/store");
   }, 100);
 }
+async function fetch_archives(){
+    const archives_r = await fetch("/library/archives");
+    const archives = await archives_r.json();
+    return archives;
+}
 
 async function fetch_games(isConfigReady = undefined) {
     const root = document.documentElement; // This is the <html> element
@@ -729,9 +741,10 @@ async function fetch_games(isConfigReady = undefined) {
     const appList = document.querySelector('.appList');
     const useGlass = styles.getPropertyValue('--use-glass').trim() == "1";
     const allSoftwareThumbnailURL = styles.getPropertyValue('--all-software-thumbnail').trim().slice(1, -1);
-
+    const archives = await fetch_archives();
     response = await fetch("/library/get");
     data = await response.json();
+
     library_start = performance.now();
     gameArr = Object.entries(data);
 
@@ -759,6 +772,8 @@ async function fetch_games(isConfigReady = undefined) {
     }
 
     gameLimit = userConfiguration["maxGamesInHomeScreen"];
+    const archivedTag = document.createElement('div');
+    archivedTag.className = "archiveTag";
     gameArray.forEach((item) => {
         const AppID = item[0];
         box_src = './thumbnails/'+AppID+'.jpg';
@@ -781,9 +796,8 @@ async function fetch_games(isConfigReady = undefined) {
         button.className = 'gameLauncher';
         button.id = AppID;
         button.dataset.gameid = AppID;
-        if (favoriteGames.has(AppID)){
-            button.classList.add("favorite");
-        }
+        button.dataset.source = item[1]["Source"];
+        button.dataset.knowndir = "InstallDir" in item[1];
         let proton = false;
         if ("Proton" in item[1] && item[1]["Proton"] == true ) {
             proton = true;
@@ -807,30 +821,57 @@ async function fetch_games(isConfigReady = undefined) {
             glass.className = 'glass-effect';
             button.appendChild(glass);
         }
-
         if (gameLimit > gamesAdded){
             gameList.appendChild(button);
             gamesAdded++;
         }
-        const app = document.createElement('button');
-        app.className = 'appLauncher';
+
         if (favoriteGames.has(AppID)){
-            app.classList.add("favorite");
+            button.classList.add("favorite");
         }
-        app.dataset.proton = proton;
+        if (archives[AppID] != undefined) {
+          button.classList.add("archived");
+          button.appendChild(archivedTag.cloneNode(true));
+        }
+
+        const app = button.cloneNode(true);
+        app.className = app.className.replace('gameLauncher','appLauncher');
         app.id = "app_" + AppID;
-        app.dataset.gameid = AppID;
-        const appTitle = document.createElement('div');
-        appTitle.className = "appLauncher-title";
-        appTitle.textContent = item[1]["AppName"]
-        appTitle.dataset.text = appTitle.textContent;
-        const appImage = document.createElement('img');
-        appImage.className = 'appLauncher-thumbnail';
-        appImage.src = box_src;
-        appImage.alt = item[1]["AppName"];
-        app.appendChild(appTitle);
-        app.appendChild(appImage);
+        Array.from(app.children).forEach((item) => {
+          item.className = item.className.replace("gameLauncher", "appLauncher");
+        });
         appList.appendChild(app);
+
+        let timer = null;
+        let fired = false;
+        const holdDuration = 800;
+        touchStartHandler = () => {
+          timer = setTimeout(() => {
+            fired = true;
+            console.log("Hold press registered");
+          }, holdDuration);
+        };
+        touchEndHandler = () => {
+          clearTimeout(timer);
+          if (fired){
+            fired = false;
+            //handle short press
+            return;
+          }
+          //handle long press
+          return;
+        }
+        touchCancelHandler = () => {
+          fired = false;
+          clearTimeout(timer);
+        }
+        app.addEventListener('touchstart', touchStartHandler);
+        app.addEventListener('touchend', touchEndHandler);
+        app.addEventListener('touchcancel', touchCancelHandler);
+        button.addEventListener('touchstart', touchStartHandler);
+        button.addEventListener('touchend', touchEndHandler);
+        button.addEventListener('touchcancel', touchCancelHandler);
+
     });
 
     if (gamesAdded >= gameLimit) {
@@ -840,7 +881,7 @@ async function fetch_games(isConfigReady = undefined) {
         moreButton.id = "allSoftware";
 
         const thumbnail = document.createElement('img');
-        thumbnail.className = 'gameLauncher-icon';
+        thumbnail.className = 'gameLauncher-thumbnail';
 
         if (allSoftwareThumbnailURL != "") {
             thumbnail.src = allSoftwareThumbnailURL;
@@ -909,3 +950,10 @@ async function fetch_games(isConfigReady = undefined) {
     measure_time("library loading time", library_start)
 }
 
+function attachContextItem(condition, context_menu, context_item){
+    if (condition && !context_item.isConnected){
+      context_menu.appendChild(context_item);
+    } else if (!condition && context_item.isConnected) {
+      context_menu.removeChild(context_item);
+    }
+}

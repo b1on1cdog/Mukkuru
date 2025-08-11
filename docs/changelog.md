@@ -1,5 +1,17 @@
 # Changelog
 -----------------
+# 0.3.15
+- Lossless scaling option is now hidden in games from uncompatible sources<br/>
+- Some backend functions are now documented using Sphinx markup<br/>
+- Added game archiving to compress games to save space<br/>
+- Added "Manage all games" option to tamper LaunchOptions in the go<br/>
+- This will also allow detecting, stopping, pausing and resuming launched games<br/>
+- Improved lossless scaling toggle so it won't break non-steam games<br/>
+- Simplified frontend game fetching code<br/>
+- Disabling cursor is now decided by user<br/>
+- Fixed cursor blinking during during reload<br/>
+- Fixed FOUC when using iframe in Dark Mode<br/>
+- Fixed pressing options with context menu replayed sound effect<br/>
 # 0.3.14
 - Removed unused assets and compressed some images<br/>
 - Replaced Mukkuru icon<br/>

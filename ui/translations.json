@@ -16,8 +16,9 @@
         "Back" : "Volver",
         "Play" : "Jugar",
         "OK" : "Aceptar",
-        "loop" : "Cursor con efecto bucle",
-        "loop-desc" : "El cursor retornara por el otro lado de la pantalla al navegar",
+        "loop" : "Selector con efecto bucle",
+        "loop-desc" : "El selector retornara por el otro lado de la pantalla al navegar",
+        "displayCursor" : "Mostrar cursor",
         "startupGameScan" : "Escanear juegos al iniciar",
         "startupGameScan-desc" : "Escanear juegos automaticamente al abrir Mukkuru",
         "skipNoArt" : "Omitir juegos sin arte",
@@ -94,6 +95,7 @@
         "reinstalling..." : "reinstalling...",
         "Starting" : "Iniciando...",
         "Extracting" : "Extrayendo",
+        "Compressing" : "Comprimiendo",
         "Downloading" : "Descargando",
         "Updating" : "Actualizando",
         "install" : "instalar",
@@ -109,6 +111,10 @@
         "add-to-startup-desc" : "Puedes configurar Mukkuru para que inicie tan pronto el usuario inicie sesion",
         "removeFromStartup" : "Quitar del inicio",
         "enableLosslessScaling" : "Habilitar Lossless Scaling",
-        "disableLosslessScaling" : "Desactivar Losless Scaling"
+        "disableLosslessScaling" : "Desactivar Losless Scaling",
+        "manageAllGames" : "Administrar todos los juegos",
+        "unmanageAllGames" : "Dejar de administrar juegos",
+        "manage-all-games-desc": "Mukkuru configurara todos los juegos para lanzar a traves de este.\nImportante: debes deshacer esto antes de borrar Mukkuru",
+        "archiveOption" : "Archivar juego"
     }
 }

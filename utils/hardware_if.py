@@ -221,7 +221,6 @@ def connection_status() -> dict:
     status["signal"] = wireless_signal()
     return status
 
-
 def is_using_wireless() -> bool:
     ''' return whether a Wireless connection is being used '''
     interface = get_current_interface()

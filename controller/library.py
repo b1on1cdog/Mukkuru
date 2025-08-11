@@ -9,7 +9,7 @@ from library.games import get_games, scan_games, scan_artwork
 from library.games import launch_app, get_username, list_stores
 from library import video
 from utils.core import get_config, mukkuru_env
-from utils import expansion
+from utils import expansion, archiving
 
 library_controller = Blueprint('library', __name__)
 external_library = Blueprint('external_library', __name__)
@@ -50,10 +50,40 @@ def toggle_lossless_scaling_controller(app_id):
     expansion.toggle_lossless_scaling_for_game(app_id, request.method == 'POST')
     return jsonify(200)
 
+@external_library.route('/library/archives', methods = ['GET'])
+@library_controller.route('/library/archives', methods = ['GET'])
+def list_archives():
+    ''' returns a list of archives '''
+    return jsonify(archiving.get_archived_games())
+
+@external_library.route('/library/archive/<app_id>', methods = ['POST', 'DELETE'])
+@library_controller.route('/library/archive/<app_id>', methods = ['POST', 'DELETE'])
+def handle_game_archive(app_id):
+    ''' http controller for game archive creation '''
+    if request.method == "POST":
+        ret = archiving.archive_game(app_id)
+        if ret:
+            return jsonify(200)
+    elif request.method == "DELETE":
+        return jsonify(501)
+    return jsonify(200)
+
+@library_controller.route('/library/manage/<app_id>', methods = ['POST', 'DELETE'])
+def manage_game(app_id):
+    ''' calls expansion.manage_all_games '''
+    if app_id == "all":
+        return expansion.manage_all_games(request.method == 'POST')
+    else:
+        # Not yet implemented
+        return jsonify(400)
+    return jsonify(200)
+
 @external_library.route('/library/launch/<app_id>')
 @library_controller.route('/library/launch/<app_id>')
 def launch_app_controller(app_id):
     ''' executes library.games.launch_app, returns 200 '''
+    if archiving.is_game_archived(app_id):
+        archiving.restore_game(app_id)
     launch_app(app_id)
     return "200"
 

@@ -25,7 +25,7 @@ See [third-party.md](docs/third-party.md) for third-party files license terms.<b
 - WebUI to transfer files from another device<br/>
 - Video playback and take video screenshots with a single button<br/>
 - Automatically download boxarts from SteamGridDB<br/>
-- Multi-language (currently only English and Spanish) <br/>
+- Multi-language (currently only English and Spanish)<br/>
 - Strict static analysis compliance<br/>
 - Plug and play compile environment<br/>
 
@@ -41,9 +41,12 @@ Some others are going to receive occasional uploads</br>
 [Read changelog.md](docs/changelog.md)
 
 # To-do list
+- Add full touchscreen support<br/>
+- Add option to terminate game (using transparent binary), optionally also pause/resume<br/> 
+- Add Steam game deletion (remove acf + InstallDir) <br/>
 - Add button to transfer mukkuru media to user folders<br/>
 - Add button to delete all video thumbnails<br/>
-- Add support for non-flatpak Heroic and MacOS Heroic<br/>
+- Add support for Linux non-flatpak Heroic and MacOS Heroic<br/>
 - More webui features:<br/>
     - Videoplayback control<br/>
     - Play Mukkuru videos from webui<br/>

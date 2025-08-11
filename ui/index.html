@@ -26,7 +26,11 @@ let currentRow = 1;
 let currentIndex = 0;
 
 function sendBackgroundColorToParent(color) {
-  window.parent.postMessage({ bgColor: color }, '*');
+    console.log("sending background to parent");
+    window.parent.postMessage({ bgColor: color });
+}
+function hideCursorInParent(){
+    window.parent.postMessage({hideCursor: true});
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -91,6 +95,11 @@ document.addEventListener('DOMContentLoaded', () => {
             backend_log(`[debug] config init failed ${userConfiguration} ${userConfiguration.length}`);
         }
 
+        if (userConfiguration["displayCursor"] != true) {
+            document.head.insertAdjacentHTML('beforeend', `<style>*, *::before, *::after { cursor: none !important; }</style>`);
+            hideCursorInParent();
+        }
+
         if (userConfiguration["darkMode"] == true) {
         /*
         We will get the colors from CSS, this way if colors need to be changed in future,
@@ -139,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
     createProgressBar();
     applyStoreFilter();
     allowRendering();
-    const bg = document.getElementsByClassName("homeMenu")[0].style.backgroundColor;
+    const bg = document.getElementsByClassName("homeMenu")[0].style.getPropertyValue("--bg-color");
     sendBackgroundColorToParent(bg);
     refreshServer();
     (async () => {
@@ -198,11 +207,17 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         proton_ctx_menu.innerText = protonList[0];
     }, "1000");
-
+    const lsOption = document.getElementById("lsOption");
+    const archiveOption = document.getElementById("archiveOption");
+    let firstCtxRefresh = true;
     function refreshCtxMenu(){
         currentApp = (currentRow == 1)?gameLaunchers[currentIndex]:appLaunchers[currentIndex];
         isGameRow =  (currentRow == 1 || currentRow == 3)
         gameId = currentApp.dataset.gameid;
+        if (firstCtxRefresh) {
+            archiveOption.innerText = translate_str("archiveOption", "Archive game");
+            firstCtxRefresh = false;
+        }
         if (isGameRow && currentApp.classList.contains("favorite")){
             document.getElementById("fvOption").innerText = translate_str("removeFavorite", "Remove from favorite");
         }  else {
@@ -214,17 +229,20 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("blOption").innerText = translate_str("hideGame", "Hide game");
         }
         // To-do: improve this detection
-        lsOption = document.getElementById("lsOption");
-        if (lsOption != undefined) {
-            if (isGameRow && userConfiguration.losslessScaling.includes(gameId) ) {
-                lsOption.innerText = translate_str("disableLosslessScaling", "Disable Lossless Scaling");
-            } else {
-                lsOption.innerText = translate_str("enableLosslessScaling", "Enable Lossless Scaling");
-            }
-        }
 
         if (isGameRow){
             ctxMenu = document.getElementsByClassName("contextualMenu active")[0];
+            if (lsOption != undefined) {
+                if (isGameRow && userConfiguration.losslessScaling.includes(gameId) ) {
+                    lsOption.innerText = translate_str("disableLosslessScaling", "Disable Lossless Scaling");
+                } else {
+                    lsOption.innerText = translate_str("enableLosslessScaling", "Enable Lossless Scaling");
+                }
+                attachContextItem(currentApp.dataset.source.includes("steam"), ctxMenu, lsOption);
+            }
+            const archiveCompatible = (currentApp.dataset.knowndir == "true" && !currentApp.classList.contains("archived"))
+            attachContextItem(archiveCompatible, ctxMenu, archiveOption);
+            /*
             isProtonSet = currentApp.dataset.proton == "true";
             if (isProtonSet) {
                 currentProton = userConfiguration.protonConfig[gameId];
@@ -233,13 +251,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     proton_ctx_menu.innerText = currentProton;
                 }
-                
             }
-            if (isProtonSet && !proton_ctx_menu.isConnected){
-                ctxMenu.appendChild(proton_ctx_menu);
-            } else if (!isProtonSet && proton_ctx_menu.isConnected) {
-                ctxMenu.removeChild(proton_ctx_menu);
-            }
+            attachContextItem(isProtonSet, ctxMenu, proton_ctx_menu);
+            */
         }
 
     }
@@ -297,6 +311,9 @@ document.addEventListener('DOMContentLoaded', () => {
         switch (keyBindings[e.key]) {
             case "options":
                 if (currentRow == 1 && currentIndex < gameLimit || currentRow == 3) {
+                    if (isContextMenu) {
+                        break;
+                    }
                     isContextMenu = true;
                     document.getElementById("gameContextMenu").classList.add("active");
                     refreshCtxMenu();
@@ -659,6 +676,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="contextItem selected" id="fvOption" onclick='setGameProperty("favorite", appLaunchers[currentIndex].dataset.gameid)'>Add as favorite</div>
             <div class="contextItem" id="blOption" onclick='setGameProperty("blacklist", appLaunchers[currentIndex].dataset.gameid)'>Blacklist game</div>
             <div class="contextItem" id="lsOption" onclick='setGameProperty("lossless_scaling", appLaunchers[currentIndex].dataset.gameid)'>Enable lossless scaling</div>
+            <div class="contextItem" id="archiveOption" onclick='setGameProperty("archived", appLaunchers[currentIndex].dataset.gameid)'>Archive game</div>
         </div>
         <div class="contextualMenu" id="videoContextMenu">
             <div class="contextItem selected" id="deleteVideoOption" data-loc="id" data-trm="swapText" onclick='deleteVideo(mediaItems[currentMedia])'>Delete video</div>

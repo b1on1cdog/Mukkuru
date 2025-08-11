@@ -20,6 +20,7 @@ from library.egs import read_heroic_username, get_heroic_env, get_egs_env
 from library.egs import get_heroic_games, get_egs_games
 
 artwork_queue = queue.Queue()
+pending_tasks = queue.Queue()
 
 def artwork_worker() -> None:
     ''' Processes artwork queue '''
@@ -47,11 +48,13 @@ def update_sgdb_api(user_config: dict) -> None:
 
 def library_scan(options: int) -> dict:
     '''
-    Scan library for games
-    1 - Steam
-    2 - Non-Steam
-    4 - EGS
-    8 - Heroic
+    Scan library for games\n
+    :param options: bitwise options representation\n
+        1 - Steam\n
+        2 - Non-Steam\n
+        4 - EGS\n
+        8 - Heroic\n
+    :type options: int
     '''
     option_steam = 1 << 0  # 0001 = 1
     option_nonsteam = 1 << 1  # 0010 = 2
@@ -239,6 +242,15 @@ def launch_lossless_scaling():
     from utils.winkeys import send_ctrl_alt_s#pylint: disable=C0415
     send_ctrl_alt_s()
 
+def find_app_id_from_path(path: str) -> str:
+    ''' finds an app_id if a path is matched from all installed games '''
+    games = get_games()
+    for app_id, game in games.items():
+        if "InstallDir" in game:
+            if os.path.normpath(path) in os.path.normpath(game["InstallDir"]):
+                backend_log(f"Using {app_id} due to matching InstallDir")
+                return app_id
+    return ""
 # To-do:
 # set env at provider (steam/heroic/egs) level
 def launch_app(app_id: str) -> None:

@@ -50,6 +50,9 @@ fetch("/config/get").then(function(response) {
         menuOptions.forEach(option => {
         document.getElementById("options-0").style.display = "";
 });
+        if (userConfiguration["displayCursor"] != true) {
+            document.head.insertAdjacentHTML('beforeend', `<style>*, *::before, *::after { cursor: none !important; }</style>`);
+        }
         if (userConfiguration["darkMode"] == true) {
             setDarkModeState(true);
         } else {

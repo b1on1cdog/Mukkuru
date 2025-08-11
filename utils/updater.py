@@ -1,6 +1,7 @@
 # Copyright (c) 2025 b1on1cdog
 # Licensed under the MIT License
-''' Handles Mukkuru updates '''
+''' Handles Mukkuru updates\n
+Imports utils.(bootstrap, expansion)'''
 import os
 import shutil
 import subprocess
@@ -16,6 +17,10 @@ from utils import bootstrap, expansion
 
 REPO_URL = "https://api.github.com/repos/b1on1cdog/Mukkuru/releases"
 
+LOWER_THAN = 0
+EQUAL_THAN = 1
+BIGGER_THAN = 2
+
 def process_update() -> None:
     ''' Replaces executable with new version, then starts new version '''
     update_file = os.path.abspath(sys.argv[0])
@@ -29,9 +34,9 @@ def process_update() -> None:
     subprocess.Popen([executable])
     os._exit(0)
 
-def start_update(update_path) -> None:
-    ''' Windows/Linux: replaces current executable with new one
-        MacOS: opens new dmg and terminates current app
+def start_update(update_path: str) -> None:
+    ''' Windows/Linux: replaces current executable with new one\n
+        MacOS: opens new dmg and terminates current app\n
     '''
     if platform.system() == "Darwin":
         subprocess.run(["open", update_path], check=False)
@@ -43,6 +48,14 @@ def start_update(update_path) -> None:
         subprocess.Popen([update_path], env=update_env)
         os._exit(0)
 
+def update_external_instance():
+    ''' Update passthrough Mukkuru executable '''
+    executable = format_executable(os.path.expanduser(f"~/{format_executable('mukkuru')}"))
+    update_file = os.path.abspath(sys.argv[0])
+    shutil.copy(update_file, executable)
+    current_permissions = os.stat(executable).st_mode
+    os.chmod(executable, current_permissions | stat.S_IXUSR)
+
 def get_platform_str(alt = False) -> str:
     ''' Returns string used in executables names '''
     current_os = platform.system().lower()
@@ -53,8 +66,16 @@ def get_platform_str(alt = False) -> str:
         current_arch = "x86_64"
     return f"{current_os}-{current_arch}"
 
-def ver_compare(ver1, ver2) -> int:
-    ''' compare 2 version strings 0 - lower, 1-equal, 2 bigger '''
+def ver_compare(ver1:str, ver2:str) -> int:
+    '''
+    Compare 2 version strings\n
+    :param str ver1: version to compare\n
+    :param str ver2: version of reference\n
+    :returns int:
+        - 0: ``ver1`` is lower than ``ver2``\n
+        - 1: ``ver1`` is equal to ``ver2``\n
+        - 2: ``ver1`` is bigger than ``ver2``\n
+    '''
     v1 = ver1.split(".")
     v2 = ver2.split(".")
     if ver1 == ver2:
@@ -84,7 +105,7 @@ def find_latest_version(versions: list) -> Optional[str]:
     print(versions)
     largest = versions[0]
     for version in versions[1:]:
-        if ver_compare(largest, version) == 0:
+        if ver_compare(largest, version) == LOWER_THAN:
             largest = version
     return largest
 
@@ -116,7 +137,7 @@ def find_latest_release(version_info = False) -> Union[str, str]:
     latest_version = find_latest_version(versions)
     if latest_version is None:
         return "",""
-    if ver_compare(latest_version, APP_VERSION) == 2:
+    if ver_compare(latest_version, APP_VERSION) == BIGGER_THAN:
         if version_info:
             return latest_version, changelog[latest_version]
         backend_log(f'found update url {version_list[latest_version]["url"]}')
@@ -142,6 +163,7 @@ def check_for_updates() -> dict:
     else:
         update_status["status"] = "up-to-date"
     return update_status
+
 def download_mukkuru_update() -> str:
     ''' downloads latest binary from Github '''
     if not COMPILER_FLAG:

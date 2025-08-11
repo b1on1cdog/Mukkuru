@@ -1,17 +1,24 @@
 # Copyright (c) 2025 b1on1cdog
 # Licensed under the MIT License
-''' download and extraction utils '''
+'''
+Download and extraction utils.\n
+bootstrap do not import other Mukkuru libraries except utils.core.\n
+'''
 import os
+import re
 import platform
 import subprocess
 import shutil
 import zipfile
 import hashlib
 import threading
+from typing import Optional, Callable
 from pathlib import Path
 
 import requests
 from utils.core import mukkuru_env, format_executable, sanitized_env
+
+REQUESTS: requests = requests
 
 if platform.system() == "Windows":
     import ctypes
@@ -27,7 +34,10 @@ operation_progress = {
 }
 
 def global_progress_callback(downloaded: int, total: int) -> None:
-    ''' handles progress in a global context '''
+    ''' Callback to update global progress bar\n
+    :param int downloaded: Counter of processed units\n
+    :param int total: Counter of total units\n
+    '''
     operation_progress["downloaded"] = downloaded
     operation_progress["total"] = total
     if total == 0:
@@ -48,8 +58,10 @@ def clear_global_progress() -> None:
     operation_progress["active"] = False
     operation_progress["context"] = "unknown"
 
-def download_file(url, path: str, progress_callback=None, chunk_size=8192):
-    '''Download file from URL with optional progress callback'''
+def download_file(url, path: str, progress_callback:Callable=None, chunk_size=8192):
+    '''Download file from URL with optional progress callback\n
+    :param str path: path of output file
+    :param typing.Callable progress_callback: callback function to update progress'''
     with requests.get(url, stream=True, timeout=20) as response:
         response.raise_for_status()
         total = int(response.headers.get('content-length', 0))
@@ -63,7 +75,7 @@ def download_file(url, path: str, progress_callback=None, chunk_size=8192):
                     if progress_callback:
                         progress_callback(downloaded, total)
 
-def get_unrar():
+def get_unrar() -> Optional[str]:
     ''' gets unrar path '''
     unrar_paths = [
         shutil.which("unrar"),
@@ -75,8 +87,10 @@ def get_unrar():
             return unrar_path
     return None
 
-def get_7z():
-    ''' gets 7z path '''
+def get_7z() -> Optional[str]:
+    '''
+    Gets 7z path\n
+    Returns None if 7z is not installed\n'''
     z_paths = [
         shutil.which("7z"),
         os.path.join(mukkuru_env["root"], "tools", format_executable("7z")),
@@ -96,37 +110,86 @@ def get_7z():
                 return wz_path
     return None
 
-def extract_rar(filename: str, output_dir:str):
-    ''' extract .rar file '''
+def compress_7z(files: list, output_file: str, progress_callback: Callable = None) -> bool:
+    ''' Compress list of files using 7z\n
+    :param list files: list of files to add to archive\n
+    :param str output_file: path where compressed archive is going to be stored\n
+    :param Callable progress_callback: function to report progress to\n
+    :returns: a boolean indicating operation success\n
+    '''
+    suppress_output = ["-bsp1", "-bso0"]
+    process = subprocess.Popen([get_7z(), 'a', output_file] + files + suppress_output,
+                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                   universal_newlines=True, bufsize=1)
+    progress_pattern = re.compile(r"(\d+)%")
+    for line in process.stdout:
+        if progress_callback is None:
+            break
+        line = line.strip()
+        match = progress_pattern.search(line)
+        if match:
+            percent = int(match.group(1))
+            progress_callback(percent, 100)
+    process.wait()
+    return process.returncode == 0
+
+def extract_rar(filename: str, output_dir:str) -> None:
+    ''' Extracts .rar archive\n
+    :param str filename: Filename of archive to extract\n
+    :param str output_dir: Dir where to extract the files to\n '''
     unrar = get_unrar()
     if unrar is None:
         return "Unable to extract file, no decompressor available"
     subprocess.run([unrar, "x", filename, output_dir], check=False, env=sanitized_env())
 
-def extract_7z(filename: str, output_dir: str):
-    ''' extract .7z file'''
+def extract_7z(filename: str, output_dir: str, callback: Callable = None) -> bool:
+    ''' Extracts archive using 7z\n
+    :param str filename: filename of archive\n
+    :param str output_dir: path of output where to extract files\n
+    :param Callable callback: function to report the operation progress\n
+    :returns: boolean indicating operation success\n
+    '''
     zz = get_7z()
     if zz is None:
-        return "Unable to extract file, no decompressor available"
-    subprocess.run([zz, "x", filename, f"-o{output_dir}"], check=False, env=sanitized_env())
+        print("Unable to extract file, no decompressor available")
+        return False
+    suppress_output = ["-bsp1", "-bso0"]
+    process = subprocess.Popen([zz, "x", filename, f"-o{output_dir}"] + suppress_output,
+                               stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
+                               universal_newlines=True, bufsize=1, env=sanitized_env())
+    progress_pattern = re.compile(r"(\d+)%")
+    for line in process.stdout:
+        if callback is None:
+            break
+        line = line.strip()
+        match = progress_pattern.search(line)
+        if match:
+            percent = int(match.group(1))
+            callback(percent, 100)
+    process.wait()
+    return process.returncode == 0
 
-def extract_zip(filename: str, output_dir: str):
-    ''' extract .zip file '''
+def extract_zip(filename: str, output_dir: str) -> bool:
+    ''' Extract .zip file\n
+    :param str filename: filename of archive to extract\n
+    :param str output_dir: path of dir where files will be extracted\n'''
     with zipfile.ZipFile(filename,"r") as zip_ref:
         zip_ref.extractall(output_dir)
+    return True
 
-def extract_archive(filename: str, output_dir: str):
+def extract_archive(filename: str, output_dir: str, callback: Callable = None) -> bool:
     ''' extract archive '''
     if filename.endswith(".zip"):
         return extract_zip(filename, output_dir)
     #elif filename.endswith(".rar"):
     #    return extract_rar(filename, output_dir)
     elif filename.endswith(".7z") or filename.endswith(".exe") or filename.endswith(".rar"):
-        return extract_7z(filename, output_dir)
+        return extract_7z(filename, output_dir, callback)
     else:
-        return "unknown compression"
+        print("Unknown compression")
+        return False
 
-def get_ffmpeg():
+def get_ffmpeg() -> Optional[str]:
     ''' finds ffmpeg path '''
     ffmpeg_paths = [
         shutil.which("ffmpeg"),
@@ -151,8 +214,10 @@ if platform.system() == "Windows":
             raise ctypes.WinError()
         return path_ptr.value
 
-def get_userprofile_folder(desired_dir: str):
-    ''' returns a user folder (Music, Videos, Downloads, Pictures)'''
+def get_userprofile_folder(desired_dir: str) -> Optional[str]:
+    ''' Retrieves a user directory regardless of OS\n
+    :param str desired_dir: Desired user directory (Music, Downloads, Pictures, etc) 
+    :returns: Path to desired Folder as string (ex: /home/user/Downloads)'''
     home_dir = Path('~').expanduser()
     user_dir = os.path.join(home_dir, desired_dir)
     if Path(user_dir).is_dir():
@@ -177,7 +242,7 @@ def get_userprofile_folder(desired_dir: str):
     return None
 
 
-def build_file_tree(root_path: str):
+def build_file_tree(root_path: str) -> dict:
     ''' return files and folders as a dictionary '''
     tree = {}
 
@@ -189,16 +254,42 @@ def build_file_tree(root_path: str):
             tree.setdefault("files", []).append(item)
     return tree
 
-def sha256_file(path, chunk_size=8192):
-    ''' calculate sha256 of file in chunks '''
+def sha256_file(path: str, chunk_size:int=8192) -> str:
+    ''' calculate sha256 of file in chunks
+    :param str path: Path of file to hash
+    :param int chunk_size: Size of chunks to load in memory
+    :return: computed sha256 as string, lowercase
+    '''
     hasher = hashlib.sha256()
     with open(path, 'rb') as f:
         for chunk in iter(lambda: f.read(chunk_size), b''):
             hasher.update(chunk)
     return hasher.hexdigest()
 
+def get_dir_size(start_path:str = '.') -> int:
+    ''' get's file size of a folder '''
+    total_size = 0
+    for dirpath, _, filenames in os.walk(start_path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            if not os.path.islink(fp):
+                total_size += os.path.getsize(fp)
+    return total_size
+
+def has_enough_space(target_path: str, required_bytes: int) -> bool:
+    ''' returns whether target_path has enough disk space
+    :param str target_path: Path of file to write, can also be a directory
+    :param int required_bytes: Number of bytes of the file to write
+    '''
+    usage = shutil.disk_usage(target_path)
+    free_bytes = usage.free
+    return free_bytes >= required_bytes
+
 def terminate_mukkuru_backend(app_port: int):
-    ''' send a quit request to mukkuru port '''
+    '''
+    Sends an /app/exit request to mukkuru port
+    :param int app_port: Mukkuru App port
+    '''
     quit_url = f"http://localhost:{app_port}/app/exit"
     try:
         requests.get(quit_url, stream=True, timeout=0.15)
