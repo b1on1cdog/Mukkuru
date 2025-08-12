@@ -157,6 +157,13 @@ def sanitized_env() -> dict:
     env.pop("PYTHONPATH", None)
     return env
 
+def get_paths_from_extensions(path: str, extensions: list) -> list:
+    ''' returns a list of paths from given extensions '''
+    paths: list  = []
+    for extension in extensions:
+        paths.append(f'{path}.{extension}')
+    return paths
+
 def normalize_text(text: str, remove_symbols: bool = False) -> str:
     ''' removes all special characters
     :param str text: text to normalize\n

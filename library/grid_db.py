@@ -68,8 +68,7 @@ def find_image_url(game_id: str, image_format:str, image_index: int = 0):
         dimensions = "512x512,1024x1024"
         url = f'{API_URL}grids/game/{game_id}?dimensions={dimensions}'
     elif image_format == "hero":
-        mimes = "image/png"
-        url = f'{API_URL}heroes/game/{game_id}?mimes={mimes}'
+        url = f'{API_URL}heroes/game/{game_id}'
     elif image_format == "logo":
         mimes = "image/png"
         url = f'{API_URL}logos/game/{game_id}?mimes={mimes}'
@@ -121,13 +120,13 @@ def download_image(game_identifier: GameIdentifier, s_path: str,
         extension = "png"
     elif file_url.endswith(".webp"):
         extension = "webp"
+    output_file = s_path
     if s_path.endswith('.png') or s_path.endswith('.jpg') or s_path.endswith('.webp'):
-        output_file = s_path
         output_extension = output_file[-3:]
         if {extension} != output_extension:
             output_file = output_file.replace(f'.{output_extension}', f'.{extension}')
     else:
-        output_file = os.path.join(s_path, f'{sanitize_filename_ascii(game_title)}.{extension}')
+        output_file = f'{output_file}.{extension}'
     download_file(file_url, output_file)
     if extension != "jpg" and image_format == "1:1":
         new_file = output_file.replace(f".{extension}", ".jpg")

@@ -454,7 +454,7 @@ button {
   object-fit: cover;
 }
 
-.appLauncher, .gameLauncher, .gameLauncher-more, .footerButton {
+.appLauncher, .gameLauncher, .footerButton {
     cursor: pointer;
 }
 
@@ -465,31 +465,6 @@ button {
     flex-shrink: 0;
     position: relative;
     outline: none;
-}
-
-.gameLauncher-more {
-    height: 246px;
-    width: 246px;
-    position: relative;
-    flex-shrink: 0;
-    outline: none;
-    position: relative;
-}
-
-.gameLauncher + .gameLauncher-more {
-    margin-left: 64px;
-}
-.gameLauncher-more:focus > .gameLauncher-title {
-    opacity: 1;
-}
-
-.gameLauncher-more:focus {
-/*margin-top: 30px;*/
-box-shadow: 
-    0px 0px 15px var(--select-light),
-    0px 0px 15px rgba(0, 0, 0, .1);
-height: 246px;
-animation: footerButton-select - 1s ease-in-out infinite;
 }
 
 .gameLauncher:focus {
@@ -789,6 +764,7 @@ so .archived will override .favorite when both classes are set
 
 .contextualMenu.active {
     display: block;
+    user-select: none;
 }
 
 .contextItem {
@@ -804,6 +780,7 @@ so .archived will override .favorite when both classes are set
     max-width: 80%;
     max-height: 100%;
     margin-right: 2vw;
+    cursor:pointer;
 }
 #dashboardQR {
     margin-left: 8vw;

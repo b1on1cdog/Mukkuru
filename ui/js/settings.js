@@ -161,6 +161,19 @@ async function setAppStartup(request_method = "POST") {
     }
 }
 
+async function updateMukkuru() {
+  close_context_menu(false);
+  startProgressBar();
+  response = await fetch("/app/update");
+  response_text = await response.text();
+  if (response_text == "up-to-date") {
+    document.getElementById("messageBox").innerText = "Mukkuru is already up-to-date";
+    open_context_menu("messageContext");
+  } else if (response_text == "unsupported") {
+    document.getElementById("messageBox").innerText = "This Mukkuru app does not support updates";
+    open_context_menu("messageContext");
+  }
+}
 
 async function manageGame(app_id, request_method = "POST") {
     ss_response = await fetch(`/library/manage/`+app_id, {

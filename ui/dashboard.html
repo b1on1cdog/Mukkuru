@@ -216,7 +216,7 @@ async function listApps() {
             fetch("/library/launch/"+app.dataset.appid);
         });
         const thumbnail = document.createElement('img');
-        thumbnail.src = './thumbnails/'+appId+'.jpg';
+        thumbnail.src = './thumbnails/'+appId;
         thumbnail.alt = appName;
         thumbnail.className = "appThumbnail";
         

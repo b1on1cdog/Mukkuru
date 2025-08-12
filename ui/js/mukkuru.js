@@ -224,9 +224,7 @@ async function hardwareStatusUpdate(){
         } else {
           wifiPath.setAttribute("d", "M 9 17 L 12 20 L 15 17 C 13.35 15.34 10.66 15.34 9 17 Z");
         }
-
       }
-
 }
 
 function clockUpdate(meridiem){
@@ -307,7 +305,7 @@ async function reloadGameThumbnails(){
   AppID = element.dataset.gameid;
   if (game_library[AppID]["Thumbnail"]){
       thumbnail = element.querySelectorAll('.gameLauncher-thumbnail, .appLauncher-thumbnail')[0];
-      thumbnail.src = './thumbnails/'+AppID+'.jpg';
+      thumbnail.src = './thumbnails/'+AppID;
     }
   });
   backend_log("reload done");
@@ -373,58 +371,6 @@ async function isAlive(){
   async function archiveGame(app_id){
     startProgressBar(true);
     await fetch("/library/archive/"+app_id, { method: "POST"});
-  }
-
-  function setGameProperty(property, value, value2 = undefined){
-    switch (property) {
-      case "favorite":
-        if (userConfiguration.favorite.includes(value)){
-          const index = userConfiguration.favorite.indexOf(value);
-          userConfiguration.favorite.splice(index, 1);
-        } else {
-          userConfiguration.favorite.push(value);
-        }
-        break;
-      case "proton":
-        protonConfig = userConfiguration["protonConfig"];
-        protonConfig[value] = value2;
-        userConfiguration["protonConfig"] = protonConfig;
-        break;
-      case "blacklist":
-        if (userConfiguration.blacklist.includes(value)){
-          const index = userConfiguration.blacklist.indexOf(value);
-          userConfiguration.blacklist.splice(index, 1);
-        } else {
-          userConfiguration.blacklist.push(value);
-        }
-        break;
-      case "archived":
-        archiveGame(value);
-        return;
-      case "lossless_scaling":
-          if (userConfiguration.losslessScaling.includes(value)){
-            const index = userConfiguration.losslessScaling.indexOf(value);
-            userConfiguration.losslessScaling.splice(index, 1);
-            toggleLosslessScaling(value, false);
-          } else {
-            userConfiguration.losslessScaling.push(value);
-            toggleLosslessScaling(value, true);
-          }
-        break;
-      default:
-        return;
-    }
-
-    fetch("/config/set", {
-      method: "POST",
-      body: JSON.stringify(userConfiguration),
-      headers: {
-        "Content-type": "application/json; charset=UTF-8"
-      }
-      }).then((response) => {
-        
-      });
-
   }
 
 const isFirefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent);
@@ -509,7 +455,6 @@ function exitMukkuru(){
   vanish(homeMenu);
 }
 
-
 function handleAutoPlay(action = "update"){
   apOption = document.getElementById("autoPlayOption");
   apState = userConfiguration["autoPlayMedia"];
@@ -590,20 +535,6 @@ function isPrintableKey(ev) {
   if (ev.ctrlKey || ev.altKey || ev.metaKey) return false;
   if (ev.key.length === 1) return true;
   return ev.key === "Enter" || ev.key === " ";
-}
-
-let isUserGestureRequired = false;
-
-function userGestureNoLongerRequired() {
-  if (isUserGestureRequired) {
-    isUserGestureRequired = false;
-    localStorage.setItem("userGestureRequired", "false");
-    if (!lockControls){
-      document.getElementById('overlay').style.display = 'none';
-    }
-    overlayMessage = document.getElementById('overlay-message');
-    overlayMessage.innerText = overlayMessage.dataset.original;
-  }
 }
 
 async function openThirdPartyStore(store) {
@@ -700,20 +631,6 @@ async function closeProgressBar(){
   document.getElementById("overlay-pb").classList.remove("active");
 }
 
-async function updateMukkuru() {
-  close_context_menu(false);
-  startProgressBar();
-  response = await fetch("/app/update");
-  response_text = await response.text();
-  if (response_text == "up-to-date") {
-    document.getElementById("messageBox").innerText = "Mukkuru is already up-to-date";
-    open_context_menu("messageContext");
-  } else if (response_text == "unsupported") {
-    document.getElementById("messageBox").innerText = "This Mukkuru app does not support updates";
-    open_context_menu("messageContext");
-  }
-}
-
 async function move_files(transfer_type) {
   response = await fetch("/app/move/"+ transfer_type, {method:"POST"});
   response_text = await response.text();
@@ -731,223 +648,6 @@ async function fetch_archives(){
     const archives_r = await fetch("/library/archives");
     const archives = await archives_r.json();
     return archives;
-}
-
-async function fetch_games(isConfigReady = undefined) {
-    const root = document.documentElement; // This is the <html> element
-    const styles = getComputedStyle(root);
-    const displayHero = styles.getPropertyValue('--display-hero').trim() == "1";
-    const gameList = document.querySelector('.gameList');
-    const appList = document.querySelector('.appList');
-    const useGlass = styles.getPropertyValue('--use-glass').trim() == "1";
-    const allSoftwareThumbnailURL = styles.getPropertyValue('--all-software-thumbnail').trim().slice(1, -1);
-    const archives = await fetch_archives();
-    response = await fetch("/library/get");
-    data = await response.json();
-
-    library_start = performance.now();
-    gameArr = Object.entries(data);
-
-    while (gameList.firstChild) {
-      gameList.removeChild(gameList.firstChild);
-    }
-    while (appList.firstChild) {
-      appList.removeChild(appList.firstChild);
-    }
-
-    const favoriteGames = new Set(userConfiguration.favorite);
-    const recentPlayed = new Set(userConfiguration.recentPlayed);
-
-    gameArray = [
-        ...gameArr.filter(([key]) => recentPlayed.has(key)),
-        ...gameArr.filter(([key]) => favoriteGames.has(key) && !recentPlayed.has(key)),
-        ...gameArr.filter(([key, val]) => !recentPlayed.has(key) && !favoriteGames.has(key) && val.Thumbnail === true),
-        ...gameArr.filter(([key, val]) => !recentPlayed.has(key) && !favoriteGames.has(key) && val.Thumbnail !== true)
-    ];
-    
-    gamesSkipped = 0;
-    gamesAdded = 0;
-    if (isConfigReady != undefined) {
-      await isConfigReady;
-    }
-
-    gameLimit = userConfiguration["maxGamesInHomeScreen"];
-    const archivedTag = document.createElement('div');
-    archivedTag.className = "archiveTag";
-    gameArray.forEach((item) => {
-        const AppID = item[0];
-        box_src = './thumbnails/'+AppID+'.jpg';
-
-        if (item[1]["Thumbnail"]) {
-
-        } else if (userConfiguration["skipNoArt"] == true){
-            gamesSkipped++;
-            return;
-        } else {
-            box_src = "./assets/vector/missing.svg";
-        }
-
-        if (userConfiguration["blacklist"].includes(AppID)){
-            gamesSkipped++;
-            return;
-        }
-
-        const button = document.createElement('button');
-        button.className = 'gameLauncher';
-        button.id = AppID;
-        button.dataset.gameid = AppID;
-        button.dataset.source = item[1]["Source"];
-        button.dataset.knowndir = "InstallDir" in item[1];
-        let proton = false;
-        if ("Proton" in item[1] && item[1]["Proton"] == true ) {
-            proton = true;
-        }
-        button.dataset.proton = proton;
-
-        const title = document.createElement('div');
-        title.className = 'gameLauncher-title';
-        title.textContent = item[1]["AppName"];
-        title.dataset.text = title.textContent;
-
-        const thumbnail = document.createElement('img');
-        thumbnail.className = 'gameLauncher-thumbnail';
-        thumbnail.src = box_src;
-        thumbnail.alt = item[1]["AppName"];
-
-        button.appendChild(title);
-        button.appendChild(thumbnail);
-        if (useGlass) {
-            const glass = document.createElement('div');
-            glass.className = 'glass-effect';
-            button.appendChild(glass);
-        }
-        if (gameLimit > gamesAdded){
-            gameList.appendChild(button);
-            gamesAdded++;
-        }
-
-        if (favoriteGames.has(AppID)){
-            button.classList.add("favorite");
-        }
-        if (archives[AppID] != undefined) {
-          button.classList.add("archived");
-          button.appendChild(archivedTag.cloneNode(true));
-        }
-
-        const app = button.cloneNode(true);
-        app.className = app.className.replace('gameLauncher','appLauncher');
-        app.id = "app_" + AppID;
-        Array.from(app.children).forEach((item) => {
-          item.className = item.className.replace("gameLauncher", "appLauncher");
-        });
-        appList.appendChild(app);
-
-        let timer = null;
-        let fired = false;
-        const holdDuration = 800;
-        touchStartHandler = () => {
-          timer = setTimeout(() => {
-            fired = true;
-            console.log("Hold press registered");
-          }, holdDuration);
-        };
-        touchEndHandler = () => {
-          clearTimeout(timer);
-          if (fired){
-            fired = false;
-            //handle short press
-            return;
-          }
-          //handle long press
-          return;
-        }
-        touchCancelHandler = () => {
-          fired = false;
-          clearTimeout(timer);
-        }
-        app.addEventListener('touchstart', touchStartHandler);
-        app.addEventListener('touchend', touchEndHandler);
-        app.addEventListener('touchcancel', touchCancelHandler);
-        button.addEventListener('touchstart', touchStartHandler);
-        button.addEventListener('touchend', touchEndHandler);
-        button.addEventListener('touchcancel', touchCancelHandler);
-
-    });
-
-    if (gamesAdded >= gameLimit) {
-        backend_log("Game limit exceeded, creating all-software button");
-        const moreButton = document.createElement('button');
-        moreButton.className = 'gameLauncher-more';
-        moreButton.id = "allSoftware";
-
-        const thumbnail = document.createElement('img');
-        thumbnail.className = 'gameLauncher-thumbnail';
-
-        if (allSoftwareThumbnailURL != "") {
-            thumbnail.src = allSoftwareThumbnailURL;
-        } else {
-            thumbnail.src = "assets/img/all-software.png";
-        }
-
-        const title = document.createElement('div');
-        title.className = 'gameLauncher-title';
-        title.id = "allSoftware-title";
-        title.textContent = "All Software";
-        title.dataset.trm = "swapText";
-        title.dataset.loc = "AllSoftware";
-        title.dataset.text = title.textContent;
-        moreButton.appendChild(title);
-        moreButton.appendChild(thumbnail);
-        gameList.appendChild(moreButton);
-    }
-    
-    gameLaunchers = document.querySelectorAll('.gameLauncher, .gameLauncher-more');
-    appLaunchers = document.querySelectorAll('.appLauncher');
-
-    document.querySelectorAll('.gameLauncher-placeholder').forEach(e => e.remove());
-    
-    if (gameLaunchers.length < userConfiguration["maxGamesInHomeScreen"]){
-        blocksToAdd = userConfiguration["maxGamesInHomeScreen"] - gameLaunchers.length;
-        while (blocksToAdd > 0) {
-            blocksToAdd--;
-            const block = document.createElement('button');
-            block.className = 'gameLauncher-placeholder';
-            block.disabled = true;
-            gameList.appendChild(block);
-        }
-    }
-    
-    const spacer = document.createElement('div');
-    spacer.style.minWidth = "300px";
-    gameList.appendChild(spacer);
-
-    appLaunchers.forEach(item => {
-        item.addEventListener('focus', () => {
-            item.scrollIntoView({ behavior: "instant", block: "center" });
-        });
-    });
-
-    if (displayHero) {
-        bg = document.getElementById("bg");
-        bg.style.backgroundRepeat = "no-repeat";
-        bg.style.backgroundSize = "cover";
-        bg.style.backgroundPosition = "center";
-        homeMenu.style.backgroundColor = "none";
-    }
-
-    gameLaunchers.forEach(item => {
-        item.addEventListener('focus', () => {
-            item.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
-            if (displayHero) {//start displayHero
-                if (!item.classList.contains("gameLauncher-more")) {
-                    bg.style.backgroundImage = "url('hero/" + item.id+ ".png')";
-                } else{
-                    bg.style.backgroundImage = "none";
-                }
-            }//end displayHero
-        });
-    });
-    measure_time("library loading time", library_start)
 }
 
 function attachContextItem(condition, context_menu, context_item){

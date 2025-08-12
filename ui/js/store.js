@@ -84,7 +84,7 @@ async function fetchPatches(){
         }
         value.forEach((patch, index) => {
             const PatchIndex = index;
-            box_img = './thumbnails/'+AppID+'.jpg';
+            box_img = './thumbnails/'+AppID;
             const thumbnail = document.createElement('img')
             thumbnail.src = box_img;
             thumbnail.alt = patch["name"];
@@ -101,7 +101,6 @@ async function fetchPatches(){
             patchElement.dataset.appid = AppID;
             patchElement.dataset.index = PatchIndex;
             patchElement.addEventListener("click", function(){
-
                 const installText = patchInstalled?reinstallingStr:installingStr;
                 patchElement.getElementsByClassName("left-label")[0].innerText = installText;
                 installPatch(AppID, PatchIndex);

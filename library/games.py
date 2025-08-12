@@ -11,7 +11,7 @@ import threading
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
-from utils.core import mukkuru_env, backend_log, set_alive_status
+from utils.core import mukkuru_env, backend_log, set_alive_status, get_paths_from_extensions
 from utils.core import get_config, update_config, sanitized_env, normalize_text
 from library.steam import get_steam_env, get_crossover_steam
 from library.steam import get_steam_games, get_non_steam_games, read_steam_username
@@ -150,7 +150,7 @@ def fetch_artwork(app_id: str, game, b1, b2, b3, use_alt_images) -> dict:
     if not Path(thumbnail).is_file() and app_id not in b1:
         if grid_db.download_image(game_identifier, thumbnail,"1:1", boxart_index) == "Missing":
             blacklist_1.append(app_id)
-    hero = os.path.join(mukkuru_env["root"], "hero", f'{app_id}.png')
+    hero = os.path.join(mukkuru_env["root"], "hero", f'{app_id}')
     if not Path(hero).is_file() and app_id not in b2:
         if grid_db.download_image(game_identifier, hero, "hero", hero_index) == "Missing":
             blacklist_2.append(app_id)
@@ -207,11 +207,14 @@ def scan_artwork(games = None) -> None:
 def scan_thumbnails(games: dict) -> None:
     '''update the thumbnail status for all games'''
     for k in games.keys():
-        thumbnail_path = os.path.join(mukkuru_env["root"], "thumbnails", f'{k}.jpg')
-        if not Path(thumbnail_path).is_file():
-            games[k]["Thumbnail"] = False
-        else:
-            games[k]["Thumbnail"] = True
+        thumbnail_base = os.path.join(mukkuru_env["root"], "thumbnails", f'{k}')
+        thumbnail_list = get_paths_from_extensions(thumbnail_base, ["png", "jpg", "webp"])
+        thumbnail_found = False
+        for thumbnail_path in thumbnail_list:
+            if Path(thumbnail_path).is_file():
+                thumbnail_found = True
+                break
+        games[k]["Thumbnail"] = thumbnail_found
     update_games(games)
 
 def get_game_properties(app_id: str) -> dict:

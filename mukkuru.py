@@ -359,7 +359,15 @@ def static_file(path):
                 new_path = sfx_file
         return send_from_directory(serve_path, new_path)
     if path.startswith("thumbnails/") or path.startswith("hero/"):
-        return send_from_directory(mukkuru_env["root"], path, mimetype='image/jpeg')
+        image_types = {
+            "image/jpeg" : f'{path}.jpg',
+            "image/png" : f'{path}.png',
+            "image/webp" : f'{path}.web'
+        }
+        for mimetype, file_path in image_types.items():
+            if Path(os.path.join(mukkuru_env["root"], file_path)).is_file():
+                return send_from_directory(mukkuru_env['root'], file_path, mimetype=mimetype)
+        return jsonify("", 200)
     if path.endswith("theme.css"):
         full_path = os.path.join(serve_path, path)
         theme = get_theme(user_config["theme"])

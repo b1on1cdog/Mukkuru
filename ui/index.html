@@ -10,6 +10,7 @@
     <script src="js/mukkuru.js"></script>
     <script src="js/localization.js"></script>
     <script src="js/settings.js"></script>
+    <script src="js/home.js"></script>
     <script>
 const cssOverride = document.createElement('style');
 //at this point we do not have access to userConfiguration, so we are using localStorage
@@ -22,9 +23,6 @@ function measure_time(name, begin, end = performance.now()) {
     backend_log(name + " " + time_used + " ms");
 }
 
-let currentRow = 1;
-let currentIndex = 0;
-
 function sendBackgroundColorToParent(color) {
     console.log("sending background to parent");
     window.parent.postMessage({ bgColor: color });
@@ -32,7 +30,14 @@ function sendBackgroundColorToParent(color) {
 function hideCursorInParent(){
     window.parent.postMessage({hideCursor: true});
 }
-
+document.addEventListener("contextmenu", e => {
+    if (lastFocused != null) {
+      lastFocused.focus();
+    }
+    contextDismissal(e);
+    e.preventDefault();
+});
+document.addEventListener('click', contextDismissal);
 document.addEventListener('DOMContentLoaded', () => {
     const start_load = performance.now();
     /*Load games*/
@@ -600,7 +605,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         }
-
         navigatingRow[currentRow][currentIndex].focus();
     });
 });

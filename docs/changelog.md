@@ -12,6 +12,9 @@
 - Fixed cursor blinking during during reload<br/>
 - Fixed FOUC when using iframe in Dark Mode<br/>
 - Fixed pressing options with context menu replayed sound effect<br/>
+- Removed "gameLauncher-more"<br/>
+- Added support for webp and png thumbnails and hero<br/>
+- Added partial support for touchscreen and mouse in homescreen<br/>
 # 0.3.14
 - Removed unused assets and compressed some images<br/>
 - Replaced Mukkuru icon<br/>

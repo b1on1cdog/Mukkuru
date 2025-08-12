@@ -60,18 +60,6 @@ html {
     transition: unset;
 }
 
-.gameLauncher-more {
-    height: 140px;
-    width: 140px;
-    border-radius: 11%;
-}
-
-.gameLauncher-more:focus {
-    height: 246px;
-    width: 246px;
-    border-radius: 11%;
-}
-
 .animate span {
     display: unset;
     animation: unset;
@@ -177,10 +165,6 @@ html {
 
 .gameList + .footerNavigation {
     margin-top: 250px;
-}
-
-.gameLauncher + .gameLauncher-more {
-    margin-left: 16px;
 }
 
 .appList {

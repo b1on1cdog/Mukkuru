@@ -16,7 +16,7 @@
 .footerNavigation {
     bottom: 15%;
 }
-.gameLauncher:focus::before, .gameLauncher-more:focus::before, .footerButton:focus::before, .appLauncher:focus::before, .videoLauncher:focus::before {
+.gameLauncher:focus::before, .footerButton:focus::before, .appLauncher:focus::before, .videoLauncher:focus::before {
     display: block;
 }
 
@@ -29,19 +29,19 @@
     display: block;
 }
 
-.gameLauncher:focus, .gameLauncher-more:focus, .footerButton:focus {
+.gameLauncher:focus,.footerButton:focus {
     animation: unset;
     box-shadow: 0 1px 1px calc(4px + 3px) rgba(0, 0, 0, .1);
 }
 
-.gameLauncher, .gameLauncher-thumbnail, .gameLauncher-more, .gameLauncher-more:focus {
+.gameLauncher, .gameLauncher-thumbnail {
     width: 246px;
     height: 246px;
     border-radius: 12px;
     z-index: 22;
 }
 
-.gameLauncher::before, .gameLauncher-more::before, .footerButton::before, .appLauncher::before,
+.gameLauncher::before, .footerButton::before, .appLauncher::before,
 .userList-user::before, .videoLauncher::before, .contextItem.selected::before {
     display: none;
     content: "";
@@ -71,10 +71,6 @@
     border-radius: 50%;
     width: 125%;
     height: 125%;
-}
-
-.gameLauncher + .gameLauncher-more { 
-    margin-left: 16px;
 }
 
 .contextItem.selected {
