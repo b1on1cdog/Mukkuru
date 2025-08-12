@@ -138,7 +138,15 @@ document.addEventListener('DOMContentLoaded', () => {
             document.documentElement.style.setProperty("--accent-color", darkModeAccentColor);
         }
     }
-
+    let fct = 0;
+    document.querySelectorAll(".footerButton").forEach((element) => {
+        element.dataset.index = fct;
+        element.addEventListener('click', e => {
+            handleElementPress(e);
+            document.dispatchEvent(new KeyboardEvent("keydown", {key:"Enter", code:"Enter", bubbles:true}));
+        });
+        fct++;
+    });
     clockUpdate(userConfiguration["12H"]);
     setInterval(() => {
         clockUpdate(userConfiguration["12H"]);
@@ -262,6 +270,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
     }
+    refreshContextMenu = refreshCtxMenu
+    document.getElementById("fvOption").addEventListener("click", e => {
+        let app = appLaunchers[currentIndex];
+        let game = gameLaunchers[currentIndex];
+        if (app.classList.contains("favorite")) {
+            app.classList.remove("favorite");
+            if (game != undefined) {
+                game.classList.remove("favorite");
+            }
+        } else {
+            app.classList.add("favorite");
+            if (game != undefined) {
+                game.classList.add("favorite");
+            }
+        }
+        playSound("tick");
+    });
     document.getElementById("back-keyGuide").style.display = "none";
     document.addEventListener('click', (e) => {
         backend_log("user gesture no longer required, reason: click");
@@ -319,10 +344,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (isContextMenu) {
                         break;
                     }
-                    isContextMenu = true;
-                    document.getElementById("gameContextMenu").classList.add("active");
+                    open_context_menu("gameContextMenu");
                     refreshCtxMenu();
-                    playSound("select");
                 }
                 break;
             case "up":
@@ -388,6 +411,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             case "left":
+                if (lockLeft) {
+                    return;
+                }
                 if (isContextMenu) {
                     selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
                     if (selectedContext.id == "proton_ctx") {
@@ -398,6 +424,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         setGameProperty("proton", AppID, proton_ctx_menu.innerText);
                     }
                     return;
+                }
+                //slow down effect
+                if ( ( currentIndex < 2 )  && userConfiguration["loop"]) {
+                    lockLeft = true;
+                    clearTimeout(lockLeftTimeout);
+                    lockLeftTimeout = setTimeout(() => { lockLeft = false; }, 150);
                 }
                 if (currentIndex == 0 && !userConfiguration["loop"]) {
                     playSound("border");
@@ -410,6 +442,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             case "right":
+                if (lockRight) {
+                    return;
+                }
                 if (isContextMenu) {
                     selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
                     if (selectedContext.id == "proton_ctx") {
@@ -420,6 +455,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         setGameProperty("proton", AppID, proton_ctx_menu.innerText);
                     }
                     return;
+                }
+                //slowdown effect when hitting the border with selector loop enabled
+                if (currentIndex > cols[currentRow]-3 && userConfiguration["loop"]) {
+                    lockRight = true;
+                    clearTimeout(lockRightTimeout);
+                    lockRightTimeout = setTimeout(() => { lockRight = false; }, 150);
                 }
                 if (currentIndex == cols[currentRow]-1 && !userConfiguration["loop"]) {
                     playSound("border");
@@ -435,36 +476,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isContextMenu){
                     selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
                     selectedContext.click();
-                    playSound("tick");
-                    if (currentContext == 0 && ctxMenu.id == "gameContextMenu") {
-                        let app = appLaunchers[currentIndex];//document.getElementById("app_"+game.id);
-                        let game = gameLaunchers[currentIndex];
-                        if (app.classList.contains("favorite")) {
-                            app.classList.remove("favorite");
-                            if (game != undefined) {
-                                game.classList.remove("favorite");
-                            }
-                        } else {
-                            app.classList.add("favorite");
-                            if (game != undefined) {
-                                game.classList.add("favorite");
-                            }
-                        }
-                    }
                     refreshCtxMenu();
                     return;
                 }
                 if (document.activeElement.id == "allSoftware") {
-                    playSound("run");
-                    setTimeout(function () {
-                    currentRow = 3;
-                    gameList.style.display = "none";
-                    document.getElementsByClassName("homeHeader")[0].style.display = "none";
-                    document.getElementsByClassName("footerNavigation")[0].style.display = "none";
-                    appList.style.display = "grid";
-                    currentIndex = 0;
-                    }, 300);
-                    blink(homeMenu);
+                    document.activeElement.click();
                 } else if(document.activeElement === gameLaunchers[currentIndex]) {
                     console.log("launching game....");
                     navigatingRow[currentRow][currentIndex].click();
@@ -496,10 +512,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         playSound("enter-back");
                         break;
                         case 1:
-                            isContextMenu = true;
-                            document.getElementById("storeContextMenu").classList.add("active");
+                            open_context_menu("storeContextMenu");
                             refreshCtxMenu();
-                            playSound("select");
                             break;
                         case 2:
                             if (mediaItems.length == 0) {
@@ -525,10 +539,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             blink(homeMenu);
                             break;
                         case 3:
-                            document.getElementById("controlContextMenu").classList.add("active");
-                            isContextMenu = true;
+                            open_context_menu("controlContextMenu");
                             handleAutoPlay("update");
-                            playSound("tick");
                             break;
                         case 4:
                             playSound("settings");
@@ -538,10 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             });    
                             break;
                         case 5:
-                            document.getElementById("powerDownContextMenu").classList.add("active");
-                            isContextMenu = true;
-                            //refreshCtxMenu();
-                            playSound("tick");
+                            open_context_menu("powerDownContextMenu");
                             break;
                         default:
                             console.log("no action specified");

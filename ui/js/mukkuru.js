@@ -12,6 +12,9 @@ let isContextMenu = false;
 let currentMedia = 0;
 let mediaItems;
 
+let dismissalTimer = null;
+let canDismiss = false;
+
 const bufferPools = {};
 
 async function loadSound(name, url) {
@@ -563,6 +566,11 @@ function close_context_menu(play_sound = true){
 function open_context_menu(contextMenuName){
   isContextMenu = true;
   document.getElementById(contextMenuName).classList.add("active");
+  clearTimeout(dismissalTimer);
+  canDismiss = false;
+  dismissalTimer = setTimeout(() =>{
+    canDismiss = true;
+  }, 200);
   //refreshCtxMenu();
   playSound("select");
 }

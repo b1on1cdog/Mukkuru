@@ -15,6 +15,7 @@
 - Removed "gameLauncher-more"<br/>
 - Added support for webp and png thumbnails and hero<br/>
 - Added partial support for touchscreen and mouse in homescreen<br/>
+- Added a small delay when passing the border with selector loop enabled<br/>
 # 0.3.14
 - Removed unused assets and compressed some images<br/>
 - Replaced Mukkuru icon<br/>

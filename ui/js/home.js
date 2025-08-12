@@ -5,6 +5,11 @@ let currentIndex = 0;
 let currentRow = 1;
 let isUserGestureRequired = false;
 let lastFocused = null;
+let refreshContextMenu = undefined
+let lockLeft = false;
+let lockRight = false;
+let lockRightTimeout = null;
+let lockLeftTimeout = null;
 
 function userGestureNoLongerRequired() {
   if (isUserGestureRequired) {
@@ -71,11 +76,35 @@ function setGameProperty(property, value, value2 = undefined){
 
 function handleElementPress(e) {
   const element = e.currentTarget;
+
   if (element.classList.contains("gameLauncher")) {
     currentRow = 1;
+  } else if (element.classList.contains("footerButton")) {
+    currentRow = 2;
   } else if (element.classList.contains("appLauncher")) {
     currentRow = 3;
   }
+
+  if (isContextMenu){
+    console.log("Ttt");
+    let ctxMenu = document.getElementsByClassName("contextualMenu active")[0];
+    elIndex = 0;
+    ctxMenu.querySelectorAll(".contextItem").forEach((el) => {
+        if (el == element){
+          currentContext = elIndex;
+          selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
+          selectedContext.classList.remove("selected");
+          el.classList.add("selected");
+          playSound("select");
+          if (refreshContextMenu != undefined) {
+            refreshContextMenu();
+          }
+          return element;
+        }
+        elIndex++;
+    });
+  }
+
   if (element.dataset.index != undefined){
     currentIndex = parseInt(element.dataset.index);
   }
@@ -266,6 +295,18 @@ async function fetch_games(isConfigReady = undefined) {
         title.dataset.text = title.textContent;
         moreButton.appendChild(title);
         moreButton.appendChild(thumbnail);
+        moreButton.addEventListener("click", e => {
+          playSound("run");
+          setTimeout(function () {
+            currentRow = 3;
+            gameList.style.display = "none";
+            document.getElementsByClassName("homeHeader")[0].style.display = "none";
+            document.getElementsByClassName("footerNavigation")[0].style.display = "none";
+            appList.style.display = "grid";
+            currentIndex = 0;
+            }, 300);
+          blink(homeMenu);
+        })
         gameList.appendChild(moreButton);
     }
     
@@ -325,9 +366,11 @@ async function fetch_games(isConfigReady = undefined) {
 function contextDismissal(e){
   if (isContextMenu) {
     ctxMenu = document.getElementsByClassName("contextualMenu active")[0];
-    if (!ctxMenu.contains(e.target)) {
+    if (!ctxMenu.contains(e.target) && canDismiss) {
       console.log("Dismissing context menu...");
       close_context_menu();
+    } else if (ctxMenu.contains(e.target)) {
+      handleElementPress({ currentTarget : e.target});
     }
     if (lastFocused != null) {
       lastFocused.focus();
