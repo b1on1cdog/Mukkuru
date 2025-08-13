@@ -558,6 +558,7 @@ def main():
     mukkuru_env["library.json"] = os.path.join(mukkuru_env["root"], "library.json")
     mukkuru_env["config.json"] = os.path.join(mukkuru_env["root"], "config.json")
     mukkuru_env["video.json"] = os.path.join(mukkuru_env["root"], "video.json")
+    mukkuru_env["LibraryConfig"] = os.path.join(mukkuru_env["root"], "library_config.json")
     mukkuru_env["artwork"] = os.path.join(mukkuru_env["root"], "artwork")
     mukkuru_env["log"] = os.path.join(mukkuru_env["root"], "mukkuru.log")
     mukkuru_env["app_path"] = APP_DIR
@@ -568,6 +569,7 @@ def main():
             test.run_tests()
             return
         elif arg == "--add-poolkit-rules":
+            # Not implemented
             expansion.add_poolkit_rule()
             return
         else:

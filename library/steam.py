@@ -8,6 +8,7 @@ import sys
 import re
 import shutil
 import platform
+import traceback
 from pathlib import Path
 from functools import lru_cache
 from typing import Optional
@@ -15,7 +16,7 @@ from typing import Optional
 import vdf
 
 from utils.core import backend_log, get_config, update_config
-from library import binary_vdf_parser
+from library import binary_vdf_parser, source
 from library import wrapper, common, mapping
 
 APP_BASE_NAME = os.path.basename(sys.argv[0])
@@ -39,38 +40,44 @@ hardcoded_exclusions = ["Proton Experimental",
                         "Proton BattlEye Runtime",
                         APP_BASE_NAME]
 
-def get_shortcut_launch_options(steam_env: dict, appid:str) -> str:
-    ''' Get launch options from non-steam games  '''
-    if steam_env is None:
-        steam_env= get_steam_env()
-    games: dict = get_non_steam_games(steam_env)
-    game: dict = games[appid]
-    if "Index" not in game:
-        backend_log("Unable to access steam shortcut Index, outdated library.json, re-scan")
-        return False
+def set_shortcut_exe(shortcuts: dict, game:dict, app_exe: str):
+    ''' Sets shortcut executable '''
     shortcut_index = game["Index"]
-    parser = binary_vdf_parser.BinaryVDFParser(None)
-    shortcuts_file: str = steam_env["shortcuts"]
-    shortcuts: dict = parser.parse_shortcut(shortcuts_file)
-    shortcut : dict = shortcuts['shortcuts'][shortcut_index]
-    return shortcut.get("LaunchOptions", "")
+    shortcut = shortcuts['shortcuts'][shortcut_index]
+    if "originalExe" not in shortcut:
+        shortcut["originalExe"] = shortcut["Exe"]
+    else:
+        backend_log("[debug]Skipping shortcut property backup")
+    shortcut["Exe"] = app_exe
 
-def set_shortcut_launch_options(steam_env: dict, appid: str, new_options:str) -> bool:
+def set_shortcut_launch_options(steam_env: dict, game:dict, options:str, sht: dict = None) -> bool:
     ''' Set launch options for non-steam games '''
     if steam_env is None:
         steam_env = get_steam_env()
-    games = get_non_steam_games(steam_env)
-    game = games[appid]
-    if "Index" not in game:
-        backend_log("Unable to access steam shortcut Index, outdated library.json, re-scan")
-        return False
     shortcut_index = game["Index"]
-    parser = binary_vdf_parser.BinaryVDFParser(None)
-    shortcuts_file: str = steam_env["shortcuts"]
-    shortcuts: dict = parser.parse_shortcut(shortcuts_file)
-    shortcuts['shortcuts'][shortcut_index]["LaunchOptions"] = new_options
-    parser.save_shortcut(shortcuts_file, shortcuts)
+    if sht is None:
+        parser = binary_vdf_parser.BinaryVDFParser(None)
+        shortcuts_file: str = steam_env["shortcuts"]
+        shortcuts: dict = parser.parse_shortcut(shortcuts_file)
+    else:
+        shortcuts: dict = sht
+    shortcuts['shortcuts'][shortcut_index]["LaunchOptions"] = options
+    if sht is None:
+        parser.save_shortcut(shortcuts_file, shortcuts)
     return True
+
+def read_shortcuts(steam_env: dict) -> dict:
+    ''' wrapper for reading shortcuts from disk '''
+    shortcuts_file: str = steam_env["shortcuts"]
+    parser = binary_vdf_parser.BinaryVDFParser(None)
+    shortcuts: dict = parser.parse_shortcut(shortcuts_file)
+    return shortcuts
+
+def save_shortcuts(steam_env: dict, shortcuts: dict):
+    ''' saves shortcuts to disk '''
+    shortcuts_file = steam_env["shortcuts"]
+    parser =  binary_vdf_parser.BinaryVDFParser(None)
+    parser.save_shortcut(shortcuts_file, shortcuts)
 
 @lru_cache(maxsize=1)
 def read_local_config(vdf_path: str = None) -> Optional[dict]:
@@ -111,26 +118,30 @@ def get_launch_options(steam: dict, appid: str) -> str:
         return game_dict["LaunchOptions"]
     return ""
 
-def set_launch_options(steam: dict, appid: str, new_options: str) -> bool:
+def set_launch_options(steam: dict, appid: str, options: str, localconfig: dict = None) -> bool:
     """Set the LaunchOptions for a given appid in localconfig.vdf"""
     if steam is None:
         steam = get_steam_env()
-    data = read_local_config(steam["localconfig.vdf"])
+    if localconfig is None:
+        data = read_local_config(steam["localconfig.vdf"])
+    else:
+        data = localconfig
     if data is None:
         return False
     try:
-        software_dict = data["UserLocalConfigStore"]["Software"]
+        software_dict:dict = data["UserLocalConfigStore"]["Software"]
         if "valve" in software_dict:
-            valve_dict = software_dict["valve"]
+            valve_dict:dict = software_dict["valve"]
         else:
-            valve_dict = software_dict["Valve"]
+            valve_dict:dict = software_dict["Valve"]
         if appid not in valve_dict["Steam"]["apps"]:
             valve_dict["Steam"]["apps"][appid] = {}
-        valve_dict["Steam"]["apps"][appid]["LaunchOptions"] = new_options
+        valve_dict["Steam"]["apps"][appid]["LaunchOptions"] = options
     except KeyError:
         backend_log("Unable to set launch options, key error")
         return False
-    save_local_config(steam, data)
+    if localconfig is None:
+        save_local_config(steam, data)
     return True
 
 def parse_acf(acf_path: str) -> dict:
@@ -176,7 +187,6 @@ def parse_text_vdf(vdf_text) -> dict:
                 current[key] = value
     return result
 
-
 def get_non_steam_games(steam_env: dict) -> dict:
     """Get Non-Steam games from shortcuts.vdf files"""
     games = {}
@@ -188,22 +198,30 @@ def get_non_steam_games(steam_env: dict) -> dict:
     shortcuts_files = glob.glob(shortcuts_pattern)
     for file in shortcuts_files:
         try:
-            # Read and parse the binary VDF file
             data = binary_vdf_parser.BinaryVDFParser(None).parse_shortcut(file)
             shortcuts = data.get("shortcuts", {})
             # Iterate over each shortcut, 'key' discarded with _
             for shorcut_index, shortcut in shortcuts.items():
                 if not isinstance(shortcut, dict):
                     continue
-                app_name = shortcut.get("AppName", "")
-                app_exe = shortcut.get("Exe", "")
-                if "moondeckrun" in app_exe:
-                    continue
+                app_name: str = shortcut.get("AppName", "")
                 app_dir = shortcut.get("StartDir", "")
                 app_options = shortcut.get("LaunchOptions", "")
 
                 app_id = int(shortcut.get("appid", 0)) if shortcut.get("appid") else 0
                 app_id = str(get_rungameid(app_id))
+
+                app_exe: str = shortcut.get("Exe", "")
+                game_config = source.get_title_config(app_id)
+                if "Exe" in game_config:
+                    app_exe = game_config["Exe"]
+                else:
+                    game_config["Exe"] = app_exe
+                    source.set_title_config(app_id, game_config)
+
+                if "moondeckrun" in app_exe:
+                    continue
+
                 if app_name in hardcoded_exclusions:
                     if app_name == APP_BASE_NAME:
                         user_config = get_config()
@@ -217,9 +235,9 @@ def get_non_steam_games(steam_env: dict) -> dict:
                     games[app_id] = {
                         "AppName": app_name,
                         "icon": icon,
-       #                 "Exe": app_exe,
+                        "AppExe": app_exe,
                         "StartDir": app_dir,
-       #                 "LaunchOptions": app_options,
+                        "AppOptions": app_options,
                         "Exe": os.path.join(steam_launch_path),
                         "LaunchOptions" : f'steam://rungameid/{app_id}',
                         "Hero": os.path.join(steam_env["gridPath"], app_id+"_hero.jpg"),
@@ -238,8 +256,29 @@ def get_non_steam_games(steam_env: dict) -> dict:
                     if install_dir:
                         games[app_id]["InstallDir"] = install_dir
         except (FileNotFoundError, PermissionError, struct.error, ValueError, IndexError) as e:
-            backend_log(f"Error processing {file}: {e}")
+            backend_log(f"Error processing {file}: {e} => {traceback.format_exc()}")
     return games
+
+# Unused, will be implemented in future
+def uninstall_steam_game(steam: dict, appid: str, game: dict = None) -> None:
+    ''' Uninstall a Steam game '''
+    steam_library_file = steam["libraryFile"]
+    libraries = get_steam_libraries(steam_library_file)
+    if game is None:
+        games = get_steam_games(steam)
+        game = games[appid]
+    if game["Source"] != "steam":
+        backend_log("Unsupported source")
+        return
+    if "InstallDir" not in game:
+        backend_log("Unsupported game")
+        return
+    for lib in libraries:
+        game_manifest = os.path.join(lib,f"appmanifest_{appid}.acf")
+        if Path(game_manifest).is_file():
+            os.remove(game_manifest)
+        break
+    shutil.rmtree(game["InstallDir"])
 
 def get_steam_libraries(vdf_path) -> list:
     """Get Steam library paths from libraryfolders.vdf"""
@@ -335,6 +374,7 @@ def get_steam_games(steam: dict) -> dict:
                     "AppName": name,
                     "icon": os.path.join(library_cache, f"{app_id}_icon.jpg"),
                     "Exe": os.path.join(steam_launch_path),
+                    "AppOptions" : app_options,
                     "LaunchOptions" : f'steam://rungameid/{app_id}',
                     "InstallDir" : install_dir,
                     "Hero": os.path.join(library_cache, f"{app_id}", "library_hero.jpg"),

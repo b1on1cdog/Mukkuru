@@ -1,8 +1,11 @@
+# Copyright (c) 2025 b1on1cdog
+# Licensed under the MIT License
 ''' This library will fetch more info for different game sources '''
 import os
 from pathlib import Path
 from typing import Optional, Any
 import sqlite3
+from utils.core import backend_log
 
 LUTRIS_PREFIX = "lutris:rungameid/"
 
@@ -39,12 +42,16 @@ def get_property_from_lutris(lutris_id, property_key: str) -> Any:
         return None
     conn = sqlite3.connect(lutris_db)
     cursor = conn.cursor()
-    cursor.execute(f"""
-    SELECT {property_key}
-    FROM games
-    WHERE id={lutris_id}
-    """, (lutris_id,))
+    try:
+        cursor.execute(f"""
+        SELECT {property_key}
+        FROM games
+        WHERE id=?
+        """, (lutris_id,))
+    except sqlite3.ProgrammingError as e:
+        backend_log(f"exception executing SQL: {e}")
+        return None
     game = cursor.fetchone()
     if game:
-        return game[1]
+        return game[0]
     return None

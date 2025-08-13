@@ -5,7 +5,6 @@ import socket
 import platform
 import subprocess
 import os
-import signal
 import re
 from functools import lru_cache
 import math
@@ -275,19 +274,16 @@ def kill_executable_by_path(target_path: str, force=True) -> list:
             continue
     return killed
 
-def pause_process(proc):
-    ''' In Windows suspends process, in Unix sends SIGSTOP'''
-    if platform.system() == "Windows":
-        proc.suspend()
-    else:
-        proc.send_signal(signal.SIGSTOP)#pylint: disable=E1101
-
-def resume_process(proc):
-    ''' In Windows resume process, in Unix sends SIGCONT '''
-    if platform.system() == "Windows":
-        proc.resume()
-    else:
-        proc.send_signal(signal.SIGCONT)#pylint: disable=E1101
+def get_writable_drives() -> list:
+    ''' returns a list of writeable volumes '''
+    writable_drives = []
+    for part in psutil.disk_partitions(all=False):
+        try:
+            if os.access(part.mountpoint, os.W_OK):
+                writable_drives.append(part.mountpoint)
+        except PermissionError:
+            continue
+    return writable_drives
 
 def get_process_by_name(name: str) -> list[Process]:
     ''' return a list of processes '''

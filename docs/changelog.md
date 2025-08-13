@@ -1,6 +1,6 @@
 # Changelog
 -----------------
-# 0.3.15
+# 0.4.0
 - Lossless scaling option is now hidden in games from uncompatible sources<br/>
 - Some backend functions are now documented using Sphinx markup<br/>
 - Added game archiving to compress games to save space<br/>
@@ -16,6 +16,8 @@
 - Added support for webp and png thumbnails and hero<br/>
 - Added partial support for touchscreen and mouse in homescreen<br/>
 - Added a small delay when passing the border with selector loop enabled<br/>
+- Tracebacks are now saved in logs<br/>
+- Solved crash trying to print message<br/>
 # 0.3.14
 - Removed unused assets and compressed some images<br/>
 - Replaced Mukkuru icon<br/>

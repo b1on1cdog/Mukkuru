@@ -16,7 +16,7 @@ from utils.core import mukkuru_env, get_config, update_config, backend_log
 from utils.core import APP_DIR, sanitized_env, ternary, format_executable
 from utils import bootstrap, hardware_if, updater
 from library import steam
-from library.games import get_games, update_games
+from library.games import get_games, update_games, scan_games
 
 def get_localization() -> dict:
     ''' Returns a localization dictionary '''
@@ -403,17 +403,21 @@ def lc_close_steam(avoid_gamescope: bool = True):
         Frontend().close()
         procs[0].kill()
 
-def format_launch_options(launch_options: str, prefix: str, apply:bool) -> str:
+def format_launch_options(launch_options: str, prefix: str, apply:bool,exe:str="%command%") -> str:
     '''
     :param apply: format behaviour\n
                 - False: removes ``prefix`` from ``launch_options``.
                 - True: appends ``prefix`` to begin of ``launch_options``.
     :type apply: bool\n
     ``prefix`` will only be appended if it does not exists in ``launch_options``.\n
+    If ``prefix`` is empty passing ``apply`` = False will remove ``exe`` from launch_options\n
     congratulation for reading this docstring, i did not expect anyone to use it\n
     '''
-    if "%command" not in launch_options:
-        launch_options = f"%command {launch_options}"
+    if prefix == "" and not apply:
+        launch_options = launch_options.replace(f"{exe} ", "")
+        return launch_options
+    if exe not in launch_options:
+        launch_options = f"{exe} {launch_options}"
     if apply and prefix not in launch_options:
         launch_options = f"{prefix}{launch_options}"
     elif not apply:
@@ -425,31 +429,44 @@ def manage_all_games(manage = True):
     if platform.system() == "Darwin":
         return
     bootstrap.set_global_progress_context(translate_str("Updating", "Updating"))
-    games = get_games()
+    games = scan_games(dry=False)
     tmukk = f'~/{format_executable("mukkuru")}'
     prefix = f"{tmukk} "
     lc_close_steam(True)
     steam_env = steam.get_steam_env()
     current = 0
+    # we'll use the same localconfig and shortcuts instance
+    # to avoid I/O overhead, this will save us like 0.5s
+    localconfig = steam.read_local_config(steam_env["localconfig.vdf"])
+    shortcuts = steam.read_shortcuts(steam_env)
+    mukkuru_exe = os.path.expanduser(prefix.rstrip())
     for app_id, game in games.items():
         current = current + 1
         bootstrap.global_progress_callback(current, len(games))
         game["Managed"] = manage
         if game["Source"] == "steam":
-            launch_options = steam.get_launch_options(steam_env, app_id)
+            launch_options = game["AppOptions"]
             launch_options = format_launch_options(launch_options, prefix=prefix, apply=manage)
-            steam.set_launch_options(steam_env, app_id, launch_options)
-        elif game["Source"] == "non-steam":
-            launch_options = steam.get_shortcut_launch_options(steam_env, app_id)
-            launch_options = format_launch_options(launch_options, prefix=prefix, apply=manage)
-            steam.set_shortcut_launch_options(steam_env, app_id, launch_options)
+            steam.set_launch_options(steam_env, app_id, launch_options, localconfig)
+        elif game["Source"] == "non-steam" and shortcuts is not None:
+            launch_options:str = game["AppOptions"]
+            game_exe = game["AppExe"]
+            if "%command%" in launch_options:
+                #launch_options = format_launch_options(launch_options, prefix, manage)
+                backend_log(f'Skipping {game["AppName"]} due to uncompatible launch options')
+                continue
+            else:
+                launch_options = format_launch_options(launch_options, "", manage, game_exe)
+                steam.set_shortcut_exe(shortcuts, game, ternary(manage, mukkuru_exe, game_exe))
+            steam.set_shortcut_launch_options(steam_env, game, launch_options, shortcuts)
         else:
             game["Managed"] = False
+    steam.save_local_config(steam_env, localconfig)
+    steam.save_shortcuts(steam_env, shortcuts)
     update_games(games)
     bootstrap.clear_global_progress()
-    if manage:
-        # Using separate Mukkuru copy to help games to stay playable in case main executable breaks
-        updater.update_external_instance()
+    # Using separate Mukkuru copy to help games to stay playable in case main executable breaks
+    updater.update_external_instance(delete=not manage)
     lc_close_steam(False)
     return translate_str("OperationSuccess", "Operation was completed successfully")
 
@@ -458,7 +475,7 @@ def toggle_lossless_scaling_for_game(appid: str, state: bool = True):
     if platform.system() == "Windows":
         # ignore
         return
-    games = get_games()
+    games = scan_games(dry=True)
     if appid not in games:
         return
     game = games[appid]
@@ -467,16 +484,21 @@ def toggle_lossless_scaling_for_game(appid: str, state: bool = True):
         return
     lc_close_steam(True)
     prefix = "~/lsfg "
+    lsfg_exe = os.path.expanduser(prefix.rstrip())
     steam_env = steam.get_steam_env()
     if source == "steam":
-        launch_options = steam.get_launch_options(steam_env, appid)
+        launch_options = game["AppOptions"]
         launch_options = format_launch_options(launch_options, prefix, state)
         steam.set_launch_options(steam_env, appid, launch_options)
     elif source == "non-steam":
+        shortcuts = steam.read_shortcuts(steam_env)
         # THIS MIGHT BREAK SHORTCUT GAMES
-        launch_options = steam.get_shortcut_launch_options(steam_env, appid)
-        launch_options = format_launch_options(launch_options, prefix, state)
-        steam.set_shortcut_launch_options(steam_env, appid, launch_options)
+        game_exe = game["AppExe"]
+        launch_options = game["AppOptions"]
+        launch_options = format_launch_options(launch_options, "", state, game_exe)
+        steam.set_shortcut_launch_options(steam_env, game, launch_options, shortcuts)
+        steam.set_shortcut_exe(shortcuts, game, ternary(state, lsfg_exe, game_exe))
+        steam.save_shortcuts(steam_env, shortcuts)
     else:
         backend_log("Unsupported source, only steam games and shortcuts supported")
     lc_close_steam(False)

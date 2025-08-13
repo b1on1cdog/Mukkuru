@@ -114,14 +114,15 @@ def update_games(games: dict) -> None:
     with open(mukkuru_env["library.json"], 'w', encoding='utf-8') as f:
         json.dump(games, f)
 
-def scan_games() -> dict:
+def scan_games(dry: bool = False) -> dict:
     ''' scan for games, download artwork if available '''
     user_config = get_config()
     options = user_config["librarySource"]
     games = library_scan(int(options))
-    artwork_queue.put(games)
-    scan_thumbnails(games)
-    time.sleep(0.1)
+    if not dry:
+        artwork_queue.put(games)
+        scan_thumbnails(games)
+        time.sleep(0.1)
     return games
 
 def fetch_artwork(app_id: str, game, b1, b2, b3, use_alt_images) -> dict:

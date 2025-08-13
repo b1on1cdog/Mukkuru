@@ -91,4 +91,5 @@ def transparent_execution():
     process.wait()
     if listener is not None:
         listener.close()
+    backend_log("Exiting from passthough mode...")
     sys.exit(process.returncode)

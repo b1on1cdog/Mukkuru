@@ -48,9 +48,13 @@ def start_update(update_path: str) -> None:
         subprocess.Popen([update_path], env=update_env)
         os._exit(0)
 
-def update_external_instance():
+def update_external_instance(delete:bool=False):
     ''' Update passthrough Mukkuru executable '''
     executable = format_executable(os.path.expanduser(f"~/{format_executable('mukkuru')}"))
+    if delete:
+        if os.path.exists(executable):
+            os.remove(executable)
+        return
     update_file = os.path.abspath(sys.argv[0])
     shutil.copy(update_file, executable)
     current_permissions = os.stat(executable).st_mode

@@ -5,6 +5,8 @@ Mukkuru module with essential functions and constants.\n
 This module should NOT import other Mukkuru modules.\n
 '''
 import os
+import traceback
+import threading
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -19,13 +21,14 @@ import re
 # Constants
 mukkuru_env = {}
 COMPILER_FLAG = getattr(sys, 'frozen', False) or "__compiled__" in globals()
-APP_VERSION: str = "0.3.15"
+APP_VERSION = "0.4.0"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT: int = 49347
 SERVER_PORT: int = 49351
 PASSTHROUGH_PORT: int = 49453# 49454, 49455 will also be used when opening more games
 AVAILABLE_P_PORTS: int = 4
 FRONTEND_MODE: str = "PYWEBVIEW"
+DEBUG = True
 
 if platform.system() == "Windows":
     pass
@@ -40,7 +43,7 @@ def app_version():
     return f"Mukkuru v{APP_VERSION}"
 
 # Logging
-def backend_log(message, parent = False) -> None:
+def backend_log(message: str, parent = False) -> None:
     ''' print message and save to file
     :param str message: Message to print\n
     :param bool parent: logs caller filename/line\n'''
@@ -52,11 +55,23 @@ def backend_log(message, parent = False) -> None:
     filename = os.path.basename(frame.filename)
     if "[frontend]" not in message:
         message = f"[{filename}:{lineno}] {message}"
-    print(message)
+    if not COMPILER_FLAG:
+        print(message.encode("utf-8", errors="replace").decode("utf-8"))
     if "log" in mukkuru_env:
         os.makedirs(os.path.dirname(mukkuru_env["log"]), exist_ok=True)
         with open(mukkuru_env["log"], 'a', encoding='utf-8') as f:
             f.write(f"{message}\n")
+
+def log_uncaught_exceptions(exc_type, exc_value, exc_tb):
+    ''' handler for traceback hook '''
+    tb_str = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+    backend_log(tb_str, True)
+
+def thread_exception_handler(args):
+    ''' Handler for thread traceback hook '''
+    tb_str = "".join(traceback.format_exception(args.exc_type, args.exc_value, args.exc_traceback))
+    backend_log(f"Thread {args.thread.name}:\n" + tb_str, parent=True)
+
 # Config
 @lru_cache(maxsize=1)
 def get_config() -> dict:
@@ -182,3 +197,6 @@ def is_bsd() -> bool:
 def ternary(condition: bool, var1: Any, var2: Any) -> Any:
     ''' returns var1 if condition evaluates True, else return var2'''
     return var1 if condition else var2
+
+sys.excepthook = log_uncaught_exceptions
+threading.excepthook = thread_exception_handler
