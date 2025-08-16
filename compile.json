@@ -1,0 +1,18 @@
+{
+    "APP_TITLE" : "Mukkuru",
+    "SOURCE_FILE" : "mukkuru.py",
+    "UI_SOURCE" : "ui",
+    "LICENSE_SOURCE" : "docs",
+    "REQUIREMENTS" : [
+        "qrcode",
+        "vdf",
+        "psutil",
+        "pillow",
+        "distro",
+        "imageio",
+        "psutil",
+        "requests",
+        "flask",
+        "waitress"
+    ]
+}

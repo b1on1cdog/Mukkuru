@@ -18,6 +18,7 @@
 - Added a small delay when passing the border with selector loop enabled<br/>
 - Tracebacks are now saved in logs<br/>
 - Solved crash trying to print message<br/>
+- Modified compile.py so it could be re-used in other projects easier<br/>
 # 0.3.14
 - Removed unused assets and compressed some images<br/>
 - Replaced Mukkuru icon<br/>

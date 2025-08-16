@@ -1,6 +1,9 @@
 # Copyright (c) 2025 b1on1cdog
 # Licensed under the MIT License
-''' compile script for Mukkuru '''
+'''
+Compile script for Mukkuru\n
+Supports both Nuitka and Pyinstaller\n
+'''
 import sys
 import platform
 import os
@@ -27,16 +30,18 @@ parser.add_argument("--onedir", action="store_true")
 args = parser.parse_args()
 compiler_config = {}
 
-if system == "Darwin":
-    print("MacOS detected, adding --onedir")
-    args.onedir = True
+if not Path("compile.json").is_file():
+    print("Fatal: missing compile.json")
+    os._exit(-1)
+with open('compile.json', encoding='utf-8') as main_conf:
+    compiler_config = json.load(main_conf)
 
 # to prevent contributors from commiting their env changes to github
-# project, they will ideally do those changes in compiler.json
-if Path("compiler.json").is_file():
-    with open('compiler.json', encoding='utf-8') as conf:
-        compiler_config = json.load(conf)
-
+# project, they will ideally do those changes in compile_user.json
+if Path("compile_user.json").is_file():
+    with open('compile_user.json', encoding='utf-8') as conf:
+        compiler_config.update(json.load(conf))
+APP_TITLE = compiler_config["APP_TITLE"]
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 USE_WEF = args.wef
 
@@ -85,12 +90,17 @@ def zip_dir_contents(src_dir, zip_path):
                 full_path = os.path.join(root, file)
                 rel_path = os.path.relpath(full_path, src_dir)
                 zf.write(full_path, rel_path)
+def default_set(config: dict, prop:str, default=None, is_path = False):
+    ''' Returns config[prop] if exists, otherwise returns default '''
+    if prop in config:
+        ret = config[prop]
+        if is_path and os.path.exists(ret):
+            return ret
+        elif not is_path:
+            return config[prop]
+    return default
 
-requirements = ["flask", "waitress",
-                "requests", "pillow",
-                "distro", "psutil", "vdf",
-                "nuitka", "imageio", "qrcode"]
-
+requirements = ["nuitka"] + compiler_config["REQUIREMENTS"]
 requirements = requirements + ["setuptools"]
 
 if system == "Linux":
@@ -102,13 +112,22 @@ if USE_WEF is False and "patchelf" not in requirements:
 AARCH = {'x86_64': 'x86_64',
          'AMD64': 'x86_64',
          'aarch64': 'arm64'}.get(platform.machine(), platform.machine())
-SRC_FILE = "mukkuru.py"
-SRC_OUT = f"mukkuru-{system.lower()}-{AARCH}.py"
+SRC_FILE = compiler_config["SOURCE_FILE"]
+SRC_OUT = f"{APP_TITLE.lower()}-{system.lower()}-{AARCH}.py"
 CORE_FILE = os.path.join("utils", "core.py")
 OUTPUT_DIR = "build"
-OUTPUT_FILE = f"mukkuru-{system.lower()}-{AARCH}"
-ICON_PATH = os.path.join("ui", "mukkuru.ico")
-PNG_PATH = os.path.join("ui", "mukkuru.png")
+OUTPUT_FILE = f"{APP_TITLE.lower()}-{system.lower()}-{AARCH}"
+
+UI_SOURCE:str = default_set(compiler_config, "UI_SOURCE", is_path=True)
+LICENSE_SOURCE:str = default_set(compiler_config, "LICENSE_SOURCE", is_path=True)
+
+PNG_PATH =  None
+ICON_PATH = None
+
+if UI_SOURCE is not None:
+    ICON_PATH = os.path.join(UI_SOURCE, f"{APP_TITLE.lower()}.ico")
+    PNG_PATH = os.path.join(UI_SOURCE, f"{APP_TITLE.lower()}.png")
+
 VENV = os.path.join(".venv", f"{system.lower()}-{AARCH}")
 SRC_CONTENT = None
 CORE_CONTENT = None
@@ -118,18 +137,26 @@ with open(CORE_FILE, 'r', encoding='utf-8') as cr_file:
 
 if CORE_CONTENT is None:
     print("unable to read main file, exiting....")
-    exit(0)
+    os._exit(0)
 
-APP_VERSION = re.search(r'APP_VERSION\s*=\s*["\'](.*?)["\']', CORE_CONTENT).group(1)
+#APP_VERSION = re.search(r'APP_VERSION\s*=\s*["\'](.*?)["\']', CORE_CONTENT).group(1)
+# Support type-hinted and non-type hinted APP_VERSION, ignore commmented ones
+VERSION_REGEX = r'^(?!#)\s*APP_VERSION(?:\s*:\s*str)?\s*=\s*["\'](.*?)["\'](?:\s*#.*)?$'
+version_match = re.search(VERSION_REGEX, CORE_CONTENT)
+if version_match is None:
+    print("Unable to fetch app version")
+    os._exit(-1)
+APP_VERSION = version_match.group(1)
+
+if system == "Darwin" and UI_SOURCE is not None:
+    print("MacOS detected, adding --onedir")
+    args.onedir = True
 
 venv_python = os.path.join(VENV, 'bin', 'python')
 
 if system == "Windows":
     OUTPUT_FILE = OUTPUT_FILE+".exe"
     venv_python = os.path.join(VENV, 'Scripts', 'python.exe')
-
-UI_SOURCE = os.path.join("ui")
-LICENSE_SOURCE = os.path.join("docs")
 # CONSTANTS END
 
 def create_venv(python_executable = sys.executable, update = False):
@@ -167,7 +194,6 @@ if args.docker:
             print(f"skipping {container} due to incompatible arch")
     exit(0)
 
-
 if args.add:
     if Path(venv_python).is_file():
         add_package(args.add, venv_python)
@@ -201,10 +227,13 @@ if args.alt:
         compiler_flags.append("--strip")
     if not USE_WEF:
         compiler_flags.extend(["--exclude-module", "tkinter"])
-    compiler_flags.extend(["--add-data", f"{UI_SOURCE}:{UI_SOURCE}"])
-    compiler_flags.extend(["--add-data", f"{LICENSE_SOURCE}:docs"])
+    if UI_SOURCE is not None:
+        compiler_flags.extend(["--add-data", f"{UI_SOURCE}:{UI_SOURCE}"])
+    if LICENSE_SOURCE is not None:
+        compiler_flags.extend(["--add-data", f"{LICENSE_SOURCE}:docs"])
     compiler_flags.extend(["--distpath", os.path.join(OUTPUT_DIR, "pack")])
-    compiler_flags.extend(["-i", ICON_PATH])
+    if ICON_PATH is not None:
+        compiler_flags.extend(["-i", ICON_PATH])
     if not args.debug:
         compiler_flags.append("--noconsole")
     compiler_flags.append(SRC_OUT)
@@ -215,31 +244,37 @@ if args.alt:
 compiler_flags = [ "-m", "nuitka"]
 #compiler_flags.append("--follow-imports")
 if system == "Windows":
-    compiler_flags.append(f"--windows-icon-from-ico={PNG_PATH}")
-    if not args.debug:
+    if PNG_PATH is not None:
+        compiler_flags.append(f"--windows-icon-from-ico={PNG_PATH}")
+    if not args.debug and UI_SOURCE is not None:
         compiler_flags.append("--windows-console-mode=disable")
     compiler_flags.append("--windows-company-name=Josue Alonso Rodriguez")
-    compiler_flags.append("--windows-product-name=Mukkuru")
+    compiler_flags.append(f"--windows-product-name={APP_TITLE}")
     compiler_flags.append(f"--windows-product-version={APP_VERSION}")
     compiler_flags.append(f"--windows-file-version={APP_VERSION}")
 if system == "Darwin":
     compiler_flags.append("--macos-create-app-bundle")
-    compiler_flags.append(f"--macos-app-icon={PNG_PATH}")
+    if PNG_PATH is not None:
+        compiler_flags.append(f"--macos-app-icon={PNG_PATH}")
     compiler_flags.append('--company-name=Josue Alonso Rodriguez')
     compiler_flags.append(f'--macos-app-version={APP_VERSION}')
 elif args.debug:
     compiler_flags.append("--debug")
+
 if args.onedir:
     compiler_flags.append("--standalone")
 else:
     compiler_flags.append("--onefile")
 
 if system == "Linux":
-    compiler_flags.append(f"--linux-icon={PNG_PATH}")
+    if PNG_PATH is not None:
+        compiler_flags.append(f"--linux-icon={PNG_PATH}")
 if USE_WEF:
     compiler_flags.append("--enable-plugin=tk-inter")
-compiler_flags.append(f"--include-data-dir={UI_SOURCE}={UI_SOURCE}")
-compiler_flags.append(f"--include-data-dir={LICENSE_SOURCE}=docs")
+if UI_SOURCE is not None:
+    compiler_flags.append(f"--include-data-dir={UI_SOURCE}={UI_SOURCE}")
+if LICENSE_SOURCE is not None:
+    compiler_flags.append(f"--include-data-dir={LICENSE_SOURCE}=docs")
 compiler_flags.append(SRC_OUT)
 compiler_flags.append(f"--output-filename={OUTPUT_FILE}")
 
@@ -260,7 +295,7 @@ if system == "Darwin" and not args.run:
 
     layout_abs = os.path.abspath(os.path.join(OUTPUT_DIR, "layout"))
     os.makedirs(layout_abs, exist_ok=True)
-    layout_app_abs = os.path.join(layout_abs, "Mukkuru.app")
+    layout_app_abs = os.path.join(layout_abs, f"{APP_TITLE}.app")
     shutil.move(app_input, layout_app_abs)
     dmg_create_command = []
 
@@ -273,14 +308,14 @@ if system == "Darwin" and not args.run:
         SCRIPT3 = f'at (POSIX file "{layout_abs}")'
         alias_create_command.append(f'{SCRIPT1} {SCRIPT2} {SCRIPT3}")')
         invoke(alias_create_command, "osascript")
-        dmg_create_command.extend(["create", "-volname", "Mukkuru"])
+        dmg_create_command.extend(["create", "-volname", APP_TITLE])
         dmg_create_command.extend(["-srcfolder", layout_abs])
         dmg_create_command.extend(["-ov", "-format", "UDZO", app_dmg])
     else:
-        dmg_create_command.extend(["--volname" ,"Mukkuru"])
+        dmg_create_command.extend(["--volname" ,APP_TITLE])
         dmg_create_command.extend(["--window-size", "500", "300"])
         dmg_create_command.extend(["--icon-size", "100"])
-        dmg_create_command.extend(["--icon", "Mukkuru.app", "100", "100"])
+        dmg_create_command.extend(["--icon", f"{APP_TITLE}.app", "100", "100"])
         dmg_create_command.extend(["--app-drop-link", "350", "100"])
        # dmg_create_command.extend(["--icon", "Applications", "350", "100"])
         dmg_create_command.append("--no-internet-enable")

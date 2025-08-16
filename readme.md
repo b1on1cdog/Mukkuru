@@ -43,7 +43,6 @@ Some others are going to receive occasional uploads</br>
 # To-do list
 - Add full touchscreen support<br/>
 - Add option to terminate game (using transparent binary), optionally also pause/resume<br/>
-- Add Steam game deletion (remove acf + InstallDir)<br/>
 - Add button to transfer mukkuru media to user folders<br/>
 - Add button to delete all video thumbnails<br/>
 - Add support for Linux non-flatpak Heroic and MacOS Heroic<br/>
@@ -65,7 +64,7 @@ Some others are going to receive occasional uploads</br>
 
 # Contribution guidelines
 - **Linting** Use pylint and remove as many warnings as reasonably possible before submitting your code. <br/>
-- **Nuitka Compatibility** Ensure your changes do **not break Nuitka compilation** as some users rely in static builds. <br/>
+- **Nuitka Compatibility** Ensure your changes do **not break Nuitka compilation** as most users rely in static builds. <br/>
 - **Dependencies** Avoid introducing new dependencies unless absolutely necessary. <br/>
 - **Licensing** Do **not include GPL, LGPL** or any other restrictive licensed code. <br/>
 - **Cross-Platform Code** Avoid using platform-specific code outside its target (ex: running MacOS code without a Darwin platform check). <br/>
