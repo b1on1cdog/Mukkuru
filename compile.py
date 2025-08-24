@@ -142,7 +142,7 @@ if CORE_CONTENT is None:
 #APP_VERSION = re.search(r'APP_VERSION\s*=\s*["\'](.*?)["\']', CORE_CONTENT).group(1)
 # Support type-hinted and non-type hinted APP_VERSION, ignore commmented ones
 VERSION_REGEX = r'^(?!#)\s*APP_VERSION(?:\s*:\s*str)?\s*=\s*["\'](.*?)["\'](?:\s*#.*)?$'
-version_match = re.search(VERSION_REGEX, CORE_CONTENT)
+version_match = re.search(VERSION_REGEX, CORE_CONTENT, re.MULTILINE)
 if version_match is None:
     print("Unable to fetch app version")
     os._exit(-1)

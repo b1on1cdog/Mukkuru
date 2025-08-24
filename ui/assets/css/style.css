@@ -752,6 +752,7 @@ so .archived will override .favorite when both classes are set
     color: var(--main-color);
     background-color: var(--bland-bg);
     z-index: 5000;
+    opacity: 1.0;
     
     font-family: Arial, sans-serif;
     padding: 10px 0;

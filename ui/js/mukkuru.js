@@ -546,6 +546,37 @@ async function openThirdPartyStore(store) {
   responseJson = await response.json();
 }
 
+function animate_ctx_menu(contextMenu, open = false){
+  //experimental
+  let opacity = contextMenu.style.opacity;
+  if (opacity== "") {
+      contextMenu.style.opacity = 1.0;
+  }
+  let factor = 0.05;
+  let visibility = parseFloat(contextMenu.style.opacity);
+  backend_log("f => " + visibility.toString());
+  if (visibility > 0 && !open || visibility < 1 && open) {
+    if (open) {
+      visibility = visibility + factor;
+    } else {
+      let blurriness = (parseInt(visibility*8)).toString() + "px";
+      contextMenu.style.filter = "blur("+blurriness+")";
+      visibility = visibility - factor;
+    }
+    setTimeout(animate_ctx_menu.bind(null, contextMenu, open), 5);
+  } else {
+    if (open) {
+
+    } else {
+      contextMenu.classList.remove("active");
+    }
+    contextMenu.style.filter = "";
+    visibility = 1;
+  }
+    contextMenu.style.opacity = visibility.toString();
+    contextMenu.style.transform = 'scale('+visibility.toString()+')';
+}
+
 function close_context_menu(play_sound = true){
   isContextMenu = false;
   currentContext = 0;
@@ -556,7 +587,8 @@ function close_context_menu(play_sound = true){
   firstContext.classList.add("selected");
   elements = document.getElementsByClassName("contextualMenu active");
   Array.prototype.forEach.call(elements, function(element) {
-     element.classList.remove("active");
+     //element.classList.remove("active");
+     animate_ctx_menu(element);
   });
   if (play_sound){
     playSound("enter-back");
@@ -565,7 +597,12 @@ function close_context_menu(play_sound = true){
 
 function open_context_menu(contextMenuName){
   isContextMenu = true;
-  document.getElementById(contextMenuName).classList.add("active");
+  contextMenu = document.getElementById(contextMenuName);
+  contextMenu.classList.add("active");
+  //
+  contextMenu.style.opacity = 0;
+  animate_ctx_menu(contextMenu, true);
+  //
   clearTimeout(dismissalTimer);
   canDismiss = false;
   dismissalTimer = setTimeout(() =>{

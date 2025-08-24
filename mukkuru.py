@@ -557,6 +557,7 @@ def main():
         backend_log("Running in unsupported OS")
     mukkuru_env["library.json"] = os.path.join(mukkuru_env["root"], "library.json")
     mukkuru_env["config.json"] = os.path.join(mukkuru_env["root"], "config.json")
+    mukkuru_env["database"] = os.path.join(mukkuru_env["root"], "database.db")
     mukkuru_env["video.json"] = os.path.join(mukkuru_env["root"], "video.json")
     mukkuru_env["LibraryConfig"] = os.path.join(mukkuru_env["root"], "library_config.json")
     mukkuru_env["artwork"] = os.path.join(mukkuru_env["root"], "artwork")
