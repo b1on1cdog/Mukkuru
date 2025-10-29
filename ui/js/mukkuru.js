@@ -554,7 +554,7 @@ function animate_ctx_menu(contextMenu, open = false){
   }
   let factor = 0.05;
   let visibility = parseFloat(contextMenu.style.opacity);
-  backend_log("f => " + visibility.toString());
+//  backend_log("f => " + visibility.toString());
   if (visibility > 0 && !open || visibility < 1 && open) {
     if (open) {
       visibility = visibility + factor;

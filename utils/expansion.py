@@ -331,17 +331,88 @@ def get_capabilities() -> dict:
     capabilities["lossless_scaling"] = is_lossless_scaling_available()
     return capabilities
 
+def has_shutdown_privilege_enabled():
+    """ (Windows) Check SeShutdownPrivilege to check whether shutdown is possible """
+    if platform.system() != "Windows":
+        return False
+    import ctypes
+    from ctypes import wintypes
+    advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    SE_SHUTDOWN_NAME = "SeShutdownPrivilege"
+    TOKEN_QUERY = 0x0008
+    TokenPrivileges = 3
+    SE_PRIVILEGE_ENABLED = 0x00000002
+    class LUID(ctypes.Structure):
+        _fields_ = [
+        ("LowPart", wintypes.DWORD),
+        ("HighPart", wintypes.LONG),
+    ]
+
+    class LUID_AND_ATTRIBUTES(ctypes.Structure):
+        _fields_ = [
+        ("Luid", LUID),
+        ("Attributes", wintypes.DWORD),
+    ]
+
+    class TOKEN_PRIVILEGES(ctypes.Structure):
+        _fields_ = [
+        ("PrivilegeCount", wintypes.DWORD),
+        ("Privileges", LUID_AND_ATTRIBUTES * 1),
+    ]
+    token = wintypes.HANDLE()
+    process = kernel32.GetCurrentProcess()
+    if not advapi32.OpenProcessToken(process, TOKEN_QUERY, ctypes.byref(token)):
+        return False
+
+    luid = LUID()
+    if not advapi32.LookupPrivilegeValueW(None, SE_SHUTDOWN_NAME, ctypes.byref(luid)):
+        return False
+
+    # Query privileges
+    size = wintypes.DWORD(0)
+    advapi32.GetTokenInformation(token, TokenPrivileges, None, 0, ctypes.byref(size))
+    buf = ctypes.create_string_buffer(size.value)
+    if not advapi32.GetTokenInformation(token, TokenPrivileges, buf, size, ctypes.byref(size)):
+        return False
+
+    tp = ctypes.cast(buf, ctypes.POINTER(TOKEN_PRIVILEGES)).contents
+
+    # Iterate privileges
+    for i in range(tp.PrivilegeCount):
+        priv = tp.Privileges[i]
+        if priv.Luid.LowPart == luid.LowPart and priv.Luid.HighPart == luid.HighPart:
+            is_enabled = bool(priv.Attributes & SE_PRIVILEGE_ENABLED)
+            return is_enabled
+
+    return False
+
 def can_shutdown(reboot: bool = False) -> bool:
     ''' returns whether shutdown is possible, pass True for evaluating reboot instead '''
     system = platform.system()
     if system == "Windows":
-        return True
+        return has_shutdown_privilege_enabled()
     if system == "Linux":
         action = "org.freedesktop.login1.power-off"
         if reboot:
             action = "org.freedesktop.login1.reboot"
         return check_poolkit_status(action)
     return False
+
+def is_rdp_session() -> bool:
+    ''' (Windows only) returns whether user is inside an RDP Session '''
+    return os.environ.get("SESSIONNAME", "").startswith("RDP-")
+
+def can_disconnect_session() -> bool:
+    ''' returns whether disconnecting from session is possible '''
+    if platform.system() == "Windows":
+        return is_rdp_session()
+
+def disconnect_session() -> None:
+    ''' Disconnect from remote session '''
+    if platform.system() == "Windows":
+        import win32ts
+        win32ts.WTSDisconnectSession(None, win32ts.WTS_CURRENT_SESSION, False)
 
 def shutdown(reboot: bool = False) -> None:
     ''' attempts shutdown, pass True for rebooting '''
