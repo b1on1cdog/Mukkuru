@@ -18,7 +18,7 @@ import inspect
 import unicodedata
 import re
 
-from utils.database import SessionLocal
+import utils.database as db
 from utils.model import Config
 
 # Constants
@@ -122,11 +122,12 @@ def get_config() -> dict:
             "patches" : [ ],
             "sgdb_key" : "",
         }
-    session = SessionLocal()
+    session = db.get_session()
     cfg: Config = session.query(Config).first()
 
     if not cfg:
-        cfg.config = user_config
+        cfg = Config(config=user_config)
+        session.add(cfg)
         session.commit()
     configuration = cfg.config
     for key, value in user_config.items():
@@ -139,7 +140,7 @@ def get_config() -> dict:
 
 def update_config(user_config: dict) -> None:
     ''' update user configuration '''
-    session = SessionLocal()
+    session = db.get_session()
     backend_log("updating config....", parent=True)
     cfg: Config = session.query(Config).first()
     cfg.config = user_config

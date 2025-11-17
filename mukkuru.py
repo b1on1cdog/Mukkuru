@@ -26,7 +26,7 @@ from utils.core import mukkuru_env, COMPILER_FLAG, FRONTEND_MODE
 from utils.core import APP_PORT, SERVER_PORT, APP_DIR
 from utils.core import app_version, get_config, backend_log, set_alive_status
 from utils.core import update_config, format_executable
-from utils.database import init_database
+import utils.database as db
 from utils import bootstrap
 
 from library import video
@@ -556,12 +556,14 @@ def main():
         mukkuru_env["root"] = os.path.join(os.path.expanduser("~"), ".config", "Mukkuru")
     else:
         backend_log("Running in unsupported OS")
-    #mukkuru_env["library.json"] = os.path.join(mukkuru_env["root"], "library.json")
     #mukkuru_env["config.json"] = os.path.join(mukkuru_env["root"], "config.json")
     mukkuru_env["database"] = os.path.join(mukkuru_env["root"], "database.db")
-    init_database(mukkuru_env["database"])
-    #mukkuru_env["video.json"] = os.path.join(mukkuru_env["root"], "video.json")
-    #mukkuru_env["LibraryConfig"] = os.path.join(mukkuru_env["root"], "library_config.json")
+    db.init_database(mukkuru_env["database"])
+    # To be removed
+    mukkuru_env["library.json"] = os.path.join(mukkuru_env["root"], "library.json")
+    mukkuru_env["video.json"] = os.path.join(mukkuru_env["root"], "video.json")
+    mukkuru_env["LibraryConfig"] = os.path.join(mukkuru_env["root"], "library_config.json")
+    #
     mukkuru_env["artwork"] = os.path.join(mukkuru_env["root"], "artwork")
     mukkuru_env["log"] = os.path.join(mukkuru_env["root"], "mukkuru.log")
     mukkuru_env["app_path"] = APP_DIR

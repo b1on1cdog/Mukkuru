@@ -16,3 +16,9 @@ def init_database(db_path: str):
     engine = create_engine(f"sqlite:///{db_path}", echo=False, pool_size=10, max_overflow=20, future=True)
     SessionLocal = sessionmaker(bind=engine)
     Base.metadata.create_all(engine)
+
+def get_session():
+    ''' If we import SessionLocal() from this module, we might get a non-initialized copy of the variable '''
+    if SessionLocal is None:
+        raise RuntimeError("init_database() not called")
+    return SessionLocal()

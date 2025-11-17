@@ -5,8 +5,9 @@ This module should NOT import other Mukkuru modules (Exception: database.py).\n
 """
 import uuid
 from sqlalchemy import Column, Integer, String, Float#, create_engine
-from sqlalchemy import Text, CheckConstraint
-from sqlalchemy import Dictionary
+from sqlalchemy import Text, CheckConstraint, JSON
+from sqlalchemy.ext.mutable import MutableDict
+
 #from sqlalchemy.orm import relationship
 from utils.database import Base
 import json
@@ -20,7 +21,7 @@ class Game(Base):
     Exe = Column(String, nullable=False)
     Source = Column(String, nullable=False)
     Type = Column(String, nullable=False)
-    Extra = Column(Dictionary, nullable=True)
+    Extra = Column(MutableDict.as_mutable(JSON), nullable=True)
 
 class Video(Base):
     ''' Stores video information '''
@@ -36,8 +37,9 @@ class Video(Base):
 
 class Config(Base):
     ''' Stores Mukkuru settings '''
+    __tablename__ = "config"
     id = Column(Integer, primary_key=True)
-    config = Column(Text, CheckConstraint("json_valid(config)"))
+    config_raw = Column("config", Text, CheckConstraint("json_valid(config)"))
 
     @property
     def config(self):
