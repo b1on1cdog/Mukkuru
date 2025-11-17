@@ -13,6 +13,7 @@
         "psutil",
         "requests",
         "flask",
-        "waitress"
+        "waitress",
+        "sqlalchemy"
     ]
 }

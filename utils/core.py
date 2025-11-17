@@ -2,7 +2,7 @@
 # Licensed under the MIT License
 '''
 Mukkuru module with essential functions and constants.\n
-This module should NOT import other Mukkuru modules.\n
+This module should NOT import other Mukkuru modules (with the exception of database).\n
 '''
 import os
 import traceback
@@ -17,6 +17,9 @@ import platform
 import inspect
 import unicodedata
 import re
+
+from utils.database import SessionLocal
+from utils.model import Config
 
 # Constants
 mukkuru_env = {}
@@ -119,30 +122,31 @@ def get_config() -> dict:
             "patches" : [ ],
             "sgdb_key" : "",
         }
+    session = SessionLocal()
+    cfg: Config = session.query(Config).first()
 
-    while "config.json" not in mukkuru_env:
-        time.sleep(0.1)
-
-    if not Path(mukkuru_env["config.json"]).is_file():
-        backend_log("No config.json")
-        with open(mukkuru_env["config.json"], 'w', encoding='utf-8') as f:
-            json.dump(user_config, f)
-    with open(mukkuru_env["config.json"], encoding='utf-8') as f:
-        configuration = json.load(f)
-        for key, value in user_config.items():
-            if key not in configuration:
-                backend_log(f"creating configuration key {key}")
-                configuration[key] = value
-            user_config = configuration
+    if not cfg:
+        cfg.config = user_config
+        session.commit()
+    configuration = cfg.config
+    for key, value in user_config.items():
+        if key not in configuration:
+            backend_log(f"creating configuration key {key}")
+            configuration[key] = value
+        user_config = configuration
+    session.close()
     return user_config
 
 def update_config(user_config: dict) -> None:
     ''' update user configuration '''
+    session = SessionLocal()
     backend_log("updating config....", parent=True)
+    cfg: Config = session.query(Config).first()
+    cfg.config = user_config
+    session.commit()
+    session.close()
     # clear cached config as the value was updated
     get_config.cache_clear()
-    with open(mukkuru_env['config.json'] , 'w', encoding='utf-8') as f:
-        json.dump(user_config, f)
 
 def set_alive_status(value) -> None:
     ''' set alive status, this will be periodically read from frontend '''
