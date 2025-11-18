@@ -81,6 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data["reboot"] == false) {
             document.getElementById("restartDeviceBtn").remove();
         }
+        if (data["exit"] == false) {
+            document.getElementById("exitMukkuruBtn").remove();
+        }
         if (data["lossless_scaling"] == false) {
             document.getElementById("lsOption").remove();
         }

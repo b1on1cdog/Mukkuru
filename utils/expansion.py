@@ -327,7 +327,8 @@ def get_capabilities() -> dict:
     capabilities = {}
     capabilities["shutdown"] = can_shutdown(False)
     capabilities["reboot"] = can_shutdown(True)
-    capabilities["desktop"] = False
+    capabilities["desktop"] = False# To-do: add desktop mode
+    capabilities["exit"] = can_exit()
     capabilities["lossless_scaling"] = is_lossless_scaling_available()
     return capabilities
 
@@ -389,6 +390,8 @@ def has_shutdown_privilege_enabled():
 
 def can_shutdown(reboot: bool = False) -> bool:
     ''' returns whether shutdown is possible, pass True for evaluating reboot instead '''
+    if "MUKKURU_NO_POWER" in os.environ:
+        return False
     system = platform.system()
     if system == "Windows":
         return has_shutdown_privilege_enabled()
@@ -398,6 +401,10 @@ def can_shutdown(reboot: bool = False) -> bool:
             action = "org.freedesktop.login1.reboot"
         return check_poolkit_status(action)
     return False
+
+def can_exit() -> bool:
+    ''' returns whether exiting mukkuru is possible '''
+    return not "MUKKURU_NO_EXIT" in os.environ
 
 def is_rdp_session() -> bool:
     ''' (Windows only) returns whether user is inside an RDP Session '''

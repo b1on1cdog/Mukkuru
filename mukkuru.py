@@ -549,7 +549,8 @@ def fix_file_sources():
 # HWINFO_GPU
 # HWINFO_STR
 # HWINFO_HST -> Hostname
-# NO_POWER
+# MUKKURU_NO_POWER
+# MUKKURU_NO_EXIT
 
 def main():
     ''' start of app execution '''
@@ -583,6 +584,8 @@ def main():
         elif arg == "--add-poolkit-rules":
             # Not implemented
             expansion.add_poolkit_rule()
+            return
+        elif arg == "--sandbox":
             return
         else:
             backend_log("Passthrough mode")
