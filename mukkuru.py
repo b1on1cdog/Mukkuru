@@ -544,6 +544,13 @@ def fix_file_sources():
         backend_log("Adding user paths...")
         update_config(user_config)
 
+# HWINFO_RAM
+# HWINFO_CPU
+# HWINFO_GPU
+# HWINFO_STR
+# HWINFO_HST -> Hostname
+# NO_POWER
+
 def main():
     ''' start of app execution '''
     system = platform.system()

@@ -20,6 +20,7 @@
 - Solved crash trying to print message<br/>
 - Modified compile.py so it could be re-used in other projects easier<br/>
 - Contextual menus are now animated<br/>
+- About hwinfo can now be overrided using environment variables<br/>
 # 0.3.14
 - Removed unused assets and compressed some images<br/>
 - Replaced Mukkuru icon<br/>

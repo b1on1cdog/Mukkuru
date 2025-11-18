@@ -14,7 +14,7 @@ from typing import Optional
 import psutil
 from psutil import Process
 import distro
-from utils.core import backend_log
+from utils.core import backend_log, ternary
 system = platform.system()
 
 codename_map = {
@@ -30,7 +30,9 @@ codename_map = {
 @lru_cache(maxsize=1)
 def get_cpu_name() -> str:
     ''' get cpu name as string '''
-
+    override_cpu = os.environ.get("HWINFO_CPU", default=None)
+    if override_cpu:
+        return override_cpu
     if system == "Windows":
         try:
             output = subprocess.check_output(["wmic", "cpu", "get", "Name"], shell=True)
@@ -63,7 +65,9 @@ def get_cpu_name() -> str:
 @lru_cache(maxsize=1)
 def get_gpu_name() -> str:
     ''' get GPU name '''
-
+    override_gpu = os.environ.get("HWINFO_GPU", default=None)
+    if override_gpu:
+        return override_gpu
     if system == "Windows":
         try:
             output = subprocess.check_output(
@@ -110,12 +114,17 @@ def get_info() -> dict:
     memory_info = psutil.virtual_memory()
     platform_info = platform.uname()
 
-    hardware_info = {}
+    hardware_info: dict = {}
+    
+    override_ram = os.environ.get("HWINFO_RAM", default=None)
+    override_name = os.environ.get("HWINFO_HST", default=None)
+    override_cpu = os.environ.get("HWINFO_CPU", default=None)
+    override_gpu = os.environ.get("HWINFO_GPU", default=None)
 
-    hardware_info["total_ram"] = round(memory_info.total/(1024*1024*1024),1)
-    hardware_info["used_ram"] = round(memory_info.used/(1024*1024*1024),1)
-
-    hardware_info["computer_name"] = platform_info.node
+    hardware_info["total_ram"] = ternary(override_ram, override_ram, round(memory_info.total/(1024*1024*1024),1) )
+    hardware_info["used_ram"] = ternary(override_ram, 0, round(memory_info.used/(1024*1024*1024),1) )
+    
+    hardware_info["computer_name"] = ternary(override_name, override_name, platform_info.node)
     hardware_info["arch"] = platform_info.machine
 
     if hardware_info["arch"] == "AMD64":
@@ -166,6 +175,7 @@ def get_info() -> dict:
     hardware_info["has_battery"] = True
     if get_battery() is None:
         hardware_info["has_battery"] = False
+    hardware_info["is_overriden"] = any((override_ram, override_name, override_cpu, override_gpu))
     return hardware_info
 
 def get_active_net_interfaces() -> list:
