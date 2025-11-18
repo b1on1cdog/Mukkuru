@@ -83,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (data["exit"] == false) {
             document.getElementById("exitMukkuruBtn").remove();
+            document.getElementById("restartAppBtn").classList.add("selected");
         }
         if (data["lossless_scaling"] == false) {
             document.getElementById("lsOption").remove();
