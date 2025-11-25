@@ -299,9 +299,6 @@ def get_steam_libraries(vdf_path) -> list:
                     norm_path = os.path.normpath(os.path.join(folder_path, "steamapps"))
                     paths.append(norm_path)
     # Include main Steam folder (this is likely unnnecesary)
-    #main_folder = os.path.join(steam_env["path"], "steamapps")
-    #if not main_folder in paths:
-    #    paths.append(main_folder)
     return paths
 
 def get_rungameid(shortcut_appid: int) -> int:
@@ -353,6 +350,11 @@ def get_steam_games(steam: dict) -> dict:
     steam_launch_path = steam["launchPath"]
 
     libraries = get_steam_libraries(steam_library_file)
+    # crossover hotfix
+    main_folder = os.path.join(steam["path"], "steamapps")
+    if not main_folder in libraries:
+       libraries.append(main_folder)
+    
     library_cache = os.path.join(steam_path, "appcache", "librarycache")
     # Scan Steam games
     for lib in libraries:
@@ -377,6 +379,7 @@ def get_steam_games(steam: dict) -> dict:
                     "AppOptions" : app_options,
                     "LaunchOptions" : f'steam://rungameid/{app_id}',
                     "InstallDir" : install_dir,
+                    "StartDir" : install_dir,
                     "Hero": os.path.join(library_cache, f"{app_id}", "library_hero.jpg"),
                     "Logo": os.path.join(library_cache, f"{app_id}", "logo.png"),
                     "Managed" : "mukkuru" in app_options,
@@ -487,6 +490,7 @@ def get_crossover_steam() -> Optional[dict]:
         backend_log(f'Unable to find: {steam["shortcuts"]}\n')
     # To-do:
     # -Find linux crossover bottle directory
+    print(steam)
     return steam
 
 @lru_cache(maxsize=1)

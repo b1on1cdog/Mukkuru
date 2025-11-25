@@ -13,6 +13,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
 from utils.core import mukkuru_env, backend_log, set_alive_status, get_paths_from_extensions
 from utils.core import get_config, update_config, sanitized_env, normalize_text
+from utils.model import Game
+import utils.database as db
 from library.steam import get_steam_env, get_crossover_steam
 from library.steam import get_steam_games, get_non_steam_games, read_steam_username
 from library import grid_db, wrapper
@@ -83,6 +85,7 @@ def library_scan(options: int) -> dict:
     if options & option_heroic:
         heroic_games = get_heroic_games()
         games.update(heroic_games)
+    print(f"{options} : {games}")
     library_filtering(games)
     return games
 
@@ -100,19 +103,27 @@ def library_filtering(games: dict) -> None:
                 game_titles.append(game_title)
 
 def get_games() -> dict:
-    '''get game library as json'''
-    try:
-        with open(mukkuru_env["library.json"], encoding='utf-8') as f:
-            games = json.load(f)
-    except FileNotFoundError:
-        games = {}
-        update_games(games)
+    '''get game library as dictionary'''
+    session = db.get_session()
+    db_games: list[Game] = session.query(Game).all()
+    games = {}
+    for db_game in db_games:
+        app_id = db_game.app_id
+        games[app_id] = {}
+        games[app_id] = db_game.dictionary
+        games[app_id].update(db_game.Metadata)
     return games
 
 def update_games(games: dict) -> None:
     '''save game library'''
-    with open(mukkuru_env["library.json"], 'w', encoding='utf-8') as f:
-        json.dump(games, f)
+    session = db.get_session()
+    session.query(Game).delete()
+    for app_id, game in games.items():
+        game: dict
+        current_game = Game(app_id=app_id)
+        current_game.dictionary = game
+        session.add(current_game)
+    session.commit()
 
 def scan_games(dry: bool = False) -> dict:
     ''' scan for games, download artwork if available '''

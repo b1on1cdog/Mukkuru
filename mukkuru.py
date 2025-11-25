@@ -439,6 +439,8 @@ def start_app_update():
 @app.route('/config/fullscreen')
 def is_fullscreen():
     ''' show whether app should be in fullscreen '''
+    if "MUKKURU_FORCE_FULLSCREEN" in os.environ:
+        return True
     user_config = get_config()
     return user_config["fullScreen"]
 
@@ -551,6 +553,8 @@ def fix_file_sources():
 # HWINFO_HST -> Hostname
 # MUKKURU_NO_POWER
 # MUKKURU_NO_EXIT
+# MUKKURU_SANDBOX
+# MUKKURU_FORCE_FULLSCREEN
 
 def main():
     ''' start of app execution '''
@@ -566,9 +570,7 @@ def main():
         backend_log("Running in unsupported OS")
     #mukkuru_env["config.json"] = os.path.join(mukkuru_env["root"], "config.json")
     mukkuru_env["database"] = os.path.join(mukkuru_env["root"], "database.db")
-    db.init_database(mukkuru_env["database"])
     # To be removed
-    mukkuru_env["library.json"] = os.path.join(mukkuru_env["root"], "library.json")
     mukkuru_env["video.json"] = os.path.join(mukkuru_env["root"], "video.json")
     mukkuru_env["LibraryConfig"] = os.path.join(mukkuru_env["root"], "library_config.json")
     #
@@ -586,7 +588,16 @@ def main():
             expansion.add_poolkit_rule()
             return
         elif arg == "--sandbox":
-            return
+            if "MUKKURU_SANDBOX" not in os.environ:
+                return expansion.run_sandboxed()
+            backend_log("Already sandboxed, skipping....")
+        elif arg == "--restrict":
+            if platform.system() != "Windows":
+                print("This option is only available in Windows")
+                return
+            group_name: str = "Remote Desktop Users"
+            #from utils.nt import restrict_users
+            #restrict_users(group_name)
         else:
             backend_log("Passthrough mode")
             if "SteamAppId" not in os.environ:
@@ -594,7 +605,7 @@ def main():
                 if os.environ["SteamAppId"] == "":
                     backend_log("Unable to find app_id")
             passthrough.transparent_execution()
-        return
+            return
     backend_log(f'Using { FRONTEND_MODE } for rendering')
     backend_log(f"COMPILER_FLAG: {COMPILER_FLAG}")
     if "DELAY_EXECUTION" in os.environ:
@@ -631,13 +642,10 @@ def main():
     for needed_dir in needed_dirs:
         if not os.path.isdir(needed_dir):
             os.makedirs(needed_dir, exist_ok=True)
-
+    db.init_database(mukkuru_env["database"])
     user_config = get_config()
-    if not Path(mukkuru_env["library.json"]).is_file():
-        backend_log("No library.json")
-    else:
-        games = get_games()
-        scan_thumbnails(games)
+    games = get_games()
+    scan_thumbnails(games)
     # version correction
     if updater.ver_compare(user_config["configVersion"], "0.3.14") == 0:
         backend_log("updating config...")

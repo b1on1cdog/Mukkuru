@@ -420,7 +420,7 @@ def disconnect_session() -> None:
     if platform.system() == "Windows":
         import win32ts
         win32ts.WTSDisconnectSession(None, win32ts.WTS_CURRENT_SESSION, False)
-
+# Might consider adding a delay, so user can cancel shutdown from ui if mistakenly pressed
 def shutdown(reboot: bool = False) -> None:
     ''' attempts shutdown, pass True for rebooting '''
     time.sleep(0.1)
@@ -580,3 +580,25 @@ def toggle_lossless_scaling_for_game(appid: str, state: bool = True):
     else:
         backend_log("Unsupported source, only steam games and shortcuts supported")
     lc_close_steam(False)
+
+def run_sandboxed():
+    ''' Run Mukkuru as a sandboxed app '''
+    if platform.system() != "Windows":
+        print(f"Sandbox mode not supported in {platform.system()}")
+        return -1
+    os.environ["MUKKURU_SANDBOX"] = "1"
+    os.environ["MUKKURU_NO_POWER"] = "1"
+    os.environ["MUKKURU_FORCE_FULLSCREEN"] = "1"
+    program_files = os.environ.get("ProgramFiles", None)
+    if not program_files:
+        print("Unable to get program files path")
+        return
+    sb_path = os.path.join(program_files, "Sandboxie-Plus", "Start.exe")
+    if not os.path.exists(sb_path):
+        print("Sandboxie is not installed!")
+        return
+    exe = os.path.abspath(sys.argv[0])
+    box = "Mukkuru"
+    instance = subprocess.Popen([sb_path, f"/box:{box}", "/wait", "/silent", exe] + sys.argv[1:])
+    instance.wait()
+    return

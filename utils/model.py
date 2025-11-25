@@ -6,6 +6,7 @@ This module should NOT import other Mukkuru modules (Exception: database.py).\n
 import uuid
 from sqlalchemy import Column, Integer, String, Float#, create_engine
 from sqlalchemy import Text, CheckConstraint, JSON
+from sqlalchemy.inspection import inspect
 from sqlalchemy.ext.mutable import MutableDict
 
 #from sqlalchemy.orm import relationship
@@ -18,10 +19,38 @@ class Game(Base):
     id = Column(Integer, primary_key=True)
     app_id = Column(String, nullable= False)
     AppName = Column(String, nullable=False)
+    StartDir = Column(String, nullable=False)
+    LaunchOptions = Column(String, nullable=False)
     Exe = Column(String, nullable=False)
     Source = Column(String, nullable=False)
     Type = Column(String, nullable=False)
-    Extra = Column(MutableDict.as_mutable(JSON), nullable=True)
+    Metadata = Column(MutableDict.as_mutable(JSON), nullable=True)
+    
+    @property
+    def dictionary(self) -> dict:
+        return {
+            "AppName" : self.AppName,
+            "StartDir" : self.StartDir,
+            "LaunchOptions" : self.LaunchOptions,
+            "Exe" : self.Exe,
+            "Source" : self.Source,
+            "Type" : self.Type,
+            "Metadata" : self.Metadata
+        }
+    @dictionary.setter
+    def dictionary(self, data: dict):
+        """Assign known fields, put unknown keys into Metadata."""
+        mapper = inspect(self.__class__)
+        valid_fields = {col.key for col in mapper.columns}
+
+        if self.Metadata is None:
+            self.Metadata = {}
+
+        for key, value in data.items():
+            if key in valid_fields:
+                setattr(self, key, value)
+            else:
+                self.Metadata[key] = value
 
 class Video(Base):
     ''' Stores video information '''

@@ -52,7 +52,7 @@ def backend_log(message: str, parent = False) -> None:
     :param bool parent: logs caller filename/line\n'''
     stack = inspect.stack()
     frame = stack[1]
-    if parent:
+    if parent and len(stack) > 2:
         frame = stack[2]
     lineno = frame.lineno
     filename = os.path.basename(frame.filename)
