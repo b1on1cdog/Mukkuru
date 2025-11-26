@@ -97,7 +97,7 @@ def set_video_thumbnail(video_id: str):
     '''update video thumbnail from request'''
     if request.method == 'POST':
         thumbnail = request.get_json()
-        video.update_thumbnail(mukkuru_env["video.json"], video_id, thumbnail)
+        video.update_thumbnail(video_id, thumbnail)
         return "200"
     return "400"
 
@@ -147,11 +147,10 @@ def get_media():
     ''' Get all Multimedia '''
     media = {}
     user_config = get_config()
-    video_manifest = mukkuru_env["video.json"]
     video_sources = user_config["videoSources"].copy()
     if not user_config["useAllVideoSources"]:
         video_sources = [video_sources[0]]
-    media["videos"] = video.get_videos(video_sources, video_manifest)
+    media["videos"] = video.get_videos(video_sources)
     return jsonify(media)
 
 @library_controller.route('/storefront/get')

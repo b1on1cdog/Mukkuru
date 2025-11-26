@@ -112,6 +112,7 @@ def get_games() -> dict:
         games[app_id] = {}
         games[app_id] = db_game.dictionary
         games[app_id].update(db_game.Metadata)
+    session.close()
     return games
 
 def update_games(games: dict) -> None:
@@ -124,6 +125,7 @@ def update_games(games: dict) -> None:
         current_game.dictionary = game
         session.add(current_game)
     session.commit()
+    session.close()
 
 def scan_games(dry: bool = False) -> dict:
     ''' scan for games, download artwork if available '''

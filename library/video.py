@@ -10,6 +10,8 @@ from pathlib import Path
 from datetime import datetime
 from urllib.parse import quote
 from collections import defaultdict
+import utils.database as db
+from utils.model import Video
 
 SHOWS_PATTERN = re.compile(
     r"""
@@ -80,30 +82,37 @@ def check_thumbnails(videos: dict) -> dict:
             videos[video_id]["thumbnail_exists"] = False
     return videos
 
-def get_videos(source_dirs: list, video_manifest_path: str) -> dict:
+def get_videos(source_dirs: list) -> dict:
     ''' Get videos from all specified dirs '''
     videos = {}
     source_index = 0
     for source_dir in source_dirs:
         videos.update(read_videos(source_dir, source_index))
         source_index = source_index + 1
-    if not Path(video_manifest_path).is_file():
-        update_videos(video_manifest_path, videos)
-    with open(video_manifest_path, encoding='utf-8') as f:
-        videos.update(json.load(f))
+    #
+    session = db.get_session()
+    db_videos: list[Video] = session.query(Video).all()
+    imported_videos = {}
+    for db_video in db_videos:
+        imported_videos[db_video.video_id] = db_video.dictionary
+    session.close()
+    #
+    videos.update(imported_videos)
     videos = verify_video_files(videos)
-    update_videos(video_manifest_path, videos)
+    update_videos(videos)
     return videos
 
-def update_thumbnail(video_manifest_path: str, video_id: str, thumbnail: str) -> None:
+def update_thumbnail(video_id: str, thumbnail: str) -> None:
     ''' update thumbnail for specific video id '''
-    videos = {}
-    with open(video_manifest_path, encoding='utf-8') as f:
-        videos = json.load(f)
+    session = db.get_session()
+    video: Video = session.query(Video).filter_by(video_id=video_id).first()
+    if video is None:
+        return
     thumbnail_b64 = thumbnail.replace("data:image/png;base64,", "")
     image_data = base64.b64decode(thumbnail_b64)
-    with open(videos[video_id]["thumbnail"], "wb") as f:
+    with open(video.thumbnail, "wb") as f:
         f.write(image_data)
+    session.close()
 
 def save_screenshot(save_path:str, screenshot:str) -> None:
     ''' saves a picture '''
@@ -116,10 +125,16 @@ def save_screenshot(save_path:str, screenshot:str) -> None:
     with open(os.path.join(save_path, pic_name), "wb") as f:
         f.write(image_data)
 
-def update_videos(video_manifest_path:str, videos:dict) -> None:
+def update_videos(videos:dict) -> None:
     ''' update videos json '''
-    with open(video_manifest_path, 'w', encoding='utf-8') as f:
-        json.dump(videos, f)
+    session = db.get_session()
+    session.query(Video).delete()
+    for video_id, video in videos.items():
+        current_video = Video(video_id=video_id)
+        current_video.dictionary = video
+        session.add(current_video)
+    session.commit()
+    session.close()
 
 def sha256_hash_text(text:str) -> str:
     ''' get sha256 of a string '''

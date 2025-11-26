@@ -208,7 +208,7 @@ def set_videos():
     '''update videos json from request'''
     if request.method == 'POST':
         videos = request.get_json()
-        video.update_videos(mukkuru_env["video.json"], videos)
+        video.update_videos(videos)
         return "200"
     return "400"
 
@@ -571,7 +571,7 @@ def main():
     #mukkuru_env["config.json"] = os.path.join(mukkuru_env["root"], "config.json")
     mukkuru_env["database"] = os.path.join(mukkuru_env["root"], "database.db")
     # To be removed
-    mukkuru_env["video.json"] = os.path.join(mukkuru_env["root"], "video.json")
+    #mukkuru_env["video.json"] = os.path.join(mukkuru_env["root"], "video.json")
     mukkuru_env["LibraryConfig"] = os.path.join(mukkuru_env["root"], "library_config.json")
     #
     mukkuru_env["artwork"] = os.path.join(mukkuru_env["root"], "artwork")

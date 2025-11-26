@@ -64,6 +64,27 @@ class Video(Base):
     thumbnail = Column(String(1024), nullable=True) # thumbnail path
     thumbnail_url = Column(String(512), nullable=True)
 
+    @property
+    def dictionary(self) -> dict:
+        return {
+            "video_id" : self.video_id,
+            "path" : self.path,
+            "file" : self.file,
+            "url" : self.url,
+            "resume" : self.resume, 
+            "thumbnail" : self.thumbnail,
+            "thumbnail_url" : self.thumbnail_url
+        }
+    @dictionary.setter
+    def dictionary(self, data: dict):
+        """Assign known fields, put unknown keys into Metadata."""
+        mapper = inspect(self.__class__)
+        valid_fields = {col.key for col in mapper.columns}
+
+        for key, value in data.items():
+            if key in valid_fields:
+                setattr(self, key, value)
+
 class Config(Base):
     ''' Stores Mukkuru settings '''
     __tablename__ = "config"
