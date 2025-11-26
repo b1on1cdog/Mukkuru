@@ -490,7 +490,6 @@ def get_crossover_steam() -> Optional[dict]:
         backend_log(f'Unable to find: {steam["shortcuts"]}\n')
     # To-do:
     # -Find linux crossover bottle directory
-    print(steam)
     return steam
 
 @lru_cache(maxsize=1)

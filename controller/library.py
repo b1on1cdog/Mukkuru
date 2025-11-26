@@ -3,7 +3,7 @@
 ''' library controller module '''
 import os
 from flask import Blueprint, jsonify, request
-from flask import send_from_directory
+from flask import send_from_directory, send_file
 from library.steam import get_proton_list
 from library.games import get_games, scan_games, scan_artwork
 from library.games import launch_app, get_username, list_stores
@@ -92,13 +92,16 @@ def get_username_controller():
     ''' Gets username '''
     return get_username()
 
-@library_controller.route('/video/thumbnail/<video_id>', methods = ['POST'])
-def set_video_thumbnail(video_id: str):
+@library_controller.route('/video/thumbnail/<string:video_id>', methods = ['POST', 'GET'])
+def video_thumbnail(video_id: str):
     '''update video thumbnail from request'''
     if request.method == 'POST':
         thumbnail = request.get_json()
         video.update_thumbnail(video_id, thumbnail)
         return "200"
+    if request.method == 'GET':
+        thumbnail_path = video.get_video_thumbnail(video_id)
+        return send_file(thumbnail_path, mimetype="image/png")
     return "400"
 
 @library_controller.route('/video/screenshot/', methods = ['POST'])
@@ -114,17 +117,17 @@ def add_video_screenshot():
     return "400"
 
 @external_library.route('/media/video/<source>/<filename>', methods=["GET"])
-@library_controller.route('/frontend/video/<source>/<filename>', methods=["GET", "DELETE"])
-def video_serve(source, filename):
+@library_controller.route('/frontend/video/<int:source>/<filename>', methods=["GET", "DELETE"])
+def video_serve(source: int, filename: str):
     '''serve or delete video file'''
     user_config = get_config()
     video_source = user_config["videoSources"][int(source)]
     if request.method == 'DELETE':
         video_path = os.path.join(video_source, filename)
-        th = f"{os.path.splitext(filename)[0]}-thumbnail.png"
-        th_path = os.path.join(video_source, th)
+        #th = f"{os.path.splitext(filename)[0]}-thumbnail.png"
+        #th_path = video.get_video_thumbnail(video_id)
         os.remove(video_path)
-        os.remove(th_path)
+        #os.remove(th_path)
         return "200"
     return send_from_directory(video_source, filename)
 

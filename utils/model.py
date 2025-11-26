@@ -5,7 +5,7 @@ This module should NOT import other Mukkuru modules (Exception: database.py).\n
 """
 import uuid
 from sqlalchemy import Column, Integer, String, Float#, create_engine
-from sqlalchemy import Text, CheckConstraint, JSON
+from sqlalchemy import Text, CheckConstraint, JSON, Boolean
 from sqlalchemy.inspection import inspect
 from sqlalchemy.ext.mutable import MutableDict
 
@@ -60,9 +60,11 @@ class Video(Base):
     path = Column(String(1024), nullable=False)
     file = Column(String(1024), nullable=False)
     url = Column(String(512), nullable=False)
+    duration = Column(Float, default=-1.0)
     resume = Column(Float, default=0.0)
     thumbnail = Column(String(1024), nullable=True) # thumbnail path
     thumbnail_url = Column(String(512), nullable=True)
+    thumbnail_exists = Column(Boolean, default=False)
 
     @property
     def dictionary(self) -> dict:
@@ -71,9 +73,11 @@ class Video(Base):
             "path" : self.path,
             "file" : self.file,
             "url" : self.url,
+            "duration" : self.duration,
             "resume" : self.resume, 
             "thumbnail" : self.thumbnail,
-            "thumbnail_url" : self.thumbnail_url
+            "thumbnail_url" : self.thumbnail_url,
+            "thumbnail_exists" : self.thumbnail_exists
         }
     @dictionary.setter
     def dictionary(self, data: dict):
@@ -81,7 +85,7 @@ class Video(Base):
         mapper = inspect(self.__class__)
         valid_fields = {col.key for col in mapper.columns}
 
-        for key, value in data.items():
+        for key, value in data.items():                
             if key in valid_fields:
                 setattr(self, key, value)
 

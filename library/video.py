@@ -4,7 +4,6 @@
 import re
 import os
 import hashlib
-import json
 import base64
 from pathlib import Path
 from datetime import datetime
@@ -12,6 +11,7 @@ from urllib.parse import quote
 from collections import defaultdict
 import utils.database as db
 from utils.model import Video
+from utils.core import mukkuru_env
 
 SHOWS_PATTERN = re.compile(
     r"""
@@ -56,12 +56,28 @@ def read_videos(source_dir: str, source_index: int = -1) -> dict:
                 videos[video_id] = {}
             videos[video_id]["path"] = video_path
             videos[video_id]["file"] = video
-            th_name = f"{os.path.splitext(video)[0]}-thumbnail.png"
-            videos[video_id]["thumbnail"] = os.path.join(source_dir, th_name)
+
+            thumbnail_folder = os.path.join(mukkuru_env["root"], "video", "thumbnails")
+            os.makedirs(thumbnail_folder, exist_ok=True)
+            thumbnail_file = f"{video_id}.png"
+
+            #th_name = f"{os.path.splitext(video)[0]}-thumbnail.png"
+            videos[video_id]["thumbnail"] = os.path.join(thumbnail_folder, thumbnail_file)
             if source_index > -1:
                 videos[video_id]["url"] = f"video/{source_index}/{quote(video)}"
-                videos[video_id]["thumbnail_url"] = f"video/{source_index}/{quote(th_name)}"
+                videos[video_id]["thumbnail_url"] = f"/video/thumbnail/{video_id}"
+                #videos[video_id]["thumbnail_url"] = f"video/{source_index}/{quote(th_name)}"
     return videos
+
+def get_video_thumbnail(video_id:str) -> str:
+    ''' return thumbnail path for video id '''
+    session = db.get_session()
+    video: Video = session.query(Video).filter_by(video_id=video_id).first()
+    if video is None:
+        return ""
+    thumbnail_path = video.thumbnail
+    session.close()
+    return thumbnail_path
 
 def verify_video_files(videos: dict) -> dict:
     ''' verify video files exists '''

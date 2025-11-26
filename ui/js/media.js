@@ -243,7 +243,7 @@ async function update_videos_metadata(vids){
     const vid = document.createElement('video');
     for (const id in vids) {
         const video = vids[id];
-        if ("duration" in video && video["thumbnail_exists"]){
+        if (video["duration"] > 0 && video["thumbnail_exists"]){
             //console.log("skipping "+id)
             continue;
         }

@@ -21,7 +21,8 @@
 - Modified compile.py so it could be re-used in other projects easier<br/>
 - Contextual menus are now animated<br/>
 - About hwinfo can now be overrided using environment variables<br/>
-- Migrated from JSON to SQLite<br/>
+- Migrated from JSON files to SQLite<br/>
+- Video thumbnails are now stored in Mukkuru config folder so video folders are not poluted<br/>
 # 0.3.14
 - Removed unused assets and compressed some images<br/>
 - Replaced Mukkuru icon<br/>
