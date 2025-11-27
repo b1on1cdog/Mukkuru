@@ -242,6 +242,7 @@ if args.alt:
     os.remove(SRC_OUT)
     os._exit(0)
 compiler_flags = [ "-m", "nuitka"]
+compiler_flags.append("--assume-yes-for-downloads")
 #compiler_flags.append("--follow-imports")
 if system == "Windows":
     if PNG_PATH is not None:
