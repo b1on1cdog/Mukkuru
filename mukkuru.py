@@ -596,8 +596,8 @@ def main():
                 print("This option is only available in Windows")
                 return
             group_name: str = "Remote Desktop Users"
-            #from utils.nt import restrict_users
-            #restrict_users(group_name)
+            from utils.nt import restrict_users
+            restrict_users(group_name)
         else:
             backend_log("Passthrough mode")
             if "SteamAppId" not in os.environ:
