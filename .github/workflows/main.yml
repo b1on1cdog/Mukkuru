@@ -13,7 +13,7 @@
             
           - uses: actions/setup-python@v5 # Sets up Python
             with:
-              python-version: '3.14' # Specifies the desired Python version
+              python-version: '3.12' # Specifies the desired Python version
               architecture: 'x64' # Optional: Specifies the architecture (x86, x64, arm64)
               name: Set up Python
 
