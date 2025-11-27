@@ -24,4 +24,7 @@
             uses: actions/upload-artifact@v4
             with:
               name: mukkuru-windows
-              path: build/mukkuru-windows-x86_64.exe # Adjust path and filename
+              path: build/*.exe
+            
+          - name: Show directory tree
+            run: dir /s  .   # or ls -R .
