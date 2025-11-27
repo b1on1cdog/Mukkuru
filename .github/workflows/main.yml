@@ -1,0 +1,35 @@
+    name: Mukkuru
+    on:
+      push:
+        branches:
+          - dev
+    jobs:
+      build-windows:
+        runs-on: windows-latest
+        steps:
+          - name: Checkout code
+            uses: actions/checkout@v4
+            
+          - uses: actions/setup-python@v5 # Sets up Python
+            with:
+              python-version: '3.12' # Specifies the desired Python version
+              architecture: 'x64' # Optional: Specifies the architecture (x86, x64, arm64)
+              name: Set up Python
+          - name: Setup MSYS2 with MinGW-w64
+            uses: msys2/setup-msys2@v2
+            with:
+                msystem: UCRT64
+                update: true
+                install: >-
+                    git
+                    mingw-w64-ucrt-x86_64-gcc
+
+          - name: Build Mukkuru
+            run: python compile.py
+
+          - name: Upload artifact
+            uses: actions/upload-artifact@v4
+            with:
+              name: mukkuru-windows
+              path: build\mukkuru-windows-x86_64.exe
+              
