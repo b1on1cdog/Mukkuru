@@ -15,6 +15,14 @@
               python-version: '3.12' # Specifies the desired Python version
               architecture: 'x64' # Optional: Specifies the architecture (x86, x64, arm64)
               name: Set up Python
+          - name: Setup MSYS2 with MinGW-w64
+            uses: msys2/setup-msys2@v2
+            with:
+                msystem: UCRT64  # Or MINGW64, MINGW32, CLANG64
+                update: true
+                install: >-
+                    git
+                    mingw-w64-ucrt-x86_64-gcc # Install GCC for UCRT64
 
           - name: Build Mukkuru
             run: python compile.py
