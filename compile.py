@@ -248,7 +248,7 @@ if system == "Windows":
     if PNG_PATH is not None:
         compiler_flags.append(f"--windows-icon-from-ico={PNG_PATH}")
     if not args.debug and UI_SOURCE is not None:
-        compiler_flags.append("--windows-console-mode=disable")
+        compiler_flags.append("--windows-console-mode=attach")
     compiler_flags.append("--windows-company-name=Josue Alonso Rodriguez")
     compiler_flags.append(f"--windows-product-name={APP_TITLE}")
     compiler_flags.append(f"--windows-product-version={APP_VERSION}")
