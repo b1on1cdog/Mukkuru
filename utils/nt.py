@@ -19,9 +19,11 @@ RegUnLoadKeyW = advapi.RegUnLoadKeyW
 RegUnLoadKeyW.argtypes = [ctypes.c_void_p, ctypes.c_wchar_p]
 RegUnLoadKeyW.restype = ctypes.c_long
 
+PSID = ctypes.c_void_p
+
 class LOCALGROUP_MEMBERS_INFO_2(ctypes.Structure):
     _fields_ = [
-        ("lgrmi2_sid", wt.PSID),
+        ("lgrmi2_sid", PSID),
         ("lgrmi2_sidusage", wt.DWORD),
         ("lgrmi2_domainandname", wt.LPWSTR)
     ]
@@ -165,9 +167,8 @@ def restrict_users(group_name:str):
         if user_sid is None:
             print(f"Unable to get sid for user: {user}")
             continue
-        print(f"Restricting user {user} - {user_sid} (location: {user_path})")
-        continue
-        # dry run
+        print(f"Restricting user {user} (sid: {user_sid} | location: {user_path})")
+
         hive_root = load_user_hive(user_sid, user_path)
         if hive_root is None:
             print(f"Unable to load hive_root for user: {user}")

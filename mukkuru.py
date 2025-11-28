@@ -604,6 +604,7 @@ def main():
             group_name: str = "Remote Desktop Users"
             from utils.nt import restrict_users
             restrict_users(group_name)
+            return
         else:
             backend_log("Passthrough mode")
             if "SteamAppId" not in os.environ:
