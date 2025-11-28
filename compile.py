@@ -26,6 +26,9 @@ parser.add_argument("--add", nargs='+', help="Install package to venv")
 parser.add_argument("--debug", action="store_true", help="Enables debug flag")
 parser.add_argument("--alt", action="store_true", help="Use PyInstaller instead of Nuitka")
 parser.add_argument("--onedir", action="store_true", help="Output files to folder instead of single file executable")
+parser.add_argument("--clang", action="store_true", help="Use clang for nuitka compilation")
+parser.add_argument("--mingw", action="store_true", help="Use mingw for nuitka compilation")
+parser.add_argument("--msvc", action="store_true", help="Use Microsoft Visual Studio Compiler for nuitka compilation")
 
 args, unknown_args = parser.parse_known_args()
 compiler_config = {}
@@ -244,6 +247,12 @@ if args.alt:
 compiler_flags = [ "-m", "nuitka"]
 compiler_flags.append("--assume-yes-for-downloads")
 #compiler_flags.append("--follow-imports")
+if args.mingw:
+    compiler_flags.append("--mingw64")
+if args.clang:
+    compiler_flags.append("--clang")
+if args.msvc:
+    compiler_flags.append("--msvc")
 if system == "Windows":
     if PNG_PATH is not None:
         compiler_flags.append(f"--windows-icon-from-ico={PNG_PATH}")
