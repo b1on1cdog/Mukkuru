@@ -17,17 +17,17 @@ import json
 system = platform.system()
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--docker", action="store_true")
-parser.add_argument("--clean", action="store_true")
-parser.add_argument("--wipe", action="store_true")
-parser.add_argument("--run", action="store_true")
+parser.add_argument("--docker", action="store_true", help="Compile using Docker")
+parser.add_argument("--clean", action="store_true", help="Remove residual files")
+parser.add_argument("--wipe", action="store_true", help="Clear residual files, output files and virtual enviroment ")
+parser.add_argument("--run", action="store_true", help="Run App without compiling")
 parser.add_argument("--wef", action="store_true")
-parser.add_argument("--add", nargs='+')
-parser.add_argument("--debug", action="store_true")
-parser.add_argument("--alt", action="store_true")
-parser.add_argument("--onedir", action="store_true")
+parser.add_argument("--add", nargs='+', help="Install package to venv")
+parser.add_argument("--debug", action="store_true", help="Enables debug flag")
+parser.add_argument("--alt", action="store_true", help="Use PyInstaller instead of Nuitka")
+parser.add_argument("--onedir", action="store_true", help="Output files to folder instead of single file executable")
 
-args = parser.parse_args()
+args, unknown_args = parser.parse_known_args()
 compiler_config = {}
 
 if not Path("compile.json").is_file():
@@ -284,7 +284,7 @@ if True and not Path(OUTPUT_DIR).is_dir():
 compiler_flags.append(f"--output-dir={OUTPUT_DIR}")
 shutil.copy(SRC_FILE, SRC_OUT)
 if args.run:
-    invoke([SRC_OUT], venv_python)
+    invoke([SRC_OUT] + unknown_args, venv_python)
 else:
     invoke(compiler_flags, venv_python)
 os.remove(SRC_OUT)

@@ -11,6 +11,7 @@ import sys
 import logging
 import platform
 import shutil
+import argparse
 from io import BytesIO
 import qrcode
 from waitress import serve
@@ -577,24 +578,29 @@ def main():
     mukkuru_env["artwork"] = os.path.join(mukkuru_env["root"], "artwork")
     mukkuru_env["log"] = os.path.join(mukkuru_env["root"], "mukkuru.log")
     mukkuru_env["app_path"] = APP_DIR
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--test", action="store_true", help="[Debug] run Mukkuru predefined tests")
+    parser.add_argument("--add-poolkit-rules", action="store_true", help="(Not implemented) [Linux] add poolkit rules to allow shutdown/reboot")
+    parser.add_argument("--sandbox", action="store_true", help="[Windows] Run Mukkuru using sandboxie")
+    parser.add_argument("--restrict", action="store_true", help="[Windows] Apply restrictions and set Mukkuru as Remote Desktop users shell")
+    args = parser.parse_args()
+
     if len(sys.argv) >= 2:
-        arg = sys.argv[1]
-        if arg == "--test":
+        if args.test:
             print("Running in test mode")
+            db.init_database(mukkuru_env["database"])
             test.run_tests()
             return
-        elif arg == "--add-poolkit-rules":
+        elif args.add_poolkit_rules:
             # Not implemented
             expansion.add_poolkit_rule()
             return
-        elif arg == "--sandbox":
+        elif args.sandbox and platform.system() == "Windows":
             if "MUKKURU_SANDBOX" not in os.environ:
                 return expansion.run_sandboxed()
             backend_log("Already sandboxed, skipping....")
-        elif arg == "--restrict":
-            if platform.system() != "Windows":
-                print("This option is only available in Windows")
-                return
+        elif args.restrict and platform.system() == "Windows":
             group_name: str = "Remote Desktop Users"
             from utils.nt import restrict_users
             restrict_users(group_name)

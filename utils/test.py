@@ -30,13 +30,13 @@ def test_tools():
 
 def run_tests():
     ''' run multiple tests '''
-    steam.set_launch_options(None, "377670", "~/lsfg %command%")
-    steam.set_launch_options(None, "345610", "~/lsfg %command%")
-    steam.set_shortcut_launch_options(None, "13667182077366239232", "~/lsfg %command%")
+    #steam.set_launch_options(None, "377670", "~/lsfg %command%")
+    #steam.set_launch_options(None, "345610", "~/lsfg %command%")
+    #steam.set_shortcut_launch_options(None, "13667182077366239232", "~/lsfg %command%")
     #update_status = updater.check_for_updates()
     #print(json.dumps(update_status))
-    #test_scan()
-    #test_tools()
+    test_scan()
+    test_tools()
     #print(get_userprofile_folder("Downloads"))
     #print(get_userprofile_folder("Music"))
     #print(get_userprofile_folder("Videos"))
