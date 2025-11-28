@@ -2,7 +2,6 @@
 # Licensed under the MIT License
 ''' Mukkuru games module '''
 import os
-import json
 import subprocess
 import queue
 import time
@@ -85,7 +84,6 @@ def library_scan(options: int) -> dict:
     if options & option_heroic:
         heroic_games = get_heroic_games()
         games.update(heroic_games)
-    print(f"{options} : {games}")
     library_filtering(games)
     return games
 

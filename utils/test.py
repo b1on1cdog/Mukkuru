@@ -1,11 +1,11 @@
 # Copyright (c) 2025 b1on1cdog
 # Licensed under the MIT License
 ''' This Mukkuru module will handle unit testing '''
-#import json
+import json
 from utils import updater
 from utils.bootstrap import get_7z, get_unrar, get_ffmpeg
 from library.games import library_scan
-from library import steam
+#from library import steam
 
 def test_compare(ver1, ver2):
     '''test ver_compare'''
@@ -18,6 +18,7 @@ def test_scan():
     ''' test game scan '''
     games = library_scan(7)
     print(f"Found {len(games)} games")
+    print(json.dumps(games, indent=4))
 
 def test_tools():
     ''' test tools paths '''
