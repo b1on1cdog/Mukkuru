@@ -108,46 +108,31 @@ def username_to_profile_path(username: str):
     sid = username_to_sid(username)
     return sid_to_profile_path(sid)
 
-def load_user_hive(sid: str, profile_path: str) -> Optional[str]:
-    ''' load user hive from profile path '''
-    hive_path = os.path.join(profile_path, "NTUSER.DAT")
-    status = RegLoadKeyW(winreg.HKEY_USERS.handle, sid, hive_path)
-    if status != 0:
-        print(f"RegLoadKey failed with error {status}")
-        return None
-    return fr"HKEY_USERS\{sid}"
-
-def unload_user_hive(sid: str):
-    ''' unload user hive '''
-    status = RegUnLoadKeyW(winreg.HKEY_USERS.handle, sid)
-    if status != 0:
-        print(f"RegUnLoadKey failed with error {status}")
-
-def disable_user_features(hive_root: str):
+def disable_user_features(sid: str):
     ''' disable user features that are not important for gaming (regedit, CMD, Task manager, Run) '''
-    with winreg.CreateKey(winreg.HKEY_USERS, fr"{hive_root}\Software\Microsoft\Windows\CurrentVersion\Policies\System") as key:
+    with winreg.CreateKey(winreg.HKEY_USERS, fr"{sid}\Software\Microsoft\Windows\CurrentVersion\Policies\System") as key:
         winreg.SetValueEx(key, "DisableTaskMgr", 0, winreg.REG_DWORD, 1)
         winreg.SetValueEx(key, "DisableCMD", 0, winreg.REG_DWORD, 1)
         winreg.SetValueEx(key, "DisableRegistryTools", 0, winreg.REG_DWORD, 1)
-    with winreg.CreateKey(winreg.HKEY_USERS, fr"{hive_root}\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer") as key:
+    with winreg.CreateKey(winreg.HKEY_USERS, fr"{sid}\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer") as key:
         winreg.SetValueEx(key, "NoRun", 0, winreg.REG_DWORD, 1)
         winreg.SetValueEx(key, "NoFolderOptions", 0, winreg.REG_DWORD, 1)
 
-def set_mukkuru_as_shell(hive_root: str):
+def set_mukkuru_as_shell(sid: str):
     ''' Sets Mukkuru as user Shell '''
     mukkuru_shell_path = fr"C:\PanyolSoft\Mukkuru\Mukkuru.exe"
     if not os.path.exists(mukkuru_shell_path):
         print("Mukkuru shell is missing, unable to proceed....")
         return
     mukkuru_shell = f"{mukkuru_shell_path} --sandbox"
-    with winreg.CreateKey(winreg.HKEY_USERS, fr"{hive_root}\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon") as key:
+    with winreg.CreateKey(winreg.HKEY_USERS, fr"{sid}\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon") as key:
         winreg.SetValueEx(key, "Shell", 0, winreg.REG_SZ, mukkuru_shell)
-    with winreg.CreateKey(winreg.HKEY_USERS, fr"{hive_root}\Environment") as key:
+    with winreg.CreateKey(winreg.HKEY_USERS, fr"{sid}\Environment") as key:
         hw_info = hardware_if.get_info()
         winreg.SetValueEx(key, "HWINFO_GPU", 0, winreg.REG_SZ, hw_info["gpu"])
         winreg.SetValueEx(key, "HWINFO_CPU", 0, winreg.REG_SZ, hw_info["cpu"])
-        winreg.SetValueEx(key, "HWINFO_RAM", 0, winreg.REG_SZ, hw_info["total_ram"])
-        winreg.SetValueEx(key, "HWINFO_STR", 0, winreg.REG_SZ, hw_info["disk_total"])
+        winreg.SetValueEx(key, "HWINFO_RAM", 0, winreg.REG_SZ, str(hw_info["total_ram"]))
+        winreg.SetValueEx(key, "HWINFO_STR", 0, winreg.REG_SZ, str(hw_info["disk_total"]))
         winreg.SetValueEx(key, "MUKKURU_FORCE_FULLSCREEN", 0, winreg.REG_SZ, "1")
         winreg.SetValueEx(key, "MUKKURU_NO_EXIT", 0, winreg.REG_SZ, "1")
         #winreg.SetValueEx(key, "", 0, winreg.REG_SZ, "1")
@@ -169,18 +154,12 @@ def restrict_users(group_name:str):
             continue
         print(f"Restricting user {user} (sid: {user_sid} | location: {user_path})")
 
-        hive_root = load_user_hive(user_sid, user_path)
-        if hive_root is None:
-            print(f"Unable to load hive_root for user: {user}")
-            continue
         try:
-            disable_user_features(hive_root)
-            set_mukkuru_as_shell(hive_root)
+            disable_user_features(user_sid)
+            set_mukkuru_as_shell(user_sid)
             clone_sandbox_to_user("Mukkuru", user)
         except (PermissionError, OSError) as e:
             print(f"An error occured trying to restrict user {user}: {str(e)}")
-        finally:
-            unload_user_hive(user_sid)
 
 # Sandboxie
 def get_sandbox_path(username: str, box_name: str) -> str:
@@ -247,7 +226,7 @@ def clone_sandbox_to_user(box_name: str, dst_user: str):
 
     dst_path = get_sandbox_path(dst_user, box_name)
 
-    print(f"\n=== CLONING '{box_name}' FOR USER '{dst_user}' ===")
+    print(f"Cloning '{box_name}' for user '{dst_user}'")
 
     if not os.path.isdir(username_to_profile_path(dst_user)):
         print(f"User profile for {dst_user} does not exist — skipping.")
@@ -258,7 +237,7 @@ def clone_sandbox_to_user(box_name: str, dst_user: str):
         shutil.rmtree(dst_path, ignore_errors=True)
 
     try:
-        shutil.copytree(src_path, dst_path)
+        shutil.copytree(src_path, dst_path, symlinks=True)
     except Exception as e:
         print(f"Failed copying to {dst_user}: {e}")
         return
