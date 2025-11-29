@@ -137,6 +137,12 @@ def set_mukkuru_as_shell(sid: str):
         winreg.SetValueEx(key, "MUKKURU_NO_EXIT", 0, winreg.REG_SZ, "1")
         #winreg.SetValueEx(key, "", 0, winreg.REG_SZ, "1")
 
+def ignore_steam(dir, entries):
+    ''' ignores Steam dirs during sandbox copy '''
+    if "Steam" in entries:
+        return {"Steam"}
+    return set()
+
 def restrict_users(group_name:str):
     ''' restrict users from a specific group to minimize risks to your isolated setup ( ex: cloud gaming) '''
     users = get_group_users(group_name)
@@ -237,7 +243,7 @@ def clone_sandbox_to_user(box_name: str, dst_user: str):
         shutil.rmtree(dst_path, ignore_errors=True)
 
     try:
-        shutil.copytree(src_path, dst_path, symlinks=True)
+        shutil.copytree(src_path, dst_path, ignore_dangling_symlinks=True, ignore=ignore_steam)
     except Exception as e:
         print(f"Failed copying to {dst_user}: {e}")
         return

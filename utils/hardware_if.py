@@ -34,15 +34,11 @@ def get_cpu_name() -> str:
     if override_cpu:
         return override_cpu
     if system == "Windows":
-        try:
-            output = subprocess.check_output(["wmic", "cpu", "get", "Name"], shell=True)
-            lines = output.decode().splitlines()
-            # Remove empty lines and strip whitespace
-            lines = [line.strip() for line in lines if line.strip()]
-            if len(lines) > 1:
-                return lines[1]
-        except (subprocess.CalledProcessError, IndexError, UnicodeDecodeError):
-            pass
+        import winreg
+        key = r"HARDWARE\DESCRIPTION\System\CentralProcessor\0"
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key) as k:
+            name, _ = winreg.QueryValueEx(k, "ProcessorNameString")
+            return name.strip()
         return platform.processor()
     if system == "Darwin":
         try:
@@ -62,6 +58,40 @@ def get_cpu_name() -> str:
         return platform.processor()
     return "Unknown CPU"
 
+def get_windows_gpu_name():
+    ''' returns gpu name for windows '''
+    import winreg
+    base = r"SYSTEM\CurrentControlSet\Control\Video"
+
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, base) as key:
+            i = 0
+            while True:
+                try:
+                    subkey_name = winreg.EnumKey(key, i)
+                    i += 1
+                except OSError:
+                    break 
+               
+                gpu_key_path = f"{base}\\{subkey_name}\\0000"
+                try:
+                    with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, gpu_key_path) as gpu_key:
+                        for value_name in ("DriverDesc", "Device Description"):
+                            try:
+                                value, _ = winreg.QueryValueEx(gpu_key, value_name)
+                                if value:
+                                    if "Monitor" in value or "Display Adapter" in value:
+                                        continue
+                                    return value
+                            except FileNotFoundError:
+                                pass
+                except FileNotFoundError:
+                    continue
+    except FileNotFoundError:
+        pass
+
+    return "Unknown GPU"
+
 @lru_cache(maxsize=1)
 def get_gpu_name() -> str:
     ''' get GPU name '''
@@ -69,16 +99,7 @@ def get_gpu_name() -> str:
     if override_gpu:
         return override_gpu
     if system == "Windows":
-        try:
-            output = subprocess.check_output(
-                ["wmic", "path", "win32_VideoController", "get", "name"],
-                shell=True
-            )
-            lines = output.decode().splitlines()
-            lines = [line.strip() for line in lines if line.strip()]
-            return lines[1] if len(lines) > 1 else "Unknown GPU"
-        except (subprocess.CalledProcessError, IndexError, UnicodeDecodeError, PermissionError):
-            return "Unknown GPU"
+        return get_windows_gpu_name()
 
     elif system == "Linux":
         try:
@@ -140,13 +161,11 @@ def get_info() -> dict:
         if "gamescope" in xdg:
             hardware_info["distro"] = hardware_info["distro"] + " (Gaming Mode)"
     elif system == "Windows":
-        try:
-            output = subprocess.check_output(['wmic', 'os', 'get', 'Caption'], shell=True)
-            lines = output.decode().splitlines()
-            # to-do: fix possible empty reply if lines[2] returns nothing
-            hardware_info["distro"] = lines[2].strip() if len(lines) > 1 else "Microsoft Windows"
-        except subprocess.CalledProcessError:
-            pass
+        key = r"SOFTWARE\Microsoft\Windows NT\CurrentVersion"
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key) as k:
+            name, _ = winreg.QueryValueEx(k, "ProductName")
+            hardware_info["distro"] = name.strip()
     elif system == "Darwin":
         try:
             version = subprocess.check_output(["sw_vers", "-productVersion"], text=True).strip()
