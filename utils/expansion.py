@@ -581,24 +581,15 @@ def toggle_lossless_scaling_for_game(appid: str, state: bool = True):
         backend_log("Unsupported source, only steam games and shortcuts supported")
     lc_close_steam(False)
 
-def run_sandboxed():
-    ''' Run Mukkuru as a sandboxed app '''
-    if platform.system() != "Windows":
-        print(f"Sandbox mode not supported in {platform.system()}")
-        return -1
-    os.environ["MUKKURU_SANDBOX"] = "1"
-    os.environ["MUKKURU_NO_POWER"] = "1"
-    os.environ["MUKKURU_FORCE_FULLSCREEN"] = "1"
-    program_files = os.environ.get("ProgramFiles", None)
-    if not program_files:
-        print("Unable to get program files path")
-        return
-    sb_path = os.path.join(program_files, "Sandboxie-Plus", "Start.exe")
-    if not os.path.exists(sb_path):
-        print("Sandboxie is not installed!")
-        return
-    exe = os.path.abspath(sys.argv[0])
-    box = "Mukkuru"
-    instance = subprocess.Popen([sb_path, f"/box:{box}", "/wait", "/silent", exe] + sys.argv[1:])
-    instance.wait()
-    return
+mukkuru_valid_env_vars = [
+    "HWINFO_RAM",
+    "HWINFO_CPU",
+    "HWINFO_GPU",
+    "HWINFO_STR",
+    "HWINFO_HST",
+    "MUKKURU_NO_POWER",
+    "MUKKURU_NO_EXIT",
+    "MUKKURU_SANDBOX",
+    "MUKKURU_FORCE_FULLSCREEN"
+]
+

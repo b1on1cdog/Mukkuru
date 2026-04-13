@@ -145,7 +145,7 @@ def get_info() -> dict:
     hardware_info["total_ram"] = ternary(override_ram, override_ram, round(memory_info.total/(1024*1024*1024),1) )
     hardware_info["used_ram"] = ternary(override_ram, 0, round(memory_info.used/(1024*1024*1024),1) )
     
-    hardware_info["computer_name"] = ternary(override_name, override_name, platform_info.node)
+    hardware_info["computer_name"] = ternary(override_name, override_name, platform_info.node).replace(".local", "")
     hardware_info["arch"] = platform_info.machine
 
     if hardware_info["arch"] == "AMD64":

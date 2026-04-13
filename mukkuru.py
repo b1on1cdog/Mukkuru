@@ -547,16 +547,6 @@ def fix_file_sources():
         backend_log("Adding user paths...")
         update_config(user_config)
 
-# HWINFO_RAM
-# HWINFO_CPU
-# HWINFO_GPU
-# HWINFO_STR
-# HWINFO_HST -> Hostname
-# MUKKURU_NO_POWER
-# MUKKURU_NO_EXIT
-# MUKKURU_SANDBOX
-# MUKKURU_FORCE_FULLSCREEN
-
 def main():
     ''' start of app execution '''
     system = platform.system()
@@ -581,9 +571,6 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--test", action="store_true", help="[Debug] run Mukkuru predefined tests")
-    parser.add_argument("--add-poolkit-rules", action="store_true", help="(Not implemented) [Linux] add poolkit rules to allow shutdown/reboot")
-    parser.add_argument("--sandbox", action="store_true", help="[Windows] Run Mukkuru using sandboxie")
-    parser.add_argument("--restrict", action="store_true", help="[Windows] Apply restrictions and set Mukkuru as Remote Desktop users shell")
     args = parser.parse_args()
 
     if len(sys.argv) >= 2:
@@ -591,19 +578,6 @@ def main():
             print("Running in test mode")
             db.init_database(mukkuru_env["database"])
             test.run_tests()
-            return
-        elif args.add_poolkit_rules:
-            # Not implemented
-            expansion.add_poolkit_rule()
-            return
-        elif args.sandbox and platform.system() == "Windows":
-            if "MUKKURU_SANDBOX" not in os.environ:
-                return expansion.run_sandboxed()
-            backend_log("Already sandboxed, skipping....")
-        elif args.restrict and platform.system() == "Windows":
-            group_name: str = "Remote Desktop Users"
-            from utils.nt import restrict_users
-            restrict_users(group_name)
             return
         else:
             backend_log("Passthrough mode")

@@ -23,6 +23,7 @@
 - About hwinfo can now be overrided using environment variables<br/>
 - Migrated from JSON files to SQLite<br/>
 - Video thumbnails are now stored in Mukkuru config folder so video folders are not poluted<br/>
+- Removed .local from PC name<br/>
 # 0.3.14
 - Removed unused assets and compressed some images<br/>
 - Replaced Mukkuru icon<br/>
