@@ -34,8 +34,6 @@ Release static builds with priority support:<br/>
 - Windows x86_64<br/>
 - Linux x86_64<br/>
 - MacOS ARM64<br/>
-Architectures not listed might need to run the source code directly and might require modifications.</br>
-Some others are going to receive occasional uploads</br>
 
 # Changelog
 [Read changelog.md](docs/changelog.md)

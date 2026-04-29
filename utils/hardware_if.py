@@ -24,7 +24,8 @@ codename_map = {
     "13": "Ventura",
     "14": "Sonoma",
     "15": "Sequoia",
-    "26": "Tahoe"
+    "26": "Tahoe",
+    "27": "Fizz"
 }
 
 @lru_cache(maxsize=1)
@@ -71,8 +72,7 @@ def get_windows_gpu_name():
                     subkey_name = winreg.EnumKey(key, i)
                     i += 1
                 except OSError:
-                    break 
-               
+                    break
                 gpu_key_path = f"{base}\\{subkey_name}\\0000"
                 try:
                     with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, gpu_key_path) as gpu_key:
@@ -136,16 +136,17 @@ def get_info() -> dict:
     platform_info = platform.uname()
 
     hardware_info: dict = {}
-    
     override_ram = os.environ.get("HWINFO_RAM", default=None)
     override_name = os.environ.get("HWINFO_HST", default=None)
     override_cpu = os.environ.get("HWINFO_CPU", default=None)
     override_gpu = os.environ.get("HWINFO_GPU", default=None)
 
-    hardware_info["total_ram"] = ternary(override_ram, override_ram, round(memory_info.total/(1024*1024*1024),1) )
-    hardware_info["used_ram"] = ternary(override_ram, 0, round(memory_info.used/(1024*1024*1024),1) )
-    
-    hardware_info["computer_name"] = ternary(override_name, override_name, platform_info.node).replace(".local", "")
+    hardware_info["total_ram"] = ternary(override_ram,
+                                         override_ram, round(memory_info.total/(1024*1024*1024),1) )
+    hardware_info["used_ram"] = ternary(override_ram,0, round(memory_info.used/(1024*1024*1024),1) )
+
+    hardware_info["computer_name"] = ternary(override_name,
+                                             override_name, platform_info.node).replace(".local","")
     hardware_info["arch"] = platform_info.machine
 
     if hardware_info["arch"] == "AMD64":

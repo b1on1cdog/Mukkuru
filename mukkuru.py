@@ -220,6 +220,7 @@ def get_audio_packs():
     user_sfx = os.path.join(mukkuru_env["root"], "sfx")
     audio_packs.extend(os.listdir(builtin_sfx))
     audio_packs.extend(os.listdir(user_sfx))
+    audio_packs.remove(".DS_Store")
     return audio_packs
 
 @app.route('/audios/get')

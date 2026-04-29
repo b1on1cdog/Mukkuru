@@ -162,6 +162,16 @@ def check_for_updates() -> dict:
         update_version, changelog = find_latest_release(True)
         changelog = changelog.replace("<br>", "\n")
         changelog = changelog.replace("<br/>", "\n")
+        # Let's clear lines irrelevant for end user
+        changelog_lines = changelog.splitlines()
+        for changelog_line in changelog_lines:
+            if "[dev]" in changelog_line:
+                changelog_lines.remove(changelog_line)
+        changelog = "\n".join(changelog_lines)
+        changelog_count = changelog.count('\n')
+        if changelog_count > 11:
+            changelog = "\n".join(changelog_lines[:12])
+            changelog = f"{changelog}\n - Read {changelog_count - 11} more changes in Github"
         update_status["version"] = update_version
         update_status["changelog"] = changelog
     else:

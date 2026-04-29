@@ -2,28 +2,30 @@
 -----------------
 # 0.4.0
 - Lossless scaling option is now hidden in games from uncompatible sources<br/>
-- Some backend functions are now documented using Sphinx markup<br/>
+- [dev] Some backend functions are now documented using Sphinx markup<br/>
 - Added game archiving to compress games to save space<br/>
 - Added "Manage all games" option to tamper LaunchOptions in the go<br/>
 - This will also allow detecting, stopping, pausing and resuming launched games<br/>
 - Improved lossless scaling toggle so it won't break non-steam games<br/>
-- Simplified frontend game fetching code<br/>
+- [dev] Simplified frontend game fetching code<br/>
 - Disabling cursor is now decided by user<br/>
 - Fixed cursor blinking during during reload<br/>
 - Fixed FOUC when using iframe in Dark Mode<br/>
 - Fixed pressing options with context menu replayed sound effect<br/>
-- Removed "gameLauncher-more"<br/>
+- [dev] Removed "gameLauncher-more"<br/>
 - Added support for webp and png thumbnails and hero<br/>
 - Added partial support for touchscreen and mouse in homescreen<br/>
 - Added a small delay when passing the border with selector loop enabled<br/>
-- Tracebacks are now saved in logs<br/>
+- [dev] Tracebacks are now saved in logs<br/>
 - Solved crash trying to print message<br/>
-- Modified compile.py so it could be re-used in other projects easier<br/>
+- [dev] Modified compile.py so it could be re-used in other projects easier<br/>
 - Contextual menus are now animated<br/>
 - About hwinfo can now be overrided using environment variables<br/>
 - Migrated from JSON files to SQLite<br/>
 - Video thumbnails are now stored in Mukkuru config folder so video folders are not poluted<br/>
 - Removed .local from PC name<br/>
+- .DS_Store is now skipped from sfx<br>
+- Trimming long changelog from updater<br/>
 # 0.3.14
 - Removed unused assets and compressed some images<br/>
 - Replaced Mukkuru icon<br/>
