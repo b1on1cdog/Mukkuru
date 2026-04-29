@@ -242,17 +242,14 @@ def get_theme_asset(theme_id: str, asset: str):
     backend_log(f"getting theme {theme_id} {asset}")
     return send_from_directory(theme_dir, asset)
 
-@wserver.route('/config/get')
-@app.route('/config/get')
-def get_user_configuration():
-    ''' get_config() http controller, returns a json '''
-    return jsonify(get_config())
-
-@app.route('/config/set', methods = ['GET', 'POST', 'DELETE'])
+@wserver.route('/config', methods = ['GET'])
+@app.route('/config', methods = ['GET', 'POST', 'DELETE'])
 def set_config():
     '''update user configuration from request'''        
     if request.method == 'POST':
         user_config = request.get_json()
+        if "TMP" in user_config: 
+            del user_config["TMP"]
         update_config(user_config)
         return "200"
     if request.method == 'GET':

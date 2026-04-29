@@ -63,7 +63,7 @@ function setGameProperty(property, value, value2 = undefined){
         return;
     }
 
-    fetch("/config/set", {
+    fetch("/config", {
       method: "POST",
       body: JSON.stringify(userConfiguration),
       headers: {

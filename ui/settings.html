@@ -165,7 +165,7 @@ if (isFirefox || isKioskMode) {
     document.getElementById("fullScreen-separator").remove();
 }
 
-fetch("/config/get").then(function(response) {
+fetch("/config").then(function(response) {
         return response.json();
     }).then(function(data) {
         userConfiguration = data;
@@ -568,7 +568,7 @@ document.addEventListener('keydown', (e) => {
 
             setTimeout(() => {
             
-            fetch("/config/set", {
+            fetch("/config", {
                     method: "POST",
                     body: JSON.stringify(userConfiguration),
                     headers: {

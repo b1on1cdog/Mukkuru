@@ -192,7 +192,7 @@ function cdUp(path) {
 }
 
 async function loadConfiguration() {
-    configResp = await fetch("/config/get");
+    configResp = await fetch("/config");
     userConfiguration = await configResp.json();
 }
 

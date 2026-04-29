@@ -396,7 +396,7 @@ const keyBindings = {
 };
 
 async function updateConfiguration() {
-  response = await fetch("/config/set", {
+  response = await fetch("/config", {
     method: "POST",
     body: JSON.stringify(userConfiguration),
     headers: {

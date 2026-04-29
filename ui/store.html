@@ -43,7 +43,7 @@ const menuOptions = document.querySelectorAll('.menu-option');
 //menuItems[0].className = "menu-tab selected";
 menuItems[0].classList.add("selected");
 
-fetch("/config/get").then(function(response) {
+fetch("/config").then(function(response) {
         return response.json();
     }).then(function(data) {
         userConfiguration = data;

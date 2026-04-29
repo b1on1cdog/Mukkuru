@@ -571,6 +571,9 @@ so .archived will override .favorite when both classes are set
     bottom: 20%;
     position: fixed;
 }
+.footerNavigation.disabled {
+    display: none !important; 
+}
 
 .gameList + .footerNavigation {
     margin-top: 56px;

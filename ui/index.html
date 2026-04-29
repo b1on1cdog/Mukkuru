@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     })
 
-    fetch("/config/get").then(function(response) {
+    fetch("/config").then(function(response) {
         return response.json();
     }).then(function(data) {
         userConfiguration = data;
@@ -107,6 +107,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userConfiguration["displayCursor"] != true) {
             document.head.insertAdjacentHTML('beforeend', `<style>*, *::before, *::after { cursor: none !important; }</style>`);
             hideCursorInParent();
+        }
+        environ = null;
+        if (userConfiguration["TMP"] != undefined){
+            environ = userConfiguration["TMP"];
+        }
+
+        if (environ != null && environ["MUKKURU_GUEST_MODE"] != undefined) {
+            document.getElementsByClassName("footerNavigation")[0].classList.add("disabled");
         }
 
         if (userConfiguration["darkMode"] == true) {
@@ -384,6 +392,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             case "down":
+                isFooterDisabled = document.getElementsByClassName("footerNavigation")[0].classList.contains("disabled");
+
                 if (isContextMenu) {
                     ctxMax = ctxMenu.querySelectorAll('.contextItem').length;
                     if (currentContext >= ctxMax-1) {
@@ -399,6 +409,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (currentRow == 2) {
                     playSound("border");
+                } else if (currentRow == 1 && isFooterDisabled) {
+                    playSound("border");
                 } else if (currentRow == 3 && currentIndex + appListCols < navigatingRow[currentRow].length) {
                     currentIndex = currentIndex + appListCols;
                     playSound("select");
@@ -408,6 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     currentIndex = 0
                     currentRow = currentRow + 1;
+
                     playSound("select");
                     if (currentRow == 1 && gameLaunchers.length == 0){
                         currentRow = 2;

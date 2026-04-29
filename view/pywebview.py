@@ -42,7 +42,7 @@ class Frontend:
     def update_user_config(self):
         ''' update config from backend '''
         try:
-            response = requests.get("http://localhost:49347/config/get", timeout=1)
+            response = requests.get("http://localhost:49347/config", timeout=1)
             self.user_config = response.json()
         except (TimeoutError, requests.exceptions.RequestException,
                 json.decoder.JSONDecodeError, TypeError) as e:

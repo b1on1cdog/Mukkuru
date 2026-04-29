@@ -136,6 +136,10 @@ def get_config() -> dict:
             configuration[key] = value
         user_config = configuration
     session.close()
+    user_config["TMP"] = {}
+    for key, value in os.environ.items():
+        if key.startswith("MUKKURU_"):
+            user_config["TMP"][key] = value
     return user_config
 
 def update_config(user_config: dict) -> None:
