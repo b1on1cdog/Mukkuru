@@ -1,4 +1,4 @@
-# Copyright (c) 2025 b1on1cdog
+# Copyright (c) 2025-2026 b1on1cdog
 # Licensed under the MIT License
 ''' Steam library module '''
 import struct
@@ -353,8 +353,8 @@ def get_steam_games(steam: dict) -> dict:
     # crossover hotfix
     main_folder = os.path.join(steam["path"], "steamapps")
     if not main_folder in libraries:
-       libraries.append(main_folder)
-    
+        libraries.append(main_folder)
+
     library_cache = os.path.join(steam_path, "appcache", "librarycache")
     # Scan Steam games
     for lib in libraries:

@@ -266,7 +266,7 @@ def add_to_startup() -> str:
     fail_message = translate_str("OperationFailed", "Operation failed")
     user_config = get_config()
     if platform.system() == "Windows":
-        import winreg#pylint: disable=C0415
+        import winreg
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
         r"Software\Microsoft\Windows\CurrentVersion\Run",
         0, winreg.KEY_SET_VALUE)
@@ -303,7 +303,7 @@ def remove_from_startup() -> str:
         if Path(mukkuru_service_path).exists():
             os.remove(mukkuru_service_path)
     if platform.system() == "Windows":
-        import winreg#pylint: disable=C0415
+        import winreg
         key = winreg.OpenKey(
             winreg.HKEY_CURRENT_USER,
             r"Software\Microsoft\Windows\CurrentVersion\Run",
@@ -332,6 +332,8 @@ def get_capabilities() -> dict:
     capabilities["lossless_scaling"] = is_lossless_scaling_available()
     return capabilities
 
+SE_SHUTDOWN_NAME = "SeShutdownPrivilege"
+
 def has_shutdown_privilege_enabled():
     """ (Windows) Check SeShutdownPrivilege to check whether shutdown is possible """
     if platform.system() != "Windows":
@@ -340,30 +342,32 @@ def has_shutdown_privilege_enabled():
     from ctypes import wintypes
     advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-    SE_SHUTDOWN_NAME = "SeShutdownPrivilege"
-    TOKEN_QUERY = 0x0008
-    TokenPrivileges = 3
-    SE_PRIVILEGE_ENABLED = 0x00000002
+    token_query = 0x0008
+    token_privileges = 3
+    se_privilege_enabled = 0x00000002
     class LUID(ctypes.Structure):
+        ''' Fields: LowPart, HighPart '''
         _fields_ = [
         ("LowPart", wintypes.DWORD),
         ("HighPart", wintypes.LONG),
     ]
 
-    class LUID_AND_ATTRIBUTES(ctypes.Structure):
+    class LUIDAndAttributes(ctypes.Structure):
+        ''' Fields: Luid, Attributes '''
         _fields_ = [
         ("Luid", LUID),
         ("Attributes", wintypes.DWORD),
     ]
 
-    class TOKEN_PRIVILEGES(ctypes.Structure):
+    class TokenPrivileges(ctypes.Structure):
+        ''' Fields: PrivilegeCount, Privileges '''
         _fields_ = [
         ("PrivilegeCount", wintypes.DWORD),
-        ("Privileges", LUID_AND_ATTRIBUTES * 1),
+        ("Privileges", LUIDAndAttributes * 1),
     ]
     token = wintypes.HANDLE()
     process = kernel32.GetCurrentProcess()
-    if not advapi32.OpenProcessToken(process, TOKEN_QUERY, ctypes.byref(token)):
+    if not advapi32.OpenProcessToken(process, token_query, ctypes.byref(token)):
         return False
 
     luid = LUID()
@@ -372,18 +376,18 @@ def has_shutdown_privilege_enabled():
 
     # Query privileges
     size = wintypes.DWORD(0)
-    advapi32.GetTokenInformation(token, TokenPrivileges, None, 0, ctypes.byref(size))
+    advapi32.GetTokenInformation(token, token_privileges, None, 0, ctypes.byref(size))
     buf = ctypes.create_string_buffer(size.value)
-    if not advapi32.GetTokenInformation(token, TokenPrivileges, buf, size, ctypes.byref(size)):
+    if not advapi32.GetTokenInformation(token, token_privileges, buf, size, ctypes.byref(size)):
         return False
 
-    tp = ctypes.cast(buf, ctypes.POINTER(TOKEN_PRIVILEGES)).contents
+    tp = ctypes.cast(buf, ctypes.POINTER(TokenPrivileges)).contents
 
     # Iterate privileges
     for i in range(tp.PrivilegeCount):
         priv = tp.Privileges[i]
         if priv.Luid.LowPart == luid.LowPart and priv.Luid.HighPart == luid.HighPart:
-            is_enabled = bool(priv.Attributes & SE_PRIVILEGE_ENABLED)
+            is_enabled = bool(priv.Attributes & se_privilege_enabled)
             return is_enabled
 
     return False
@@ -477,7 +481,7 @@ def lc_close_steam(avoid_gamescope: bool = True):
     if avoid_gamescope and not gamescope_flag:
         procs[0].kill()
     if not avoid_gamescope and gamescope_flag:
-        from view.alternate_ui import Frontend#pylint: disable=C0415
+        from view.alternate_ui import Frontend
         Frontend().close()
         procs[0].kill()
 

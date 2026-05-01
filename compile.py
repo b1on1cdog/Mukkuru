@@ -1,4 +1,4 @@
-# Copyright (c) 2025 b1on1cdog
+# Copyright (c) 2025-2026 b1on1cdog
 # Licensed under the MIT License
 '''
 Compile script for Mukkuru\n
@@ -19,16 +19,16 @@ system = platform.system()
 parser = argparse.ArgumentParser()
 parser.add_argument("--docker", action="store_true", help="Compile using Docker")
 parser.add_argument("--clean", action="store_true", help="Remove residual files")
-parser.add_argument("--wipe", action="store_true", help="Clear residual files, output files and virtual enviroment ")
+parser.add_argument("--wipe", action="store_true", help="Clear residual files, out files and venv")
 parser.add_argument("--run", action="store_true", help="Run App without compiling")
 parser.add_argument("--wef", action="store_true")
 parser.add_argument("--add", nargs='+', help="Install package to venv")
 parser.add_argument("--debug", action="store_true", help="Enables debug flag")
 parser.add_argument("--alt", action="store_true", help="Use PyInstaller instead of Nuitka")
-parser.add_argument("--onedir", action="store_true", help="Output files to folder instead of single file executable")
+parser.add_argument("--onedir", action="store_true", help="Out files to dir instead of executable")
 parser.add_argument("--clang", action="store_true", help="Use clang for nuitka compilation")
 parser.add_argument("--mingw", action="store_true", help="Use mingw for nuitka compilation")
-parser.add_argument("--msvc", action="store_true", help="Use Microsoft Visual Studio Compiler for nuitka compilation")
+parser.add_argument("--msvc", action="store_true", help="Use MVS Compiler for nuitka compilation")
 
 args, unknown_args = parser.parse_known_args()
 compiler_config = {}
@@ -81,7 +81,7 @@ def wipe():
     cleanup()
     try:
         shutil.rmtree(VENV)
-        os.remove(os.path.join(OUTPUT_DIR, OUTPUT_FILE))
+        os.remove(os.path.join(OUTPUT_DIR, output_file))
     except FileNotFoundError:
         return
 
@@ -119,7 +119,7 @@ SRC_FILE = compiler_config["SOURCE_FILE"]
 SRC_OUT = f"{APP_TITLE.lower()}-{system.lower()}-{AARCH}.py"
 CORE_FILE = os.path.join("utils", "core.py")
 OUTPUT_DIR = "build"
-OUTPUT_FILE = f"{APP_TITLE.lower()}-{system.lower()}-{AARCH}"
+output_file = f"{APP_TITLE.lower()}-{system.lower()}-{AARCH}"
 
 UI_SOURCE:str = default_set(compiler_config, "UI_SOURCE", is_path=True)
 LICENSE_SOURCE:str = default_set(compiler_config, "LICENSE_SOURCE", is_path=True)
@@ -158,7 +158,7 @@ if system == "Darwin" and UI_SOURCE is not None:
 venv_python = os.path.join(VENV, 'bin', 'python')
 
 if system == "Windows":
-    OUTPUT_FILE = OUTPUT_FILE+".exe"
+    output_file = output_file+".exe"
     venv_python = os.path.join(VENV, 'Scripts', 'python.exe')
 # CONSTANTS END
 
@@ -212,7 +212,7 @@ if args.wipe:
     wipe()
     exit(0)
 
-print(f"using {sys.executable}, compiling {OUTPUT_FILE}")
+print(f"using {sys.executable}, compiling {output_file}")
 
 if not Path(".venv").is_dir():
     os.mkdir(".venv")
@@ -286,7 +286,7 @@ if UI_SOURCE is not None:
 if LICENSE_SOURCE is not None:
     compiler_flags.append(f"--include-data-dir={LICENSE_SOURCE}=docs")
 compiler_flags.append(SRC_OUT)
-compiler_flags.append(f"--output-filename={OUTPUT_FILE}")
+compiler_flags.append(f"--output-filename={output_file}")
 
 if True and not Path(OUTPUT_DIR).is_dir():
     os.mkdir(OUTPUT_DIR)
@@ -299,7 +299,7 @@ else:
 os.remove(SRC_OUT)
 
 if system == "Darwin" and not args.run:
-    APP_NAME = f"{OUTPUT_FILE}.app"
+    APP_NAME = f"{output_file}.app"
     app_input = os.path.join(OUTPUT_DIR, APP_NAME)
     app_dmg = app_input.replace(".app", ".dmg")
 

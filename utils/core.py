@@ -1,4 +1,4 @@
-# Copyright (c) 2025 b1on1cdog
+# Copyright (c) 2025-2026 b1on1cdog
 # Licensed under the MIT License
 '''
 Mukkuru module with essential functions and constants.\n
@@ -30,15 +30,15 @@ APP_PORT: int = 49347
 SERVER_PORT: int = 49351
 PASSTHROUGH_PORT: int = 49453# 49454, 49455 will also be used when opening more games
 AVAILABLE_P_PORTS: int = 4
-FRONTEND_MODE: str = "PYWEBVIEW"
+frontend_mode: str = "PYWEBVIEW"
 DEBUG = True
 
 if platform.system() == "Windows":
     pass
 elif platform.system() == "Darwin":
-    FRONTEND_MODE = "PYWEBVIEW"
+    frontend_mode = "PYWEBVIEW"
 else:
-    FRONTEND_MODE = "FLASKUI"
+    frontend_mode = "FLASKUI"
 
 @lru_cache(maxsize=1)
 def app_version():

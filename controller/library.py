@@ -1,4 +1,4 @@
-# Copyright (c) 2025 b1on1cdog
+# Copyright (c) 2025-2026 b1on1cdog
 # Licensed under the MIT License
 ''' library controller module '''
 import os
@@ -8,7 +8,7 @@ from library.steam import get_proton_list
 from library.games import get_games, scan_games, scan_artwork
 from library.games import launch_app, get_username, list_stores
 from library import video
-from utils.core import get_config, mukkuru_env
+from utils.core import get_config
 from utils import expansion, archiving
 
 library_controller = Blueprint('library', __name__)

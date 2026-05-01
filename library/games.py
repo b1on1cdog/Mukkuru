@@ -1,4 +1,4 @@
-# Copyright (c) 2025 b1on1cdog
+# Copyright (c) 2025-2026 b1on1cdog
 # Licensed under the MIT License
 ''' Mukkuru games module '''
 import os
@@ -268,7 +268,7 @@ def launch_lossless_scaling():
     startupinfo.wShowWindow = subprocess.SW_HIDE
     subprocess.Popen([lossless_path], startupinfo=startupinfo)
     time.sleep(30)
-    from utils.winkeys import send_ctrl_alt_s#pylint: disable=C0415
+    from utils.winkeys import send_ctrl_alt_s
     send_ctrl_alt_s()
 
 def find_app_id_from_path(path: str) -> str:

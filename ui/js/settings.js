@@ -1,5 +1,5 @@
 
-// Copyright (c) 2025 b1on1cdog
+// Copyright (c) 2025-2026 b1on1cdog
 // Licensed under the MIT License
 
 function showPreviousSeparator(state){

@@ -40,6 +40,7 @@ Release static builds with priority support:<br/>
 
 # To-do list
 - Add full touchscreen support<br/>
+- Add support for multiple independent user instances in same computer<br/>
 - Add option to terminate game (using transparent binary), optionally also pause/resume<br/>
 - Add button to transfer mukkuru media to user folders<br/>
 - Add button to delete all video thumbnails<br/>

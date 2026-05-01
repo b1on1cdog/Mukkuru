@@ -1,7 +1,6 @@
-# Copyright (c) 2025 b1on1cdog
+# Copyright (c) 2025-2026 b1on1cdog
 # Licensed under the MIT License
 """ Mukkuru, cross-platform game launcher """
-#pylint: disable=C0413
 import os
 import json
 from pathlib import Path
@@ -23,7 +22,7 @@ import utils.core as core
 from utils.css_preprocessor import CssPreprocessor
 core.APP_DIR = os.path.dirname(os.path.abspath(__file__))
 from utils import hardware_if, updater, expansion, passthrough, test
-from utils.core import mukkuru_env, COMPILER_FLAG, FRONTEND_MODE
+from utils.core import mukkuru_env, COMPILER_FLAG, frontend_mode
 from utils.core import APP_PORT, SERVER_PORT, APP_DIR
 from utils.core import app_version, get_config, backend_log, set_alive_status
 from utils.core import update_config, format_executable
@@ -41,11 +40,11 @@ from controller.library import library_controller, external_library
 from controller.dashboard import dashboard_blueprint
 from controller.repos import repos_blueprint
 
-if FRONTEND_MODE == "PYWEBVIEW":
+if frontend_mode == "PYWEBVIEW":
     from view.pywebview import Frontend
-elif FRONTEND_MODE == "WEF":
+elif frontend_mode == "WEF":
     from view.wef_view import Frontend
-elif FRONTEND_MODE == "FLASKUI":
+elif frontend_mode == "FLASKUI":
     from view.alternate_ui import Frontend
 else:
     print("FATAL: Unknown webview, unable to produce interface")
@@ -173,9 +172,9 @@ def exit_mukkuru():
             SSERVER.close()
     except (OSError, ValueError, AttributeError):
         pass
-    if FRONTEND_MODE == "FLASKUI":
+    if frontend_mode == "FLASKUI":
         Frontend().close() # pylint: disable=E0606, E0601
-    if FRONTEND_MODE == "WEF":
+    if frontend_mode == "WEF":
         terminate_wef()
     os._exit(0)
 
@@ -288,7 +287,7 @@ def delete_data(selection: str):
         terminate_wef()
         shutil.rmtree(os.path.join(mukkuru_env["root"], "wef_bundle"))
     elif selection == "all":
-        if FRONTEND_MODE == "WEF":
+        if frontend_mode == "WEF":
             terminate_wef()
         try:
             shutil.rmtree(mukkuru_env["root"])
@@ -583,7 +582,7 @@ def main():
                     backend_log("Unable to find app_id")
             passthrough.transparent_execution()
             return
-    backend_log(f'Using { FRONTEND_MODE } for rendering')
+    backend_log(f'Using { frontend_mode } for rendering')
     backend_log(f"COMPILER_FLAG: {COMPILER_FLAG}")
     if "DELAY_EXECUTION" in os.environ:
         backend_log("DELAY_EXECUTION variable is set, waiting...")
