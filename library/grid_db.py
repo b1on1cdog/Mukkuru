@@ -64,8 +64,14 @@ def get_id_from_platform(platform_id: str, platform_name: str):
 
 def find_image_url(game_id: str, image_format:str, image_index: int = 0):
     ''' find square picture '''
-    if image_format == "1:1":
+    if image_format == "boxart":
         dimensions = "512x512,1024x1024"
+        url = f'{API_URL}grids/game/{game_id}?dimensions={dimensions}'
+    elif image_format == "grid":
+        dimensions = "920x430"
+        url = f'{API_URL}grids/game/{game_id}?dimensions={dimensions}'
+    elif image_format == "portrait":
+        dimensions = "600x900"
         url = f'{API_URL}grids/game/{game_id}?dimensions={dimensions}'
     elif image_format == "hero":
         url = f'{API_URL}heroes/game/{game_id}'
@@ -97,7 +103,7 @@ def sanitize_filename_ascii(name: str, max_length=255):
 
 def download_square_image(game_identifier: GameIdentifier, s_path: str):
     ''' download a 1:1 image '''
-    return download_image(game_identifier, s_path, "1:1")
+    return download_image(game_identifier, s_path, "boxart")
 
 def download_image(game_identifier: GameIdentifier, s_path: str,
                    image_format: str, image_index:int = 0):
@@ -128,7 +134,7 @@ def download_image(game_identifier: GameIdentifier, s_path: str,
     else:
         output_file = f'{output_file}.{extension}'
     download_file(file_url, output_file)
-    if extension != "jpg" and image_format == "1:1":
+    if extension != "jpg" and image_format == "boxart":
         new_file = output_file.replace(f".{extension}", ".jpg")
         backend_log(f'{output_file} > {new_file}')
         im = Image.open(output_file)

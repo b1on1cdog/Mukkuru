@@ -136,62 +136,76 @@ def scan_games(dry: bool = False) -> dict:
         time.sleep(0.1)
     return games
 
-def fetch_artwork(app_id: str, game, b1, b2, b3, use_alt_images) -> dict:
-    ''' handle artwork '''
-    blacklist_1 = []
-    blacklist_2 = []
-    blacklist_3 = []
+def download_artwork(app_id: str, game, art_blacklist: dict,
+                     blacklist: dict, asset_name: str, asset_index: int):
+    ''' Download specific artwork for a specific game '''
+    game_identifier = grid_db.GameIdentifier(game["AppName"], app_id, game["Source"])
+    asset_folder, image_format = asset_name, asset_name
+    if asset_name == "boxart":
+        asset_folder = "thumbnails"
+    asset = os.path.join(mukkuru_env["root"], asset_folder, f'{app_id}')
+    if asset_name == "boxart":
+        asset = f"{asset}.jpg"
+    elif asset_name != "hero":
+        asset = f"{asset}.png"
+    if not Path(asset).is_file() and app_id not in art_blacklist[asset_name]:
+        if grid_db.download_image(game_identifier, asset, image_format, asset_index) == "Missing":
+            blacklist[asset_name].append(app_id)
+
+def fetch_artwork(app_id: str, game, art_blacklist: dict, use_alt_images) -> dict:
+    ''' Download all artwork for a specific app_id '''
+    blacklist = {}
+    blacklist["hero"] = []
+    blacklist["boxart"] = []
+    blacklist["logo"] = []
+    blacklist["grid"] = []
+    blacklist["portrait"] = []
+
     hero_index = 0
     boxart_index = 0
     logo_index = 0
+    grid_index = 0
+    p_index = 0
+
     if app_id in use_alt_images:
         alt_option = use_alt_images[app_id]
         option_boxart = 1 << 0  # 0001 = 1
         option_hero = 1 << 1  # 0010 = 2
         option_logo = 1 << 2  # 0100 = 4
+        option_grid = 1 << 3 # 1000 = 8
+
+        option_portrait = 1 << 4 # 0001 0000 = 16
         if alt_option & option_boxart:
             boxart_index = 1
         if alt_option & option_hero:
             hero_index = 1
         if alt_option & option_logo:
             logo_index = 1
+        if alt_option & alt_option & option_grid:
+            grid_index = 1
+        if alt_option & option_portrait:
+            p_index = 1
         print(f"using alternate image for {game['AppName']}")
-    thumbnail = os.path.join(mukkuru_env["root"], "thumbnails", f'{app_id}.jpg')
-    game_source = game["Source"]
-    game_identifier = grid_db.GameIdentifier(game["AppName"], app_id, game_source)
-    if not Path(thumbnail).is_file() and app_id not in b1:
-        if grid_db.download_image(game_identifier, thumbnail,"1:1", boxart_index) == "Missing":
-            blacklist_1.append(app_id)
-    hero = os.path.join(mukkuru_env["root"], "hero", f'{app_id}')
-    if not Path(hero).is_file() and app_id not in b2:
-        if grid_db.download_image(game_identifier, hero, "hero", hero_index) == "Missing":
-            blacklist_2.append(app_id)
-    logo = os.path.join(mukkuru_env["root"], "logo", f'{app_id}.png')
-    if not Path(logo).is_file() and app_id not in b3:
-        if grid_db.download_image(game_identifier, logo,"logo", logo_index) == "Missing":
-            blacklist_3.append(app_id)
-    result = {}
-    result["1"] = blacklist_1
-    result["2"] = blacklist_2
-    result["3"] = blacklist_3
-    return result
+    download_artwork(app_id, game, art_blacklist, blacklist, "boxart", boxart_index)
+    download_artwork(app_id, game, art_blacklist, blacklist, "hero", hero_index)
+    download_artwork(app_id, game, art_blacklist, blacklist, "logo", logo_index)
+    download_artwork(app_id, game, art_blacklist, blacklist, "grid", grid_index)
+    download_artwork(app_id, game, art_blacklist, blacklist, "portrait", p_index)
+    return blacklist
 
 def scan_artwork(games = None) -> None:
-    ''' scan for games artwork '''
+    ''' Scan and bulk schedule game artwork '''
     backend_log("scanning for new artwork..")
     config = get_config()
     update_sgdb_api(config)
-    blacklist1 = config["boxartBlacklist"]
-    blacklist2 = config["heroBlacklist"]
-    blacklist3 = config["logoBlacklist"]
+    art_blacklist: dict = config["artBlacklist"]
     use_alt_images = config["useAlternativeImage"]
     if games is None:
         games = get_games()
     results = {}
     with ThreadPoolExecutor(max_workers=config["cores"]*2) as executor:
         future_to_key = {
-            executor.submit(fetch_artwork, k, v, blacklist1, blacklist2,
-                            blacklist3, use_alt_images): k
+            executor.submit(fetch_artwork, k, v, art_blacklist, use_alt_images): k
             for k, v in games.items()
         }
         counter = 0
@@ -199,9 +213,11 @@ def scan_artwork(games = None) -> None:
             k = future_to_key[future]
             try:
                 results[k] = future.result()
-                blacklist1.extend(results[k]["1"])
-                blacklist2.extend(results[k]["2"])
-                blacklist3.extend(results[k]["3"])
+                art_blacklist["boxart"].extend(results[k]["boxart"])
+                art_blacklist["hero"].extend(results[k]["hero"])
+                art_blacklist["logo"].extend(results[k]["logo"])
+                art_blacklist["grid"].extend(results[k]["grid"])
+                art_blacklist["portrait"].extend(results[k]["portrait"])
                 counter = counter + 1
                 if counter % 12 == 0:
                     set_alive_status({"command": "reloadGameThumbnails"})
@@ -209,9 +225,7 @@ def scan_artwork(games = None) -> None:
             except (KeyError, OSError, IndexError, FileNotFoundError) as e:
                 results[k] = {"error": str(e)}
                 print(f"scan_artwork error: {str(e)}")
-    config["boxartBlacklist"] = blacklist1
-    config["heroBlacklist"] = blacklist2
-    config["logoBlacklist"] = blacklist3
+    config["artBlacklist"] = art_blacklist
     update_config(config)
     scan_thumbnails(games)
     set_alive_status({"command": "ScanFinished"})

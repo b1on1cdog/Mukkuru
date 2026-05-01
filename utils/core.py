@@ -111,9 +111,13 @@ def get_config() -> dict:
             "alwaysShowBottomBar" : True,
             "uiSounds" : "original",
             "gameProperties" : {},
-            "boxartBlacklist" : [],
-            "logoBlacklist" : [],
-            "heroBlacklist" : [],
+            "artBlacklist" : {
+                "grid": [],
+                "hero": [],
+                "logo": [],
+                "boxart": [],
+                "portrait" : []
+            },
             "losslessScaling" : [],
             "configVersion" : APP_VERSION,
             "adultContent" : False,
@@ -144,6 +148,7 @@ def get_config() -> dict:
 
 def update_config(user_config: dict) -> None:
     ''' update user configuration '''
+    user_config.pop("TMP", None)
     session = db.get_session()
     backend_log("updating config....", parent=True)
     cfg: Config = session.query(Config).first()

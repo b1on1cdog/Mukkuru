@@ -248,8 +248,6 @@ def set_config():
     '''update user configuration from request'''        
     if request.method == 'POST':
         user_config = request.get_json()
-        if "TMP" in user_config: 
-            del user_config["TMP"]
         update_config(user_config)
         return "200"
     if request.method == 'GET':
@@ -608,10 +606,13 @@ def main():
         os.path.join(mukkuru_env["artwork"], "Logo"),
         os.path.join(mukkuru_env["artwork"], "Heroes"),
         os.path.join(mukkuru_env["artwork"], "Grid"),
+        os.path.join(mukkuru_env["artwork"], "Portrait"),
         os.path.join(mukkuru_env["artwork"], "Avatar"),
         os.path.join(mukkuru_env["root"], "logo"),
         os.path.join(mukkuru_env["root"], "thumbnails"),
         os.path.join(mukkuru_env["root"], "hero"),
+        os.path.join(mukkuru_env["root"], "grid"),
+        os.path.join(mukkuru_env["root"], "portrait"),
         os.path.join(mukkuru_env["root"], "themes"),
         os.path.join(mukkuru_env["root"], "plugins"),
         os.path.join(mukkuru_env["root"], "tools"),

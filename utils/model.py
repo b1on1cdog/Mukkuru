@@ -25,9 +25,10 @@ class Game(Base):
     Source = Column(String, nullable=False)
     Type = Column(String, nullable=False)
     Metadata = Column(MutableDict.as_mutable(JSON), nullable=True)
-    
+
     @property
     def dictionary(self) -> dict:
+        ''' game dictionary representation '''
         return {
             "AppName" : self.AppName,
             "StartDir" : self.StartDir,
@@ -68,6 +69,7 @@ class Video(Base):
 
     @property
     def dictionary(self) -> dict:
+        ''' video dictionary representation '''
         return {
             "video_id" : self.video_id,
             "path" : self.path,
@@ -85,7 +87,7 @@ class Video(Base):
         mapper = inspect(self.__class__)
         valid_fields = {col.key for col in mapper.columns}
 
-        for key, value in data.items():                
+        for key, value in data.items():
             if key in valid_fields:
                 setattr(self, key, value)
 
@@ -97,6 +99,7 @@ class Config(Base):
 
     @property
     def config(self):
+        ''' access config as dictionary '''
         return json.loads(self.config_raw) if self.config_raw else {}
 
     @config.setter
