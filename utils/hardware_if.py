@@ -25,7 +25,7 @@ codename_map = {
     "14": "Sonoma",
     "15": "Sequoia",
     "26": "Tahoe",
-    "27": "Fizz"
+    "27": "Golden Gate"
 }
 
 @lru_cache(maxsize=1)
