@@ -24,7 +24,7 @@ See [third-party.md](docs/third-party.md) for third-party files license terms.<b
 - Update to latest version from app settings<br/>
 - WebUI to transfer files from another device<br/>
 - Video playback and take video screenshots with a single button<br/>
-- Automatically download boxarts from SteamGridDB<br/>
+- Automatically download game artwork from SteamGridDB<br/>
 - Multi-language (currently only English and Spanish)<br/>
 - Strict static analysis compliance<br/>
 - Plug and play compile environment<br/>
@@ -58,15 +58,7 @@ Release static builds with priority support:<br/>
 - Game provider install helper (Steam, Heroic, etc)<br/>
 - Add joystick buttons customization<br/>
 - Add ability to download games</br>
-- Support for linux box86 in arm64<br/>
-- Add support for freebsd<br/>
-
-# Contribution guidelines
-- **Linting** Use pylint and remove as many warnings as reasonably possible before submitting your code. <br/>
-- **Nuitka Compatibility** Ensure your changes do **not break Nuitka compilation** as most users rely in static builds. <br/>
-- **Dependencies** Avoid introducing new dependencies unless absolutely necessary. <br/>
-- **Licensing** Do **not include GPL, LGPL** or any other restrictive licensed code. <br/>
-- **Cross-Platform Code** Avoid using platform-specific code outside its target (ex: running MacOS code without a Darwin platform check). <br/>
+- Add support for linux-arm64 and freebsd<br/>
 
 # Donations
 ---------------

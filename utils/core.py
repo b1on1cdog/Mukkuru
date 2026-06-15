@@ -24,7 +24,7 @@ from utils.model import Config
 # Constants
 mukkuru_env = {}
 COMPILER_FLAG = getattr(sys, 'frozen', False) or "__compiled__" in globals()
-APP_VERSION = "0.4.0"
+APP_VERSION = "0.3.15"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_PORT: int = 49347
 SERVER_PORT: int = 49351

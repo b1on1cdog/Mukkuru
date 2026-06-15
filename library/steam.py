@@ -400,9 +400,8 @@ def read_steam_username(steam_config) -> Optional[str]:
         backend_log("No usernames found under 'Accounts'.")
         return None
 
-def get_steam_avatar_from_cache(artwork_dir: str, steam_username: str) -> bool:
+def get_steam_avatar_from_cache(artwork_dir: str, steam: dict, steam_username: str) -> bool:
     ''' Copy steam avatar from disk '''
-    steam = get_steam_env()
     avatarcache = os.path.join(steam["path"], "config", "avatarcache")
     avatar_file = None
     extension = None
@@ -425,7 +424,10 @@ def get_steam_avatar_from_cache(artwork_dir: str, steam_username: str) -> bool:
 def get_steam_avatar(artwork_dir: str) -> bool:
     ''' Wrapper for get_steam_avatar_from_cache '''
     steam = get_steam_env()
+    if platform.system() == "Darwin" and steam is None:
+        steam = get_crossover_steam()
     if steam is None:
+        backend_log("Missing steam env, unable to query steam avatar")
         return False
     steam_config = steam["config.vdf"]
     steam_username = read_steam_username(steam_config)
@@ -443,7 +445,7 @@ def get_steam_avatar(artwork_dir: str) -> bool:
     if avatar_exists or alt_exists:
         backend_log("Avatar image exists, skipping...")
         return False
-    return get_steam_avatar_from_cache(artwork_dir, steam_username)
+    return get_steam_avatar_from_cache(artwork_dir, steam, steam_username)
 
 def map_shortcuts_path(shortcut_path: str) -> Optional[str]:
     ''' find shortcuts path '''

@@ -378,6 +378,8 @@ def get_username() -> str:
     '''Get username'''
     failover_user = os.environ.get('USER', os.environ.get('USERNAME'))
     steam = get_steam_env()
+    if steam is None and platform.system() == "Darwin":
+        steam = get_crossover_steam()
     if steam is None:
         heroic_user = read_heroic_username()
         if heroic_user is None:

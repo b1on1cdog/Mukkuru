@@ -1,11 +1,10 @@
 # Changelog
 -----------------
-# 0.4.0
+# 0.3.15
 - Lossless scaling option is now hidden in games from uncompatible sources<br/>
 - [dev] Some backend functions are now documented using Sphinx markup<br/>
 - Added game archiving to compress games to save space<br/>
 - Added "Manage all games" option to tamper LaunchOptions in the go<br/>
-- This will also allow detecting, stopping, pausing and resuming launched games<br/>
 - Improved lossless scaling toggle so it won't break non-steam games<br/>
 - [dev] Simplified frontend game fetching code<br/>
 - Disabling cursor is now decided by user<br/>
@@ -26,6 +25,7 @@
 - Removed .local from PC name<br/>
 - .DS_Store is now skipped from sfx<br>
 - Trimming long changelog from updater<br/>
+- (MacOS) Crossover steam can now provide username and avatar<br/>
 # 0.3.14
 - Removed unused assets and compressed some images<br/>
 - Replaced Mukkuru icon<br/>
