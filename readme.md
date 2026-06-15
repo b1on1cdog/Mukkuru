@@ -11,8 +11,7 @@ See [third-party.md](docs/third-party.md) for third-party files license terms.<b
 - Linux, Windows and MacOS Support<br/>
 - 3 Built-in themes similar to popular consoles<br/>
 - Under 30mb executable<br/>
-- Import custom user themes<br/>
-- Import custom ui sound effects<br/>
+- Support external custom user themes and sound effects<br/>
 - Dark mode and light mode<br/>
 - Support fetching game library from:<br>
     - Steam launcher<br/>
