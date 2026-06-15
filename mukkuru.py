@@ -359,7 +359,7 @@ def static_file(path):
         image_types = {
             "image/jpeg" : f'{path}.jpg',
             "image/png" : f'{path}.png',
-            "image/webp" : f'{path}.web'
+            "image/webp" : f'{path}.webp'
         }
         for mimetype, file_path in image_types.items():
             if Path(os.path.join(mukkuru_env["root"], file_path)).is_file():

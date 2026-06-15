@@ -535,7 +535,7 @@ def get_steam_env() -> Optional[dict]:
         shortcut_path = os.path.join(steam["path"], "userdata", "*", "config", "shortcuts.vdf")
         steam["shortcuts"] = map_shortcuts_path(shortcut_path)
     if not Path(steam["libraryFile"]).is_file():
-        backend_log("Steam is not available")
+        backend_log("(Native) Steam is not available")
         return None
     steam["gridPath"] = steam["shortcuts"].replace("shortcuts.vdf", "grid", 1)
     steam["localconfig.vdf"] = steam["shortcuts"].replace("shortcuts.vdf", "localconfig.vdf")
