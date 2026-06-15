@@ -29,12 +29,6 @@ See [third-party.md](docs/third-party.md) for third-party files license terms.<b
 - Strict static analysis compliance<br/>
 - Plug and play compile environment<br/>
 
-# Release scope
-Release static builds with priority support:<br/>
-- Windows x86_64<br/>
-- Linux x86_64<br/>
-- MacOS ARM64<br/>
-
 # Changelog
 [Read changelog.md](docs/changelog.md)
 
