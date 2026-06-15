@@ -19,7 +19,7 @@ if (localStorage.getItem("darkMode") == "true") {
 }
 
 function measure_time(name, begin, end = performance.now()) {
-    time_used = end - begin;
+    time_used = (end - begin).toFixed(2);
     backend_log(name + " " + time_used + " ms");
 }
 
