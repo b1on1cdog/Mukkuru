@@ -17,7 +17,8 @@ def server_file(path: str):
     ''' returns dashboard static files '''
     serve_path = os.path.join(APP_DIR, "ui")
     if path.startswith("thumbnails/") or path.startswith("hero/"):
-        return send_from_directory(mukkuru_env["root"], path, mimetype='image/jpeg')
+        #backend_log(f"reading thumbnail from {os.path.join(mukkuru_env["root"], path)}")
+        return send_from_directory(mukkuru_env["root"], f"{path}.jpg", mimetype='image/jpeg')
     if path == "dashboard":
         path = "dashboard.html"
     return send_from_directory(serve_path, path)
