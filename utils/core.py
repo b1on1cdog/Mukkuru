@@ -31,7 +31,7 @@ SERVER_PORT: int = 49351
 PASSTHROUGH_PORT: int = 49453# 49454, 49455 will also be used when opening more games
 AVAILABLE_P_PORTS: int = 4
 frontend_mode: str = "PYWEBVIEW"
-DEBUG = True
+DEBUG = False
 
 if platform.system() == "Windows":
     pass
