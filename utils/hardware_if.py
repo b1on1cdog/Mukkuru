@@ -1,11 +1,10 @@
-# Copyright (c) 2025 b1on1cdog
+# Copyright (c) 2025-2026 b1on1cdog
 # Licensed under the MIT License
 ''' Contains functions regarding hardware information, written by b1on1cdog '''
 import socket
 import platform
 import subprocess
 import os
-import signal
 import re
 from functools import lru_cache
 import math
@@ -15,7 +14,7 @@ from typing import Optional
 import psutil
 from psutil import Process
 import distro
-from utils.core import backend_log
+from utils.core import backend_log, ternary
 system = platform.system()
 
 codename_map = {
@@ -25,23 +24,22 @@ codename_map = {
     "13": "Ventura",
     "14": "Sonoma",
     "15": "Sequoia",
-    "26": "Tahoe"
+    "26": "Tahoe",
+    "27": "Golden Gate"
 }
 
 @lru_cache(maxsize=1)
 def get_cpu_name() -> str:
     ''' get cpu name as string '''
-
+    override_cpu = os.environ.get("HWINFO_CPU", default=None)
+    if override_cpu:
+        return override_cpu
     if system == "Windows":
-        try:
-            output = subprocess.check_output(["wmic", "cpu", "get", "Name"], shell=True)
-            lines = output.decode().splitlines()
-            # Remove empty lines and strip whitespace
-            lines = [line.strip() for line in lines if line.strip()]
-            if len(lines) > 1:
-                return lines[1]
-        except (subprocess.CalledProcessError, IndexError, UnicodeDecodeError):
-            pass
+        import winreg
+        key = r"HARDWARE\DESCRIPTION\System\CentralProcessor\0"
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key) as k:
+            name, _ = winreg.QueryValueEx(k, "ProcessorNameString")
+            return name.strip()
         return platform.processor()
     if system == "Darwin":
         try:
@@ -61,21 +59,47 @@ def get_cpu_name() -> str:
         return platform.processor()
     return "Unknown CPU"
 
+def get_windows_gpu_name():
+    ''' returns gpu name for windows '''
+    import winreg
+    base = r"SYSTEM\CurrentControlSet\Control\Video"
+
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, base) as key:
+            i = 0
+            while True:
+                try:
+                    subkey_name = winreg.EnumKey(key, i)
+                    i += 1
+                except OSError:
+                    break
+                gpu_key_path = f"{base}\\{subkey_name}\\0000"
+                try:
+                    with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, gpu_key_path) as gpu_key:
+                        for value_name in ("DriverDesc", "Device Description"):
+                            try:
+                                value, _ = winreg.QueryValueEx(gpu_key, value_name)
+                                if value:
+                                    if "Monitor" in value or "Display Adapter" in value:
+                                        continue
+                                    return value
+                            except FileNotFoundError:
+                                pass
+                except FileNotFoundError:
+                    continue
+    except FileNotFoundError:
+        pass
+
+    return "Unknown GPU"
+
 @lru_cache(maxsize=1)
 def get_gpu_name() -> str:
     ''' get GPU name '''
-
+    override_gpu = os.environ.get("HWINFO_GPU", default=None)
+    if override_gpu:
+        return override_gpu
     if system == "Windows":
-        try:
-            output = subprocess.check_output(
-                ["wmic", "path", "win32_VideoController", "get", "name"],
-                shell=True
-            )
-            lines = output.decode().splitlines()
-            lines = [line.strip() for line in lines if line.strip()]
-            return lines[1] if len(lines) > 1 else "Unknown GPU"
-        except (subprocess.CalledProcessError, IndexError, UnicodeDecodeError, PermissionError):
-            return "Unknown GPU"
+        return get_windows_gpu_name()
 
     elif system == "Linux":
         try:
@@ -111,12 +135,18 @@ def get_info() -> dict:
     memory_info = psutil.virtual_memory()
     platform_info = platform.uname()
 
-    hardware_info = {}
+    hardware_info: dict = {}
+    override_ram = os.environ.get("HWINFO_RAM", default=None)
+    override_name = os.environ.get("HWINFO_HST", default=None)
+    override_cpu = os.environ.get("HWINFO_CPU", default=None)
+    override_gpu = os.environ.get("HWINFO_GPU", default=None)
 
-    hardware_info["total_ram"] = round(memory_info.total/(1024*1024*1024),1)
-    hardware_info["used_ram"] = round(memory_info.used/(1024*1024*1024),1)
+    hardware_info["total_ram"] = ternary(override_ram,
+                                         override_ram, round(memory_info.total/(1024*1024*1024),1) )
+    hardware_info["used_ram"] = ternary(override_ram,0, round(memory_info.used/(1024*1024*1024),1) )
 
-    hardware_info["computer_name"] = platform_info.node
+    hardware_info["computer_name"] = ternary(override_name,
+                                             override_name, platform_info.node).replace(".local","")
     hardware_info["arch"] = platform_info.machine
 
     if hardware_info["arch"] == "AMD64":
@@ -132,13 +162,11 @@ def get_info() -> dict:
         if "gamescope" in xdg:
             hardware_info["distro"] = hardware_info["distro"] + " (Gaming Mode)"
     elif system == "Windows":
-        try:
-            output = subprocess.check_output(['wmic', 'os', 'get', 'Caption'], shell=True)
-            lines = output.decode().splitlines()
-            # to-do: fix possible empty reply if lines[2] returns nothing
-            hardware_info["distro"] = lines[2].strip() if len(lines) > 1 else "Microsoft Windows"
-        except subprocess.CalledProcessError:
-            pass
+        key = r"SOFTWARE\Microsoft\Windows NT\CurrentVersion"
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key) as k:
+            name, _ = winreg.QueryValueEx(k, "ProductName")
+            hardware_info["distro"] = name.strip()
     elif system == "Darwin":
         try:
             version = subprocess.check_output(["sw_vers", "-productVersion"], text=True).strip()
@@ -167,6 +195,7 @@ def get_info() -> dict:
     hardware_info["has_battery"] = True
     if get_battery() is None:
         hardware_info["has_battery"] = False
+    hardware_info["is_overriden"] = any((override_ram, override_name, override_cpu, override_gpu))
     return hardware_info
 
 def get_active_net_interfaces() -> list:
@@ -220,7 +249,6 @@ def connection_status() -> dict:
         status["internet"] = has_internet(host="8.8.4.4") or has_internet(host="1.1.1.1")
     status["signal"] = wireless_signal()
     return status
-
 
 def is_using_wireless() -> bool:
     ''' return whether a Wireless connection is being used '''
@@ -276,19 +304,16 @@ def kill_executable_by_path(target_path: str, force=True) -> list:
             continue
     return killed
 
-def pause_process(proc):
-    ''' In Windows suspends process, in Unix sends SIGSTOP'''
-    if platform.system() == "Windows":
-        proc.suspend()
-    else:
-        proc.send_signal(signal.SIGSTOP)#pylint: disable=E1101
-
-def resume_process(proc):
-    ''' In Windows resume process, in Unix sends SIGCONT '''
-    if platform.system() == "Windows":
-        proc.resume()
-    else:
-        proc.send_signal(signal.SIGCONT)#pylint: disable=E1101
+def get_writable_drives() -> list:
+    ''' returns a list of writeable volumes '''
+    writable_drives = []
+    for part in psutil.disk_partitions(all=False):
+        try:
+            if os.access(part.mountpoint, os.W_OK):
+                writable_drives.append(part.mountpoint)
+        except PermissionError:
+            continue
+    return writable_drives
 
 def get_process_by_name(name: str) -> list[Process]:
     ''' return a list of processes '''

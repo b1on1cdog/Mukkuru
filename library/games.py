@@ -1,8 +1,7 @@
-# Copyright (c) 2025 b1on1cdog
+# Copyright (c) 2025-2026 b1on1cdog
 # Licensed under the MIT License
 ''' Mukkuru games module '''
 import os
-import json
 import subprocess
 import queue
 import time
@@ -11,8 +10,10 @@ import threading
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
-from utils.core import mukkuru_env, backend_log, set_alive_status
+from utils.core import mukkuru_env, backend_log, set_alive_status, get_paths_from_extensions
 from utils.core import get_config, update_config, sanitized_env, normalize_text
+from utils.model import Game
+import utils.database as db
 from library.steam import get_steam_env, get_crossover_steam
 from library.steam import get_steam_games, get_non_steam_games, read_steam_username
 from library import grid_db, wrapper
@@ -20,6 +21,7 @@ from library.egs import read_heroic_username, get_heroic_env, get_egs_env
 from library.egs import get_heroic_games, get_egs_games
 
 artwork_queue = queue.Queue()
+pending_tasks = queue.Queue()
 
 def artwork_worker() -> None:
     ''' Processes artwork queue '''
@@ -47,11 +49,13 @@ def update_sgdb_api(user_config: dict) -> None:
 
 def library_scan(options: int) -> dict:
     '''
-    Scan library for games
-    1 - Steam
-    2 - Non-Steam
-    4 - EGS
-    8 - Heroic
+    Scan library for games\n
+    :param options: bitwise options representation\n
+        1 - Steam\n
+        2 - Non-Steam\n
+        4 - EGS\n
+        8 - Heroic\n
+    :type options: int
     '''
     option_steam = 1 << 0  # 0001 = 1
     option_nonsteam = 1 << 1  # 0010 = 2
@@ -97,86 +101,111 @@ def library_filtering(games: dict) -> None:
                 game_titles.append(game_title)
 
 def get_games() -> dict:
-    '''get game library as json'''
-    try:
-        with open(mukkuru_env["library.json"], encoding='utf-8') as f:
-            games = json.load(f)
-    except FileNotFoundError:
-        games = {}
-        update_games(games)
+    '''get game library as dictionary'''
+    session = db.get_session()
+    db_games: list[Game] = session.query(Game).all()
+    games = {}
+    for db_game in db_games:
+        app_id = db_game.app_id
+        games[app_id] = {}
+        games[app_id] = db_game.dictionary
+        games[app_id].update(db_game.Metadata)
+    session.close()
     return games
 
 def update_games(games: dict) -> None:
     '''save game library'''
-    with open(mukkuru_env["library.json"], 'w', encoding='utf-8') as f:
-        json.dump(games, f)
+    session = db.get_session()
+    session.query(Game).delete()
+    for app_id, game in games.items():
+        game: dict
+        current_game = Game(app_id=app_id)
+        current_game.dictionary = game
+        session.add(current_game)
+    session.commit()
+    session.close()
 
-def scan_games() -> dict:
+def scan_games(dry: bool = False) -> dict:
     ''' scan for games, download artwork if available '''
     user_config = get_config()
     options = user_config["librarySource"]
     games = library_scan(int(options))
-    artwork_queue.put(games)
-    scan_thumbnails(games)
-    time.sleep(0.1)
+    if not dry:
+        artwork_queue.put(games)
+        scan_thumbnails(games)
+        time.sleep(0.1)
     return games
 
-def fetch_artwork(app_id: str, game, b1, b2, b3, use_alt_images) -> dict:
-    ''' handle artwork '''
-    blacklist_1 = []
-    blacklist_2 = []
-    blacklist_3 = []
+def download_artwork(app_id: str, game, art_blacklist: dict,
+                     blacklist: dict, asset_name: str, asset_index: int):
+    ''' Download specific artwork for a specific game '''
+    game_identifier = grid_db.GameIdentifier(game["AppName"], app_id, game["Source"])
+    asset_folder, image_format = asset_name, asset_name
+    if asset_name == "boxart":
+        asset_folder = "thumbnails"
+    asset = os.path.join(mukkuru_env["root"], asset_folder, f'{app_id}')
+    if asset_name == "boxart":
+        asset = f"{asset}.jpg"
+    elif asset_name != "hero":
+        asset = f"{asset}.png"
+    if not Path(asset).is_file() and app_id not in art_blacklist[asset_name]:
+        if grid_db.download_image(game_identifier, asset, image_format, asset_index) == "Missing":
+            blacklist[asset_name].append(app_id)
+
+def fetch_artwork(app_id: str, game, art_blacklist: dict, use_alt_images) -> dict:
+    ''' Download all artwork for a specific app_id '''
+    blacklist = {}
+    blacklist["hero"] = []
+    blacklist["boxart"] = []
+    blacklist["logo"] = []
+    blacklist["grid"] = []
+    blacklist["portrait"] = []
+
     hero_index = 0
     boxart_index = 0
     logo_index = 0
+    grid_index = 0
+    p_index = 0
+
     if app_id in use_alt_images:
         alt_option = use_alt_images[app_id]
         option_boxart = 1 << 0  # 0001 = 1
         option_hero = 1 << 1  # 0010 = 2
         option_logo = 1 << 2  # 0100 = 4
+        option_grid = 1 << 3 # 1000 = 8
+
+        option_portrait = 1 << 4 # 0001 0000 = 16
         if alt_option & option_boxart:
             boxart_index = 1
         if alt_option & option_hero:
             hero_index = 1
         if alt_option & option_logo:
             logo_index = 1
+        if alt_option & alt_option & option_grid:
+            grid_index = 1
+        if alt_option & option_portrait:
+            p_index = 1
         print(f"using alternate image for {game['AppName']}")
-    thumbnail = os.path.join(mukkuru_env["root"], "thumbnails", f'{app_id}.jpg')
-    game_source = game["Source"]
-    game_identifier = grid_db.GameIdentifier(game["AppName"], app_id, game_source)
-    if not Path(thumbnail).is_file() and app_id not in b1:
-        if grid_db.download_image(game_identifier, thumbnail,"1:1", boxart_index) == "Missing":
-            blacklist_1.append(app_id)
-    hero = os.path.join(mukkuru_env["root"], "hero", f'{app_id}.png')
-    if not Path(hero).is_file() and app_id not in b2:
-        if grid_db.download_image(game_identifier, hero, "hero", hero_index) == "Missing":
-            blacklist_2.append(app_id)
-    logo = os.path.join(mukkuru_env["root"], "logo", f'{app_id}.png')
-    if not Path(logo).is_file() and app_id not in b3:
-        if grid_db.download_image(game_identifier, logo,"logo", logo_index) == "Missing":
-            blacklist_3.append(app_id)
-    result = {}
-    result["1"] = blacklist_1
-    result["2"] = blacklist_2
-    result["3"] = blacklist_3
-    return result
+    download_artwork(app_id, game, art_blacklist, blacklist, "boxart", boxart_index)
+    download_artwork(app_id, game, art_blacklist, blacklist, "hero", hero_index)
+    download_artwork(app_id, game, art_blacklist, blacklist, "logo", logo_index)
+    download_artwork(app_id, game, art_blacklist, blacklist, "grid", grid_index)
+    download_artwork(app_id, game, art_blacklist, blacklist, "portrait", p_index)
+    return blacklist
 
 def scan_artwork(games = None) -> None:
-    ''' scan for games artwork '''
+    ''' Scan and bulk schedule game artwork '''
     backend_log("scanning for new artwork..")
     config = get_config()
     update_sgdb_api(config)
-    blacklist1 = config["boxartBlacklist"]
-    blacklist2 = config["heroBlacklist"]
-    blacklist3 = config["logoBlacklist"]
+    art_blacklist: dict = config["artBlacklist"]
     use_alt_images = config["useAlternativeImage"]
     if games is None:
         games = get_games()
     results = {}
     with ThreadPoolExecutor(max_workers=config["cores"]*2) as executor:
         future_to_key = {
-            executor.submit(fetch_artwork, k, v, blacklist1, blacklist2,
-                            blacklist3, use_alt_images): k
+            executor.submit(fetch_artwork, k, v, art_blacklist, use_alt_images): k
             for k, v in games.items()
         }
         counter = 0
@@ -184,9 +213,11 @@ def scan_artwork(games = None) -> None:
             k = future_to_key[future]
             try:
                 results[k] = future.result()
-                blacklist1.extend(results[k]["1"])
-                blacklist2.extend(results[k]["2"])
-                blacklist3.extend(results[k]["3"])
+                art_blacklist["boxart"].extend(results[k]["boxart"])
+                art_blacklist["hero"].extend(results[k]["hero"])
+                art_blacklist["logo"].extend(results[k]["logo"])
+                art_blacklist["grid"].extend(results[k]["grid"])
+                art_blacklist["portrait"].extend(results[k]["portrait"])
                 counter = counter + 1
                 if counter % 12 == 0:
                     set_alive_status({"command": "reloadGameThumbnails"})
@@ -194,9 +225,7 @@ def scan_artwork(games = None) -> None:
             except (KeyError, OSError, IndexError, FileNotFoundError) as e:
                 results[k] = {"error": str(e)}
                 print(f"scan_artwork error: {str(e)}")
-    config["boxartBlacklist"] = blacklist1
-    config["heroBlacklist"] = blacklist2
-    config["logoBlacklist"] = blacklist3
+    config["artBlacklist"] = art_blacklist
     update_config(config)
     scan_thumbnails(games)
     set_alive_status({"command": "ScanFinished"})
@@ -204,11 +233,14 @@ def scan_artwork(games = None) -> None:
 def scan_thumbnails(games: dict) -> None:
     '''update the thumbnail status for all games'''
     for k in games.keys():
-        thumbnail_path = os.path.join(mukkuru_env["root"], "thumbnails", f'{k}.jpg')
-        if not Path(thumbnail_path).is_file():
-            games[k]["Thumbnail"] = False
-        else:
-            games[k]["Thumbnail"] = True
+        thumbnail_base = os.path.join(mukkuru_env["root"], "thumbnails", f'{k}')
+        thumbnail_list = get_paths_from_extensions(thumbnail_base, ["png", "jpg", "webp"])
+        thumbnail_found = False
+        for thumbnail_path in thumbnail_list:
+            if Path(thumbnail_path).is_file():
+                thumbnail_found = True
+                break
+        games[k]["Thumbnail"] = thumbnail_found
     update_games(games)
 
 def get_game_properties(app_id: str) -> dict:
@@ -236,9 +268,18 @@ def launch_lossless_scaling():
     startupinfo.wShowWindow = subprocess.SW_HIDE
     subprocess.Popen([lossless_path], startupinfo=startupinfo)
     time.sleep(30)
-    from utils.winkeys import send_ctrl_alt_s#pylint: disable=C0415
+    from utils.winkeys import send_ctrl_alt_s
     send_ctrl_alt_s()
 
+def find_app_id_from_path(path: str) -> str:
+    ''' finds an app_id if a path is matched from all installed games '''
+    games = get_games()
+    for app_id, game in games.items():
+        if "InstallDir" in game:
+            if os.path.normpath(path) in os.path.normpath(game["InstallDir"]):
+                backend_log(f"Using {app_id} due to matching InstallDir")
+                return app_id
+    return ""
 # To-do:
 # set env at provider (steam/heroic/egs) level
 def launch_app(app_id: str) -> None:
@@ -337,6 +378,8 @@ def get_username() -> str:
     '''Get username'''
     failover_user = os.environ.get('USER', os.environ.get('USERNAME'))
     steam = get_steam_env()
+    if steam is None and platform.system() == "Darwin":
+        steam = get_crossover_steam()
     if steam is None:
         heroic_user = read_heroic_username()
         if heroic_user is None:

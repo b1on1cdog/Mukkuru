@@ -1,4 +1,4 @@
-# Copyright (c) 2025 b1on1cdog
+# Copyright (c) 2025-2026 b1on1cdog
 # Licensed under the MIT License
 ''' Using PyWebView for webview '''
 
@@ -14,7 +14,7 @@ class Frontend:
     def __init__(self, fullscreen, app_version, environ = None):
         self.window = webview.create_window(
             app_version,
-            "http://localhost:49347/frontend/",
+            "http://localhost:49347/frontend/frame.html",
             fullscreen=fullscreen, width=1280, height=800
         )
         self.fullscreen_state = fullscreen
@@ -42,7 +42,7 @@ class Frontend:
     def update_user_config(self):
         ''' update config from backend '''
         try:
-            response = requests.get("http://localhost:49347/config/get", timeout=1)
+            response = requests.get("http://localhost:49347/config", timeout=1)
             self.user_config = response.json()
         except (TimeoutError, requests.exceptions.RequestException,
                 json.decoder.JSONDecodeError, TypeError) as e:

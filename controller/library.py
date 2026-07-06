@@ -1,15 +1,15 @@
-# Copyright (c) 2025 b1on1cdog
+# Copyright (c) 2025-2026 b1on1cdog
 # Licensed under the MIT License
 ''' library controller module '''
 import os
 from flask import Blueprint, jsonify, request
-from flask import send_from_directory
+from flask import send_from_directory, send_file
 from library.steam import get_proton_list
 from library.games import get_games, scan_games, scan_artwork
 from library.games import launch_app, get_username, list_stores
 from library import video
-from utils.core import get_config, mukkuru_env
-from utils import expansion
+from utils.core import get_config
+from utils import expansion, archiving
 
 library_controller = Blueprint('library', __name__)
 external_library = Blueprint('external_library', __name__)
@@ -50,10 +50,40 @@ def toggle_lossless_scaling_controller(app_id):
     expansion.toggle_lossless_scaling_for_game(app_id, request.method == 'POST')
     return jsonify(200)
 
+@external_library.route('/library/archives', methods = ['GET'])
+@library_controller.route('/library/archives', methods = ['GET'])
+def list_archives():
+    ''' returns a list of archives '''
+    return jsonify(archiving.get_archived_games())
+
+@external_library.route('/library/archive/<app_id>', methods = ['POST', 'DELETE'])
+@library_controller.route('/library/archive/<app_id>', methods = ['POST', 'DELETE'])
+def handle_game_archive(app_id):
+    ''' http controller for game archive creation '''
+    if request.method == "POST":
+        ret = archiving.archive_game(app_id)
+        if ret:
+            return jsonify(200)
+    elif request.method == "DELETE":
+        return jsonify(501)
+    return jsonify(200)
+
+@library_controller.route('/library/manage/<app_id>', methods = ['POST', 'DELETE'])
+def manage_game(app_id):
+    ''' calls expansion.manage_all_games '''
+    if app_id == "all":
+        return expansion.manage_all_games(request.method == 'POST')
+    else:
+        # Not yet implemented
+        return jsonify(400)
+    return jsonify(200)
+
 @external_library.route('/library/launch/<app_id>')
 @library_controller.route('/library/launch/<app_id>')
 def launch_app_controller(app_id):
     ''' executes library.games.launch_app, returns 200 '''
+    if archiving.is_game_archived(app_id):
+        archiving.restore_game(app_id)
     launch_app(app_id)
     return "200"
 
@@ -62,13 +92,16 @@ def get_username_controller():
     ''' Gets username '''
     return get_username()
 
-@library_controller.route('/video/thumbnail/<video_id>', methods = ['POST'])
-def set_video_thumbnail(video_id: str):
+@library_controller.route('/video/thumbnail/<string:video_id>', methods = ['POST', 'GET'])
+def video_thumbnail(video_id: str):
     '''update video thumbnail from request'''
     if request.method == 'POST':
         thumbnail = request.get_json()
-        video.update_thumbnail(mukkuru_env["video.json"], video_id, thumbnail)
+        video.update_thumbnail(video_id, thumbnail)
         return "200"
+    if request.method == 'GET':
+        thumbnail_path = video.get_video_thumbnail(video_id)
+        return send_file(thumbnail_path, mimetype="image/png")
     return "400"
 
 @library_controller.route('/video/screenshot/', methods = ['POST'])
@@ -84,17 +117,17 @@ def add_video_screenshot():
     return "400"
 
 @external_library.route('/media/video/<source>/<filename>', methods=["GET"])
-@library_controller.route('/frontend/video/<source>/<filename>', methods=["GET", "DELETE"])
-def video_serve(source, filename):
+@library_controller.route('/frontend/video/<int:source>/<filename>', methods=["GET", "DELETE"])
+def video_serve(source: int, filename: str):
     '''serve or delete video file'''
     user_config = get_config()
     video_source = user_config["videoSources"][int(source)]
     if request.method == 'DELETE':
         video_path = os.path.join(video_source, filename)
-        th = f"{os.path.splitext(filename)[0]}-thumbnail.png"
-        th_path = os.path.join(video_source, th)
+        #th = f"{os.path.splitext(filename)[0]}-thumbnail.png"
+        #th_path = video.get_video_thumbnail(video_id)
         os.remove(video_path)
-        os.remove(th_path)
+        #os.remove(th_path)
         return "200"
     return send_from_directory(video_source, filename)
 
@@ -117,11 +150,10 @@ def get_media():
     ''' Get all Multimedia '''
     media = {}
     user_config = get_config()
-    video_manifest = mukkuru_env["video.json"]
     video_sources = user_config["videoSources"].copy()
     if not user_config["useAllVideoSources"]:
         video_sources = [video_sources[0]]
-    media["videos"] = video.get_videos(video_sources, video_manifest)
+    media["videos"] = video.get_videos(video_sources)
     return jsonify(media)
 
 @library_controller.route('/storefront/get')

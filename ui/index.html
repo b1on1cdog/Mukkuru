@@ -10,6 +10,7 @@
     <script src="js/mukkuru.js"></script>
     <script src="js/localization.js"></script>
     <script src="js/settings.js"></script>
+    <script src="js/home.js"></script>
     <script>
 const cssOverride = document.createElement('style');
 //at this point we do not have access to userConfiguration, so we are using localStorage
@@ -18,17 +19,25 @@ if (localStorage.getItem("darkMode") == "true") {
 }
 
 function measure_time(name, begin, end = performance.now()) {
-    time_used = end - begin;
+    time_used = (end - begin).toFixed(2);
     backend_log(name + " " + time_used + " ms");
 }
 
-let currentRow = 1;
-let currentIndex = 0;
-
 function sendBackgroundColorToParent(color) {
-  window.parent.postMessage({ bgColor: color }, '*');
+    console.log("sending background to parent");
+    window.parent.postMessage({ bgColor: color });
 }
-
+function hideCursorInParent(){
+    window.parent.postMessage({hideCursor: true});
+}
+document.addEventListener("contextmenu", e => {
+    if (lastFocused != null) {
+      lastFocused.focus();
+    }
+    contextDismissal(e);
+    e.preventDefault();
+});
+document.addEventListener('click', contextDismissal);
 document.addEventListener('DOMContentLoaded', () => {
     const start_load = performance.now();
     /*Load games*/
@@ -72,12 +81,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data["reboot"] == false) {
             document.getElementById("restartDeviceBtn").remove();
         }
+        if (data["exit"] == false) {
+            document.getElementById("exitMukkuruBtn").remove();
+            document.getElementById("restartAppBtn").classList.add("selected");
+        }
         if (data["lossless_scaling"] == false) {
             document.getElementById("lsOption").remove();
         }
     })
 
-    fetch("/config/get").then(function(response) {
+    fetch("/config").then(function(response) {
         return response.json();
     }).then(function(data) {
         userConfiguration = data;
@@ -89,6 +102,19 @@ document.addEventListener('DOMContentLoaded', () => {
             configReady();
         } else {
             backend_log(`[debug] config init failed ${userConfiguration} ${userConfiguration.length}`);
+        }
+
+        if (userConfiguration["displayCursor"] != true) {
+            document.head.insertAdjacentHTML('beforeend', `<style>*, *::before, *::after { cursor: none !important; }</style>`);
+            hideCursorInParent();
+        }
+        environ = null;
+        if (userConfiguration["TMP"] != undefined){
+            environ = userConfiguration["TMP"];
+        }
+
+        if (environ != null && environ["MUKKURU_GUEST_MODE"] != undefined) {
+            document.getElementsByClassName("footerNavigation")[0].classList.add("disabled");
         }
 
         if (userConfiguration["darkMode"] == true) {
@@ -124,7 +150,15 @@ document.addEventListener('DOMContentLoaded', () => {
             document.documentElement.style.setProperty("--accent-color", darkModeAccentColor);
         }
     }
-
+    let fct = 0;
+    document.querySelectorAll(".footerButton").forEach((element) => {
+        element.dataset.index = fct;
+        element.addEventListener('click', e => {
+            handleElementPress(e);
+            document.dispatchEvent(new KeyboardEvent("keydown", {key:"Enter", code:"Enter", bubbles:true}));
+        });
+        fct++;
+    });
     clockUpdate(userConfiguration["12H"]);
     setInterval(() => {
         clockUpdate(userConfiguration["12H"]);
@@ -139,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
     createProgressBar();
     applyStoreFilter();
     allowRendering();
-    const bg = document.getElementsByClassName("homeMenu")[0].style.backgroundColor;
+    const bg = document.getElementsByClassName("homeMenu")[0].style.getPropertyValue("--bg-color");
     sendBackgroundColorToParent(bg);
     refreshServer();
     (async () => {
@@ -198,11 +232,17 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         proton_ctx_menu.innerText = protonList[0];
     }, "1000");
-
+    const lsOption = document.getElementById("lsOption");
+    const archiveOption = document.getElementById("archiveOption");
+    let firstCtxRefresh = true;
     function refreshCtxMenu(){
         currentApp = (currentRow == 1)?gameLaunchers[currentIndex]:appLaunchers[currentIndex];
         isGameRow =  (currentRow == 1 || currentRow == 3)
         gameId = currentApp.dataset.gameid;
+        if (firstCtxRefresh) {
+            archiveOption.innerText = translate_str("archiveOption", "Archive game");
+            firstCtxRefresh = false;
+        }
         if (isGameRow && currentApp.classList.contains("favorite")){
             document.getElementById("fvOption").innerText = translate_str("removeFavorite", "Remove from favorite");
         }  else {
@@ -214,17 +254,20 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("blOption").innerText = translate_str("hideGame", "Hide game");
         }
         // To-do: improve this detection
-        lsOption = document.getElementById("lsOption");
-        if (lsOption != undefined) {
-            if (isGameRow && userConfiguration.losslessScaling.includes(gameId) ) {
-                lsOption.innerText = translate_str("disableLosslessScaling", "Disable Lossless Scaling");
-            } else {
-                lsOption.innerText = translate_str("enableLosslessScaling", "Enable Lossless Scaling");
-            }
-        }
 
         if (isGameRow){
             ctxMenu = document.getElementsByClassName("contextualMenu active")[0];
+            if (lsOption != undefined) {
+                if (isGameRow && userConfiguration.losslessScaling.includes(gameId) ) {
+                    lsOption.innerText = translate_str("disableLosslessScaling", "Disable Lossless Scaling");
+                } else {
+                    lsOption.innerText = translate_str("enableLosslessScaling", "Enable Lossless Scaling");
+                }
+                attachContextItem(currentApp.dataset.source.includes("steam"), ctxMenu, lsOption);
+            }
+            const archiveCompatible = (currentApp.dataset.knowndir == "true" && !currentApp.classList.contains("archived"))
+            attachContextItem(archiveCompatible, ctxMenu, archiveOption);
+            /*
             isProtonSet = currentApp.dataset.proton == "true";
             if (isProtonSet) {
                 currentProton = userConfiguration.protonConfig[gameId];
@@ -233,16 +276,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     proton_ctx_menu.innerText = currentProton;
                 }
-                
             }
-            if (isProtonSet && !proton_ctx_menu.isConnected){
-                ctxMenu.appendChild(proton_ctx_menu);
-            } else if (!isProtonSet && proton_ctx_menu.isConnected) {
-                ctxMenu.removeChild(proton_ctx_menu);
-            }
+            attachContextItem(isProtonSet, ctxMenu, proton_ctx_menu);
+            */
         }
 
     }
+    refreshContextMenu = refreshCtxMenu
+    document.getElementById("fvOption").addEventListener("click", e => {
+        let app = appLaunchers[currentIndex];
+        let game = gameLaunchers[currentIndex];
+        if (app.classList.contains("favorite")) {
+            app.classList.remove("favorite");
+            if (game != undefined) {
+                game.classList.remove("favorite");
+            }
+        } else {
+            app.classList.add("favorite");
+            if (game != undefined) {
+                game.classList.add("favorite");
+            }
+        }
+        playSound("tick");
+    });
     document.getElementById("back-keyGuide").style.display = "none";
     document.addEventListener('click', (e) => {
         backend_log("user gesture no longer required, reason: click");
@@ -297,10 +353,11 @@ document.addEventListener('DOMContentLoaded', () => {
         switch (keyBindings[e.key]) {
             case "options":
                 if (currentRow == 1 && currentIndex < gameLimit || currentRow == 3) {
-                    isContextMenu = true;
-                    document.getElementById("gameContextMenu").classList.add("active");
+                    if (isContextMenu) {
+                        break;
+                    }
+                    open_context_menu("gameContextMenu");
                     refreshCtxMenu();
-                    playSound("select");
                 }
                 break;
             case "up":
@@ -335,6 +392,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             case "down":
+                isFooterDisabled = document.getElementsByClassName("footerNavigation")[0].classList.contains("disabled");
+
                 if (isContextMenu) {
                     ctxMax = ctxMenu.querySelectorAll('.contextItem').length;
                     if (currentContext >= ctxMax-1) {
@@ -350,6 +409,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (currentRow == 2) {
                     playSound("border");
+                } else if (currentRow == 1 && isFooterDisabled) {
+                    playSound("border");
                 } else if (currentRow == 3 && currentIndex + appListCols < navigatingRow[currentRow].length) {
                     currentIndex = currentIndex + appListCols;
                     playSound("select");
@@ -359,6 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     currentIndex = 0
                     currentRow = currentRow + 1;
+
                     playSound("select");
                     if (currentRow == 1 && gameLaunchers.length == 0){
                         currentRow = 2;
@@ -366,6 +428,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             case "left":
+                if (lockLeft) {
+                    return;
+                }
                 if (isContextMenu) {
                     selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
                     if (selectedContext.id == "proton_ctx") {
@@ -376,6 +441,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         setGameProperty("proton", AppID, proton_ctx_menu.innerText);
                     }
                     return;
+                }
+                //slow down effect
+                if ( ( currentIndex < 2 )  && userConfiguration["loop"]) {
+                    lockLeft = true;
+                    clearTimeout(lockLeftTimeout);
+                    lockLeftTimeout = setTimeout(() => { lockLeft = false; }, 150);
                 }
                 if (currentIndex == 0 && !userConfiguration["loop"]) {
                     playSound("border");
@@ -388,6 +459,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
             case "right":
+                if (lockRight) {
+                    return;
+                }
                 if (isContextMenu) {
                     selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
                     if (selectedContext.id == "proton_ctx") {
@@ -398,6 +472,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         setGameProperty("proton", AppID, proton_ctx_menu.innerText);
                     }
                     return;
+                }
+                //slowdown effect when hitting the border with selector loop enabled
+                if (currentIndex > cols[currentRow]-3 && userConfiguration["loop"]) {
+                    lockRight = true;
+                    clearTimeout(lockRightTimeout);
+                    lockRightTimeout = setTimeout(() => { lockRight = false; }, 150);
                 }
                 if (currentIndex == cols[currentRow]-1 && !userConfiguration["loop"]) {
                     playSound("border");
@@ -413,36 +493,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isContextMenu){
                     selectedContext = ctxMenu.getElementsByClassName("contextItem selected")[0];
                     selectedContext.click();
-                    playSound("tick");
-                    if (currentContext == 0 && ctxMenu.id == "gameContextMenu") {
-                        let app = appLaunchers[currentIndex];//document.getElementById("app_"+game.id);
-                        let game = gameLaunchers[currentIndex];
-                        if (app.classList.contains("favorite")) {
-                            app.classList.remove("favorite");
-                            if (game != undefined) {
-                                game.classList.remove("favorite");
-                            }
-                        } else {
-                            app.classList.add("favorite");
-                            if (game != undefined) {
-                                game.classList.add("favorite");
-                            }
-                        }
-                    }
                     refreshCtxMenu();
                     return;
                 }
                 if (document.activeElement.id == "allSoftware") {
-                    playSound("run");
-                    setTimeout(function () {
-                    currentRow = 3;
-                    gameList.style.display = "none";
-                    document.getElementsByClassName("homeHeader")[0].style.display = "none";
-                    document.getElementsByClassName("footerNavigation")[0].style.display = "none";
-                    appList.style.display = "grid";
-                    currentIndex = 0;
-                    }, 300);
-                    blink(homeMenu);
+                    document.activeElement.click();
                 } else if(document.activeElement === gameLaunchers[currentIndex]) {
                     console.log("launching game....");
                     navigatingRow[currentRow][currentIndex].click();
@@ -474,10 +529,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         playSound("enter-back");
                         break;
                         case 1:
-                            isContextMenu = true;
-                            document.getElementById("storeContextMenu").classList.add("active");
+                            open_context_menu("storeContextMenu");
                             refreshCtxMenu();
-                            playSound("select");
                             break;
                         case 2:
                             if (mediaItems.length == 0) {
@@ -503,10 +556,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             blink(homeMenu);
                             break;
                         case 3:
-                            document.getElementById("controlContextMenu").classList.add("active");
-                            isContextMenu = true;
+                            open_context_menu("controlContextMenu");
                             handleAutoPlay("update");
-                            playSound("tick");
                             break;
                         case 4:
                             playSound("settings");
@@ -516,10 +567,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             });    
                             break;
                         case 5:
-                            document.getElementById("powerDownContextMenu").classList.add("active");
-                            isContextMenu = true;
-                            //refreshCtxMenu();
-                            playSound("tick");
+                            open_context_menu("powerDownContextMenu");
                             break;
                         default:
                             console.log("no action specified");
@@ -583,7 +631,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         }
-
         navigatingRow[currentRow][currentIndex].focus();
     });
 });
@@ -659,6 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="contextItem selected" id="fvOption" onclick='setGameProperty("favorite", appLaunchers[currentIndex].dataset.gameid)'>Add as favorite</div>
             <div class="contextItem" id="blOption" onclick='setGameProperty("blacklist", appLaunchers[currentIndex].dataset.gameid)'>Blacklist game</div>
             <div class="contextItem" id="lsOption" onclick='setGameProperty("lossless_scaling", appLaunchers[currentIndex].dataset.gameid)'>Enable lossless scaling</div>
+            <div class="contextItem" id="archiveOption" onclick='setGameProperty("archived", appLaunchers[currentIndex].dataset.gameid)'>Archive game</div>
         </div>
         <div class="contextualMenu" id="videoContextMenu">
             <div class="contextItem selected" id="deleteVideoOption" data-loc="id" data-trm="swapText" onclick='deleteVideo(mediaItems[currentMedia])'>Delete video</div>

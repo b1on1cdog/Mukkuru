@@ -1,4 +1,5 @@
-''' Mukkuru module for addons handling '''
+''' Mukkuru module for addons handling\n
+Imports library.(games, steam) utils.(bootstrap, hardware_info, updater)'''
 import os
 import sys
 import shutil
@@ -12,10 +13,10 @@ from urllib.parse import urlparse
 from functools import lru_cache
 import requests
 from utils.core import mukkuru_env, get_config, update_config, backend_log
-from utils.core import APP_DIR, sanitized_env, ternary
-from utils import bootstrap, hardware_if
+from utils.core import APP_DIR, sanitized_env, ternary, format_executable
+from utils import bootstrap, hardware_if, updater
 from library import steam
-from library.games import get_games
+from library.games import get_games, update_games, scan_games
 
 def get_localization() -> dict:
     ''' Returns a localization dictionary '''
@@ -96,7 +97,10 @@ def install_patch(game_id: str, patch: dict) -> None:
     bootstrap.clear_global_progress()
 
 def download_patch(patch_url: str, filename=None) -> None:
-    ''' download patch for game '''
+    '''
+    Downloads patch for game\n
+    :param str patch_url: patch download url\n
+    '''
     output_dir = os.path.join(mukkuru_env["root"], "misc", "patch_wd")
     shutil.rmtree(output_dir, ignore_errors=True)
     os.makedirs(output_dir, exist_ok=True)
@@ -200,7 +204,7 @@ def install_decky_plugin(zip_path: str) -> bool:
 # Not so related to addons >
 
 def add_to_startup_macos() -> bool:
-    ''' (MacOS) Set Mukkuru to open at user login '''
+    ''' (MacOS) Set Mukkuru to open at user login, uses LaunchAgents'''
     mukkuru_service = []
     mukkuru_service.append('<plist version="1.0">')
     mukkuru_service.append('<dict>')
@@ -225,7 +229,7 @@ def add_to_startup_macos() -> bool:
     return subprocess.call(["launchctl", "load", mukkuru_service_path], env=sanitized_env()) == 0
 
 def add_to_startup_linux(mukkuru_steam_id: str, is_gamescope : bool = False) -> bool:
-    ''' (Linux) Set Mukkuru to open at user login '''
+    ''' (Linux) Set Mukkuru to open at user login, uses systemctl '''
     mukkuru_service = []
     mukkuru_service.append("[Unit]")
     mukkuru_service.append("Description=Open Mukkuru from Gamescope at startup")
@@ -252,12 +256,17 @@ def set_startup_flag(state: bool) -> None:
     update_config(user_config)
 
 def add_to_startup() -> str:
-    ''' Handles os-specific add_startup calls and returns display message '''
+    '''
+    Handles os-specific add_startup calls and returns display message\n
+    Windows: add current running app to CurrentVersion\\Run in registry\n
+    Linux: uses systemctl --user\n
+    MacOS: uses LaunchAgents\n
+    '''
     sucess_message = translate_str("OperationSuccess", "Operation was completed successfully")
     fail_message = translate_str("OperationFailed", "Operation failed")
     user_config = get_config()
     if platform.system() == "Windows":
-        import winreg#pylint: disable=C0415
+        import winreg
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
         r"Software\Microsoft\Windows\CurrentVersion\Run",
         0, winreg.KEY_SET_VALUE)
@@ -284,7 +293,7 @@ def add_to_startup() -> str:
     return translate_str("UnsupportedFunction", "This feature is not available for your setup")
 
 def remove_from_startup() -> str:
-    ''' Removes Mukkuru from user startup'''
+    ''' Removes Mukkuru from user startup '''
     sucess_message: str = translate_str("OperationSuccess", "Operation was completed successfully")
     fail_message: str = translate_str("OperationFailed", "Operation failed")
     result: bool = False
@@ -294,7 +303,7 @@ def remove_from_startup() -> str:
         if Path(mukkuru_service_path).exists():
             os.remove(mukkuru_service_path)
     if platform.system() == "Windows":
-        import winreg#pylint: disable=C0415
+        import winreg
         key = winreg.OpenKey(
             winreg.HKEY_CURRENT_USER,
             r"Software\Microsoft\Windows\CurrentVersion\Run",
@@ -318,15 +327,78 @@ def get_capabilities() -> dict:
     capabilities = {}
     capabilities["shutdown"] = can_shutdown(False)
     capabilities["reboot"] = can_shutdown(True)
-    capabilities["desktop"] = False
+    capabilities["desktop"] = False# To-do: add desktop mode
+    capabilities["exit"] = can_exit()
     capabilities["lossless_scaling"] = is_lossless_scaling_available()
     return capabilities
 
+SE_SHUTDOWN_NAME = "SeShutdownPrivilege"
+
+def has_shutdown_privilege_enabled():
+    """ (Windows) Check SeShutdownPrivilege to check whether shutdown is possible """
+    if platform.system() != "Windows":
+        return False
+    import ctypes
+    from ctypes import wintypes
+    advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    token_query = 0x0008
+    token_privileges = 3
+    se_privilege_enabled = 0x00000002
+    class LUID(ctypes.Structure):
+        ''' Fields: LowPart, HighPart '''
+        _fields_ = [
+        ("LowPart", wintypes.DWORD),
+        ("HighPart", wintypes.LONG),
+    ]
+
+    class LUIDAndAttributes(ctypes.Structure):
+        ''' Fields: Luid, Attributes '''
+        _fields_ = [
+        ("Luid", LUID),
+        ("Attributes", wintypes.DWORD),
+    ]
+
+    class TokenPrivileges(ctypes.Structure):
+        ''' Fields: PrivilegeCount, Privileges '''
+        _fields_ = [
+        ("PrivilegeCount", wintypes.DWORD),
+        ("Privileges", LUIDAndAttributes * 1),
+    ]
+    token = wintypes.HANDLE()
+    process = kernel32.GetCurrentProcess()
+    if not advapi32.OpenProcessToken(process, token_query, ctypes.byref(token)):
+        return False
+
+    luid = LUID()
+    if not advapi32.LookupPrivilegeValueW(None, SE_SHUTDOWN_NAME, ctypes.byref(luid)):
+        return False
+
+    # Query privileges
+    size = wintypes.DWORD(0)
+    advapi32.GetTokenInformation(token, token_privileges, None, 0, ctypes.byref(size))
+    buf = ctypes.create_string_buffer(size.value)
+    if not advapi32.GetTokenInformation(token, token_privileges, buf, size, ctypes.byref(size)):
+        return False
+
+    tp = ctypes.cast(buf, ctypes.POINTER(TokenPrivileges)).contents
+
+    # Iterate privileges
+    for i in range(tp.PrivilegeCount):
+        priv = tp.Privileges[i]
+        if priv.Luid.LowPart == luid.LowPart and priv.Luid.HighPart == luid.HighPart:
+            is_enabled = bool(priv.Attributes & se_privilege_enabled)
+            return is_enabled
+
+    return False
+
 def can_shutdown(reboot: bool = False) -> bool:
     ''' returns whether shutdown is possible, pass True for evaluating reboot instead '''
+    if "MUKKURU_NO_POWER" in os.environ:
+        return False
     system = platform.system()
     if system == "Windows":
-        return True
+        return has_shutdown_privilege_enabled()
     if system == "Linux":
         action = "org.freedesktop.login1.power-off"
         if reboot:
@@ -334,6 +406,25 @@ def can_shutdown(reboot: bool = False) -> bool:
         return check_poolkit_status(action)
     return False
 
+def can_exit() -> bool:
+    ''' returns whether exiting mukkuru is possible '''
+    return not "MUKKURU_NO_EXIT" in os.environ
+
+def is_rdp_session() -> bool:
+    ''' (Windows only) returns whether user is inside an RDP Session '''
+    return os.environ.get("SESSIONNAME", "").startswith("RDP-")
+
+def can_disconnect_session() -> bool:
+    ''' returns whether disconnecting from session is possible '''
+    if platform.system() == "Windows":
+        return is_rdp_session()
+
+def disconnect_session() -> None:
+    ''' Disconnect from remote session '''
+    if platform.system() == "Windows":
+        import win32ts
+        win32ts.WTSDisconnectSession(None, win32ts.WTS_CURRENT_SESSION, False)
+# Might consider adding a delay, so user can cancel shutdown from ui if mistakenly pressed
 def shutdown(reboot: bool = False) -> None:
     ''' attempts shutdown, pass True for rebooting '''
     time.sleep(0.1)
@@ -366,7 +457,7 @@ def add_poolkit_rule() -> None:
     return
 
 def check_poolkit_status(action: str) -> bool:
-    ''' (Linux) returns whether an action can be executed without root '''
+    ''' (Linux) returns whether an action can be executed with available priviledges '''
     poolkit_cmd = []
     poolkit_cmd.append("pkcheck")
     poolkit_cmd.extend(["--action-id", action])
@@ -381,42 +472,128 @@ def is_lossless_scaling_available():
     if Path(lossless_scaling_path).exists():
         return True
     return False
+#To-do: add all operations that require terminating Steam to a queue, so
+# they will be done together when users desire so
+def lc_close_steam(avoid_gamescope: bool = True):
+    ''' Terminate steam for local_config reload '''
+    gamescope_flag = "Gaming Mode" in hardware_if.get_info()["distro"]
+    procs = hardware_if.get_process_by_name(format_executable("steam"))
+    if avoid_gamescope and not gamescope_flag:
+        procs[0].kill()
+    if not avoid_gamescope and gamescope_flag:
+        from view.alternate_ui import Frontend
+        Frontend().close()
+        procs[0].kill()
+
+def format_launch_options(launch_options: str, prefix: str, apply:bool,exe:str="%command%") -> str:
+    '''
+    :param apply: format behaviour\n
+                - False: removes ``prefix`` from ``launch_options``.
+                - True: appends ``prefix`` to begin of ``launch_options``.
+    :type apply: bool\n
+    ``prefix`` will only be appended if it does not exists in ``launch_options``.\n
+    If ``prefix`` is empty passing ``apply`` = False will remove ``exe`` from launch_options\n
+    congratulation for reading this docstring, i did not expect anyone to use it\n
+    '''
+    if prefix == "" and not apply:
+        launch_options = launch_options.replace(f"{exe} ", "")
+        return launch_options
+    if exe not in launch_options:
+        launch_options = f"{exe} {launch_options}"
+    if apply and prefix not in launch_options:
+        launch_options = f"{prefix}{launch_options}"
+    elif not apply:
+        launch_options = launch_options.replace(prefix, "")
+    return launch_options
+
+def manage_all_games(manage = True):
+    ''' Run all games under Mukkuru passthrough '''
+    if platform.system() == "Darwin":
+        return
+    bootstrap.set_global_progress_context(translate_str("Updating", "Updating"))
+    games = scan_games(dry=False)
+    tmukk = f'~/{format_executable("mukkuru")}'
+    prefix = f"{tmukk} "
+    lc_close_steam(True)
+    steam_env = steam.get_steam_env()
+    current = 0
+    # we'll use the same localconfig and shortcuts instance
+    # to avoid I/O overhead, this will save us like 0.5s
+    localconfig = steam.read_local_config(steam_env["localconfig.vdf"])
+    shortcuts = steam.read_shortcuts(steam_env)
+    mukkuru_exe = os.path.expanduser(prefix.rstrip())
+    for app_id, game in games.items():
+        current = current + 1
+        bootstrap.global_progress_callback(current, len(games))
+        game["Managed"] = manage
+        if game["Source"] == "steam":
+            launch_options = game["AppOptions"]
+            launch_options = format_launch_options(launch_options, prefix=prefix, apply=manage)
+            steam.set_launch_options(steam_env, app_id, launch_options, localconfig)
+        elif game["Source"] == "non-steam" and shortcuts is not None:
+            launch_options:str = game["AppOptions"]
+            game_exe = game["AppExe"]
+            if "%command%" in launch_options:
+                #launch_options = format_launch_options(launch_options, prefix, manage)
+                backend_log(f'Skipping {game["AppName"]} due to uncompatible launch options')
+                continue
+            else:
+                launch_options = format_launch_options(launch_options, "", manage, game_exe)
+                steam.set_shortcut_exe(shortcuts, game, ternary(manage, mukkuru_exe, game_exe))
+            steam.set_shortcut_launch_options(steam_env, game, launch_options, shortcuts)
+        else:
+            game["Managed"] = False
+    steam.save_local_config(steam_env, localconfig)
+    steam.save_shortcuts(steam_env, shortcuts)
+    update_games(games)
+    bootstrap.clear_global_progress()
+    # Using separate Mukkuru copy to help games to stay playable in case main executable breaks
+    updater.update_external_instance(delete=not manage)
+    lc_close_steam(False)
+    return translate_str("OperationSuccess", "Operation was completed successfully")
 
 def toggle_lossless_scaling_for_game(appid: str, state: bool = True):
     ''' Enables lossless scaling for steam game, returns message '''
     if platform.system() == "Windows":
         # ignore
         return
-    games = get_games()
+    games = scan_games(dry=True)
     if appid not in games:
         return
-    process_name = "steam"
-    #if platform.system() == "Windows":
-    #    process_name = "steam.exe"
-    device_info = hardware_if.get_info()
-    gamescope_flag = "Gaming Mode" in device_info["distro"]
-    procs = hardware_if.get_process_by_name(process_name)
-    # If not gamescope we are going to terminate first to edit safely
-    # If gamescope we are going to terminate later since killing Steam
-    # will also terminate our app
-    if not gamescope_flag:
-        backend_log("Closing steam before applying changes...")
-        if len(procs) == 0:
-            backend_log("nothing was closed")
-        else:
-            procs[0].terminate()
-    source = games[appid]["Source"]
+    game = games[appid]
+    source = game["Source"]
+    if "Managed" in game and game["Managed"]:
+        return
+    lc_close_steam(True)
+    prefix = "~/lsfg "
+    lsfg_exe = os.path.expanduser(prefix.rstrip())
     steam_env = steam.get_steam_env()
-    command = ternary(state, "~/lsfg %command%", "%command%")
     if source == "steam":
-        steam.set_launch_options(steam_env, appid, command)
+        launch_options = game["AppOptions"]
+        launch_options = format_launch_options(launch_options, prefix, state)
+        steam.set_launch_options(steam_env, appid, launch_options)
     elif source == "non-steam":
-        steam.set_shortcut_launch_options(steam_env, appid, command)
+        shortcuts = steam.read_shortcuts(steam_env)
+        # THIS MIGHT BREAK SHORTCUT GAMES
+        game_exe = game["AppExe"]
+        launch_options = game["AppOptions"]
+        launch_options = format_launch_options(launch_options, "", state, game_exe)
+        steam.set_shortcut_launch_options(steam_env, game, launch_options, shortcuts)
+        steam.set_shortcut_exe(shortcuts, game, ternary(state, lsfg_exe, game_exe))
+        steam.save_shortcuts(steam_env, shortcuts)
     else:
         backend_log("Unsupported source, only steam games and shortcuts supported")
-    if gamescope_flag:
-        procs = hardware_if.get_process_by_name(process_name)
-        if len(procs) > 0:
-            from view.alternate_ui import Frontend#pylint: disable=C0415
-            Frontend().close()
-            procs[0].kill()
+    lc_close_steam(False)
+
+mukkuru_valid_env_vars = [
+    "HWINFO_RAM",
+    "HWINFO_CPU",
+    "HWINFO_GPU",
+    "HWINFO_STR",
+    "HWINFO_HST",
+    "MUKKURU_NO_POWER",
+    "MUKKURU_NO_EXIT",
+    "MUKKURU_SANDBOX",
+    "MUKKURU_FORCE_FULLSCREEN",
+    "MUKKURU_GUEST_MODE"
+]

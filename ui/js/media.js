@@ -1,4 +1,4 @@
-// Copyright (c) 2025 b1on1cdog
+// Copyright (c) 2025-2026 b1on1cdog
 // Licensed under the MIT License
 
 let videoTimeUpdateIntervalId;
@@ -243,7 +243,7 @@ async function update_videos_metadata(vids){
     const vid = document.createElement('video');
     for (const id in vids) {
         const video = vids[id];
-        if ("duration" in video && video["thumbnail_exists"]){
+        if (video["duration"] > 0 && video["thumbnail_exists"]){
             //console.log("skipping "+id)
             continue;
         }

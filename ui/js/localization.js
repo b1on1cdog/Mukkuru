@@ -1,4 +1,4 @@
-// Copyright (c) 2025 b1on1cdog
+// Copyright (c) 2025-2026 b1on1cdog
 // Licensed under the MIT License
 
 function swapText(elementID, newText) {
@@ -45,7 +45,7 @@ const isLocalizationReady = new Promise((resolve) => {
 
 function translate_str(key, str){
   if (localization["available"] == false ) {
-    backend_log("localization not available");
+   // backend_log("localization not available");
     return str;
   } else if (localization[key] == undefined) {
     backend_log("undefined key, l "+Object.keys(localization).length);

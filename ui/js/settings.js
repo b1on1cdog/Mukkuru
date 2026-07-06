@@ -1,5 +1,5 @@
 
-// Copyright (c) 2025 b1on1cdog
+// Copyright (c) 2025-2026 b1on1cdog
 // Licensed under the MIT License
 
 function showPreviousSeparator(state){
@@ -159,6 +159,42 @@ async function setAppStartup(request_method = "POST") {
           addToStartupButton.dataset.call = "removeFromStartup";
           addToStartupButton.innerText = translate_str("removeFromStartup", "Remove Mukkuru from startup");
     }
+}
+
+async function updateMukkuru() {
+  close_context_menu(false);
+  startProgressBar();
+  response = await fetch("/app/update");
+  response_text = await response.text();
+  if (response_text == "up-to-date") {
+    document.getElementById("messageBox").innerText = "Mukkuru is already up-to-date";
+    open_context_menu("messageContext");
+  } else if (response_text == "unsupported") {
+    document.getElementById("messageBox").innerText = "This Mukkuru app does not support updates";
+    open_context_menu("messageContext");
+  }
+}
+
+async function manageGame(app_id, request_method = "POST") {
+    ss_response = await fetch(`/library/manage/`+app_id, {
+        method : request_method
+    });
+    if (app_id == "all") {
+      startProgressBar(true);
+    }
+    message = await ss_response.text();
+    document.getElementById("messageBox").innerText = message;
+    open_context_menu("messageContext");
+    const manageAllGamesButton = document.getElementById("manageAllGames");
+    /*
+    if (request_method == "POST") {
+      manageAllGamesButton.dataset.call = "unmanageAllGames";
+      manageAllGamesButton.innerText = translate_str("unmanageAllGames", "Unmanage all games");
+    } else {
+      manageAllGamesButton.dataset.call = "manageAllGames";
+      manageAllGamesButton.innerText = translate_str("manageAllGames", "Manage all games");
+    }
+      */
 }
 
 function safeRemove(elementId){

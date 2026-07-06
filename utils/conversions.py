@@ -1,6 +1,9 @@
-# Copyright (c) 2025 b1on1cdog
+# Copyright (c) 2025-2026 b1on1cdog
 # Licensed under the MIT License
-''' Mukkuru module for file conversions '''
+'''
+Mukkuru module for file conversions\n
+Imports utils.bootstrap\n
+'''
 import os
 import subprocess
 from pathlib import Path
@@ -14,10 +17,10 @@ OPTION_SUBTITLES = 1 << 2
 OPTION_DATA = 1 << 3
 OPTION_ATTACHMENT = 1 << 4
 
-OPTION_ALL = OPTION_VIDEO | OPTION_AUDIO | OPTION_SUBTITLES
-OPTION_ALL = OPTION_ALL | OPTION_DATA | OPTION_ATTACHMENT
+OPTION_A = OPTION_VIDEO | OPTION_AUDIO | OPTION_SUBTITLES
+OPTION_ALL = OPTION_A | OPTION_DATA | OPTION_ATTACHMENT
 
-def check_remux_possible(input_file: str, options = OPTION_ALL):
+def check_remux_possible(input_file: str, options:int = OPTION_ALL):
     ''' do a dry run for testing video encoding '''
     ffmpeg = [get_ffmpeg(),
               "-v", "error",

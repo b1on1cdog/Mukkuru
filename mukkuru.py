@@ -1,7 +1,6 @@
-# Copyright (c) 2025 b1on1cdog
+# Copyright (c) 2025-2026 b1on1cdog
 # Licensed under the MIT License
 """ Mukkuru, cross-platform game launcher """
-#pylint: disable=C0413
 import os
 import json
 from pathlib import Path
@@ -11,6 +10,7 @@ import sys
 import logging
 import platform
 import shutil
+import argparse
 from io import BytesIO
 import qrcode
 from waitress import serve
@@ -21,17 +21,18 @@ from flask import send_from_directory, send_file
 import utils.core as core
 from utils.css_preprocessor import CssPreprocessor
 core.APP_DIR = os.path.dirname(os.path.abspath(__file__))
-from utils import hardware_if, updater, expansion, test
-from utils.core import mukkuru_env, COMPILER_FLAG, FRONTEND_MODE
+from utils import hardware_if, updater, expansion, passthrough, test
+from utils.core import mukkuru_env, COMPILER_FLAG, frontend_mode
 from utils.core import APP_PORT, SERVER_PORT, APP_DIR
 from utils.core import app_version, get_config, backend_log, set_alive_status
 from utils.core import update_config, format_executable
+import utils.database as db
 from utils import bootstrap
 
 from library import video
 from library.games import get_games, scan_games, scan_thumbnails, get_username, artwork_worker
 from library.steam import get_steam_avatar
-from library.games import launch_store
+from library.games import launch_store, find_app_id_from_path
 
 from controller.license import license_controller
 from controller.hardware import hardware_controller
@@ -39,11 +40,11 @@ from controller.library import library_controller, external_library
 from controller.dashboard import dashboard_blueprint
 from controller.repos import repos_blueprint
 
-if FRONTEND_MODE == "PYWEBVIEW":
+if frontend_mode == "PYWEBVIEW":
     from view.pywebview import Frontend
-elif FRONTEND_MODE == "WEF":
+elif frontend_mode == "WEF":
     from view.wef_view import Frontend
-elif FRONTEND_MODE == "FLASKUI":
+elif frontend_mode == "FLASKUI":
     from view.alternate_ui import Frontend
 else:
     print("FATAL: Unknown webview, unable to produce interface")
@@ -171,9 +172,9 @@ def exit_mukkuru():
             SSERVER.close()
     except (OSError, ValueError, AttributeError):
         pass
-    if FRONTEND_MODE == "FLASKUI":
+    if frontend_mode == "FLASKUI":
         Frontend().close() # pylint: disable=E0606, E0601
-    if FRONTEND_MODE == "WEF":
+    if frontend_mode == "WEF":
         terminate_wef()
     os._exit(0)
 
@@ -207,7 +208,7 @@ def set_videos():
     '''update videos json from request'''
     if request.method == 'POST':
         videos = request.get_json()
-        video.update_videos(mukkuru_env["video.json"], videos)
+        video.update_videos(videos)
         return "200"
     return "400"
 
@@ -218,6 +219,7 @@ def get_audio_packs():
     user_sfx = os.path.join(mukkuru_env["root"], "sfx")
     audio_packs.extend(os.listdir(builtin_sfx))
     audio_packs.extend(os.listdir(user_sfx))
+    audio_packs.remove(".DS_Store")
     return audio_packs
 
 @app.route('/audios/get')
@@ -239,13 +241,8 @@ def get_theme_asset(theme_id: str, asset: str):
     backend_log(f"getting theme {theme_id} {asset}")
     return send_from_directory(theme_dir, asset)
 
-@wserver.route('/config/get')
-@app.route('/config/get')
-def get_user_configuration():
-    ''' get_config() http controller, returns a json '''
-    return jsonify(get_config())
-
-@app.route('/config/set', methods = ['GET', 'POST', 'DELETE'])
+@wserver.route('/config', methods = ['GET'])
+@app.route('/config', methods = ['GET', 'POST', 'DELETE'])
 def set_config():
     '''update user configuration from request'''        
     if request.method == 'POST':
@@ -290,7 +287,7 @@ def delete_data(selection: str):
         terminate_wef()
         shutil.rmtree(os.path.join(mukkuru_env["root"], "wef_bundle"))
     elif selection == "all":
-        if FRONTEND_MODE == "WEF":
+        if frontend_mode == "WEF":
             terminate_wef()
         try:
             shutil.rmtree(mukkuru_env["root"])
@@ -359,7 +356,15 @@ def static_file(path):
                 new_path = sfx_file
         return send_from_directory(serve_path, new_path)
     if path.startswith("thumbnails/") or path.startswith("hero/"):
-        return send_from_directory(mukkuru_env["root"], path, mimetype='image/jpeg')
+        image_types = {
+            "image/jpeg" : f'{path}.jpg',
+            "image/png" : f'{path}.png',
+            "image/webp" : f'{path}.webp'
+        }
+        for mimetype, file_path in image_types.items():
+            if Path(os.path.join(mukkuru_env["root"], file_path)).is_file():
+                return send_from_directory(mukkuru_env['root'], file_path, mimetype=mimetype)
+        return jsonify("", 200)
     if path.endswith("theme.css"):
         full_path = os.path.join(serve_path, path)
         theme = get_theme(user_config["theme"])
@@ -405,6 +410,22 @@ def check_for_updates():
     ret = updater.check_for_updates()
     return jsonify(ret)
 
+@app.route('/app/running')
+def get_running_apps():
+    ''' returns a dictionary containing running apps '''
+    running_apps = {}
+    passthrough_port = passthrough.PASSTHROUGH_PORT
+    used_ports = 0
+    while used_ports < passthrough.AVAILABLE_P_PORTS:
+        try:
+            passthrough_url: str = f"http://localhost:{passthrough_port+used_ports}/status"
+            rep = bootstrap.REQUESTS.get(passthrough_url, stream=True, timeout=0.15)
+            rep.json()
+        except bootstrap.REQUESTS.exceptions.RequestException:
+            pass
+        used_ports = used_ports + 1
+    return jsonify(running_apps)
+
 @app.route('/app/update')
 def start_app_update():
     ''' downloads update if available '''
@@ -414,6 +435,8 @@ def start_app_update():
 @app.route('/config/fullscreen')
 def is_fullscreen():
     ''' show whether app should be in fullscreen '''
+    if "MUKKURU_FORCE_FULLSCREEN" in os.environ:
+        return True
     user_config = get_config()
     return user_config["fullScreen"]
 
@@ -531,23 +554,35 @@ def main():
         mukkuru_env["root"] = os.path.join(os.path.expanduser("~"), ".config", "Mukkuru")
     else:
         backend_log("Running in unsupported OS")
-    mukkuru_env["library.json"] = os.path.join(mukkuru_env["root"], "library.json")
-    mukkuru_env["config.json"] = os.path.join(mukkuru_env["root"], "config.json")
-    mukkuru_env["video.json"] = os.path.join(mukkuru_env["root"], "video.json")
+    #mukkuru_env["config.json"] = os.path.join(mukkuru_env["root"], "config.json")
+    mukkuru_env["database"] = os.path.join(mukkuru_env["root"], "database.db")
+    # To be removed
+    #mukkuru_env["video.json"] = os.path.join(mukkuru_env["root"], "video.json")
+    mukkuru_env["LibraryConfig"] = os.path.join(mukkuru_env["root"], "library_config.json")
+    #
     mukkuru_env["artwork"] = os.path.join(mukkuru_env["root"], "artwork")
     mukkuru_env["log"] = os.path.join(mukkuru_env["root"], "mukkuru.log")
     mukkuru_env["app_path"] = APP_DIR
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--test", action="store_true", help="[Debug] run Mukkuru predefined tests")
+    args = parser.parse_args()
+
     if len(sys.argv) >= 2:
-        arg = sys.argv[1]
-        if arg == "--test":
+        if args.test:
             print("Running in test mode")
+            db.init_database(mukkuru_env["database"])
             test.run_tests()
             return
-        elif arg == "--add-poolkit-rules":
-            expansion.add_poolkit_rule()
+        else:
+            backend_log("Passthrough mode")
+            if "SteamAppId" not in os.environ:
+                os.environ["SteamAppId"] = find_app_id_from_path(sys.argv[1])
+                if os.environ["SteamAppId"] == "":
+                    backend_log("Unable to find app_id")
+            passthrough.transparent_execution()
             return
-        return
-    backend_log(f'Using { FRONTEND_MODE } for rendering')
+    backend_log(f'Using { frontend_mode } for rendering')
     backend_log(f"COMPILER_FLAG: {COMPILER_FLAG}")
     if "DELAY_EXECUTION" in os.environ:
         backend_log("DELAY_EXECUTION variable is set, waiting...")
@@ -570,10 +605,13 @@ def main():
         os.path.join(mukkuru_env["artwork"], "Logo"),
         os.path.join(mukkuru_env["artwork"], "Heroes"),
         os.path.join(mukkuru_env["artwork"], "Grid"),
+        os.path.join(mukkuru_env["artwork"], "Portrait"),
         os.path.join(mukkuru_env["artwork"], "Avatar"),
         os.path.join(mukkuru_env["root"], "logo"),
         os.path.join(mukkuru_env["root"], "thumbnails"),
         os.path.join(mukkuru_env["root"], "hero"),
+        os.path.join(mukkuru_env["root"], "grid"),
+        os.path.join(mukkuru_env["root"], "portrait"),
         os.path.join(mukkuru_env["root"], "themes"),
         os.path.join(mukkuru_env["root"], "plugins"),
         os.path.join(mukkuru_env["root"], "tools"),
@@ -583,13 +621,10 @@ def main():
     for needed_dir in needed_dirs:
         if not os.path.isdir(needed_dir):
             os.makedirs(needed_dir, exist_ok=True)
-
+    db.init_database(mukkuru_env["database"])
     user_config = get_config()
-    if not Path(mukkuru_env["library.json"]).is_file():
-        backend_log("No library.json")
-    else:
-        games = get_games()
-        scan_thumbnails(games)
+    games = get_games()
+    scan_thumbnails(games)
     # version correction
     if updater.ver_compare(user_config["configVersion"], "0.3.14") == 0:
         backend_log("updating config...")

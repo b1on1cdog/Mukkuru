@@ -1,4 +1,4 @@
-# Copyright (c) 2025 b1on1cdog
+# Copyright (c) 2025-2026 b1on1cdog
 # Licensed under the MIT License
 ''' Preprocess CSS for logic purposes '''
 from pathlib import Path
@@ -15,10 +15,10 @@ class CssPreprocessor:
         if path is not None and Path(path).is_file():
             with open(path, 'r', encoding='utf-8') as css_file:
                 self.css = css_file.read()
-                print(f"Processing CSS {path}...")
+                #print(f"Processing CSS {path}...")
         elif data is not None:
             self.css = data
-            print("Processing CSS data...")
+            #print("Processing CSS data...")
         else:
             self.css = None
             print(f"Unable to process CSS {path}...")

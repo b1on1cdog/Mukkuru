@@ -1,11 +1,11 @@
-# Copyright (c) 2025 b1on1cdog
+# Copyright (c) 2025-2026 b1on1cdog
 # Licensed under the MIT License
 ''' This Mukkuru module will handle unit testing '''
-#import json
+import json
 from utils import updater
 from utils.bootstrap import get_7z, get_unrar, get_ffmpeg
 from library.games import library_scan
-from library import steam
+#from library import steam
 
 def test_compare(ver1, ver2):
     '''test ver_compare'''
@@ -18,6 +18,7 @@ def test_scan():
     ''' test game scan '''
     games = library_scan(7)
     print(f"Found {len(games)} games")
+    print(json.dumps(games, indent=4))
 
 def test_tools():
     ''' test tools paths '''
@@ -30,13 +31,13 @@ def test_tools():
 
 def run_tests():
     ''' run multiple tests '''
-    steam.set_launch_options(None, "377670", "~/lsfg %command%")
-    steam.set_launch_options(None, "345610", "~/lsfg %command%")
-    steam.set_shortcut_launch_options(None, "13667182077366239232", "~/lsfg %command%")
+    #steam.set_launch_options(None, "377670", "~/lsfg %command%")
+    #steam.set_launch_options(None, "345610", "~/lsfg %command%")
+    #steam.set_shortcut_launch_options(None, "13667182077366239232", "~/lsfg %command%")
     #update_status = updater.check_for_updates()
     #print(json.dumps(update_status))
-    #test_scan()
-    #test_tools()
+    test_scan()
+    test_tools()
     #print(get_userprofile_folder("Downloads"))
     #print(get_userprofile_folder("Music"))
     #print(get_userprofile_folder("Videos"))

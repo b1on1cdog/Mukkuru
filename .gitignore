@@ -1,7 +1,7 @@
+.DS_Store
 .trash
 __pycache__
 _internal
-artwork/Square/*
 mukkuru.build/
 mukkuru_release*
 mukkuru-*-*
@@ -11,7 +11,8 @@ mukkuru.cmd
 build/
 nuitka-crash-report.xml
 .venv
-compiler.json
+compile_user.json
 cross_compile.py
 zolvanis-windows-amd64.exe
 nodes.json
+unimplemented/
